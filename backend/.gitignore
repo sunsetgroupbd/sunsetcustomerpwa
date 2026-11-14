@@ -1,0 +1,60 @@
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment Variables & Secrets (Keep .env.example tracked)
+.env
+.env.*
+!.env.example
+
+# Local SQLite Database & Storage
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite3
+sunset.db
+sunset.db-journal
+sunset.db-wal
+
+# Uploaded Customer Documents & Temporary Files
+uploads/
+media/
+static/uploads/
+temp/
+tmp/
+*.tmp
+
+# Logging
+logs/
+*.log
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Type Checking & Linting
+.mypy_cache/
+.pytype/
+.ruff_cache/
+
+# IDE & OS Files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

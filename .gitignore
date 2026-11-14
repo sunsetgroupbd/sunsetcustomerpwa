@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Python Virtual Environments
+backend/venv/
+backend/.venv/
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Production Builds & Cache
+.next/
+out/
+build/
+dist/
+.turbo
+
+# Local Environment Variables & Secrets
+.env
+.env*.local
+backend/.env
+backend/.env.*
+!.env.example
+!backend/.env.example
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+backend/sunset.db*
+
+# Uploads & User Content
+uploads/
+media/
+backend/uploads/
+
+# Logs & Debugging
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

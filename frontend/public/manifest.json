@@ -1,0 +1,17 @@
+{
+  "name": "Sunset Group Customer Platform",
+  "short_name": "Sunset App",
+  "description": "Customer Application and Registration Platform for Sunset Group",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#006B3E",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/Sunset-Group-Logo.png",
+      "sizes": "264x215 192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}
