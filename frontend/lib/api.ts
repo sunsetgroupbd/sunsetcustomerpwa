@@ -1,5 +1,5 @@
 // Centralized API Client for Sunset Customer Application Platform
-import { ApiResponse, AuthResponse, Application, Business, DashboardStats, PackagePricing, TermsAndConditions, User } from './types';
+import { ApiResponse, AuthResponse, Application, Business, CustomerProfileData, DashboardStats, PackagePricing, TermsAndConditions, User } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -126,7 +126,19 @@ async function request<T>(
       throw new ApiError(errorMsg, res.status, data);
     }
 
-    return (data.data !== undefined ? data.data : data) as T;
+    if (data && data.data !== undefined) {
+      if (Array.isArray(data.data) && data.meta !== undefined) {
+        return {
+          items: data.data,
+          total: data.meta?.total ?? data.data.length,
+          page: data.meta?.page ?? 1,
+          limit: data.meta?.page_size ?? 20,
+          data: data.data,
+        } as unknown as T;
+      }
+      return data.data as T;
+    }
+    return data as T;
   } catch (error: any) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(error.message || 'Network error occurred', 0);
@@ -170,7 +182,10 @@ export const api = {
 
   // Businesses & Configuration
   businesses: {
-    list: () => request<Business[]>('/businesses'),
+    list: async () => {
+      const res = await request<any>('/businesses');
+      return (Array.isArray(res) ? res : (res?.items || res?.data || [])) as Business[];
+    },
     get: (id: string) => request<Business>(`/businesses/${id}`),
     getPackages: (businessId: string) => request<PackagePricing[]>(`/businesses/${businessId}/packages`),
     getTerms: (businessId: string) => request<TermsAndConditions>(`/businesses/${businessId}/terms`),
@@ -283,6 +298,31 @@ export const api = {
       request<User>('/admin/users', {
         method: 'POST',
         body: JSON.stringify({ ...data, role: data.role || 'customer' }),
+      }),
+    deleteUser: (userId: string | number) =>
+      request<{ success: boolean; message: string }>(`/admin/users/${userId}`, {
+        method: 'DELETE',
+      }),
+  },
+
+  // Customer Profile
+  profile: {
+    get: () => request<CustomerProfileData>('/customers/me'),
+    update: (data: {
+      full_name?: string;
+      email?: string;
+      date_of_birth?: string | null;
+      gender?: string | null;
+      address?: string | null;
+      district?: string | null;
+      division?: string | null;
+      post_code?: string | null;
+      emergency_contact?: string | null;
+      preferred_language?: string;
+    }) =>
+      request<CustomerProfileData>('/customers/me', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
       }),
   },
 

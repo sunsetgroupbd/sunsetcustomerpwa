@@ -37,7 +37,7 @@ class CustomerService:
             "full_name": user.full_name,
             "mobile": user.mobile,
             "email": user.email,
-            "role": user.role,
+            "role": user.role.value if hasattr(user.role, "value") else str(user.role),
             "is_active": user.is_active,
             "is_verified": user.is_verified,
             "created_at": user.created_at,
@@ -47,6 +47,9 @@ class CustomerService:
                 "district": profile.district if profile else None,
                 "division": profile.division if profile else None,
                 "post_code": profile.post_code if profile else None,
+                "date_of_birth": profile.date_of_birth.isoformat() if profile and profile.date_of_birth else None,
+                "gender": profile.gender if profile else None,
+                "emergency_contact": profile.emergency_contact if profile else None,
             }
             if profile
             else None,
@@ -63,7 +66,24 @@ class CustomerService:
             self.db.add(profile)
 
         update_dict = data.model_dump(exclude_unset=True)
+
+        # Update User fields if provided
+        if "full_name" in update_dict and update_dict["full_name"]:
+            user.full_name = update_dict["full_name"].strip()
+
+        if "email" in update_dict:
+            new_email = update_dict["email"].strip().lower() if update_dict["email"] else None
+            if new_email and new_email != user.email:
+                # check uniqueness
+                existing = self.db.query(User).filter(User.email == new_email, User.id != user_id).first()
+                if existing:
+                    raise ValidationError("This email address is already in use by another account.")
+            user.email = new_email
+
+        # Update CustomerProfile fields
         for k, v in update_dict.items():
+            if k in ("full_name", "email"):
+                continue
             if hasattr(profile, k):
                 setattr(profile, k, v)
 

@@ -38,6 +38,27 @@ export interface User {
   updated_at: string;
 }
 
+export interface CustomerProfileData {
+  id: number | string;
+  full_name: string;
+  mobile: string;
+  email: string | null;
+  role: UserRole;
+  is_active: boolean;
+  is_verified: boolean;
+  created_at: string;
+  profile?: {
+    preferred_language?: string;
+    address?: string | null;
+    district?: string | null;
+    division?: string | null;
+    post_code?: string | null;
+    date_of_birth?: string | null;
+    gender?: string | null;
+    emergency_contact?: string | null;
+  } | null;
+}
+
 export interface Business {
   id: string;
   code: string;

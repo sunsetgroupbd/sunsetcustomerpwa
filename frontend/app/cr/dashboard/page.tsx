@@ -44,7 +44,8 @@ export default function CrDashboardPage() {
         }),
         api.businesses.list().catch(() => []),
       ]);
-      setApplications(appRes.items || []);
+      const apps = Array.isArray(appRes) ? appRes : ((appRes as any)?.items || (appRes as any)?.data || []);
+      setApplications(apps);
       setBusinesses(bizRes);
       if (bizRes.length > 0 && !selectedBizId) {
         setSelectedBizId(bizRes[0].id);

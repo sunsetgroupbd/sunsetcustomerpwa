@@ -22,9 +22,9 @@ export const MobileNavBar: React.FC = () => {
 
     if (user.role === 'customer') {
       return [
-        { label: 'Home', href: '/', icon: Icons.Home },
         { label: 'Dashboard', href: '/customer/dashboard', icon: Icons.FileText },
         { label: 'Apply', href: '/customer/apply', icon: Icons.PlusCircle },
+        { label: 'Profile', href: '/customer/profile', icon: Icons.User },
       ];
     }
 
@@ -72,18 +72,6 @@ export const MobileNavBar: React.FC = () => {
             </Link>
           );
         })}
-
-        {isAuthenticated && (
-          <button
-            onClick={logout}
-            className="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 hover:text-rose-600 transition-colors"
-          >
-            <div className="p-1">
-              <Icons.LogOut className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] tracking-tight font-medium mt-0.5">Logout</span>
-          </button>
-        )}
       </div>
     </nav>
   );

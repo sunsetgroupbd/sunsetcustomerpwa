@@ -35,7 +35,8 @@ export default function AdminExportsPage() {
 
     async function loadBusinesses() {
       try {
-        const list = await api.businesses.list().catch(() => []);
+        const res = await api.businesses.list().catch(() => []);
+        const list = Array.isArray(res) ? res : ((res as any)?.items || (res as any)?.data || []);
         setBusinesses(list);
       } catch (err) {
         console.error('Failed to load businesses', err);
@@ -112,7 +113,10 @@ export default function AdminExportsPage() {
                 onChange={(e) => setSelectedBiz(e.target.value)}
                 options={[
                   { value: '', label: 'All Divisions (Unified)' },
-                  ...businesses.map((b) => ({ value: b.id, label: `${b.code} — ${b.name}` })),
+                  ...(Array.isArray(businesses) ? businesses : []).map((b) => ({
+                    value: b.id,
+                    label: `${b.code} — ${b.name}`,
+                  })),
                 ]}
               />
 

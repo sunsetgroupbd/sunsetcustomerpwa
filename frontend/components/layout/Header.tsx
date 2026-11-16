@@ -77,22 +77,33 @@ export const Header: React.FC = () => {
 
               {/* User profile / badge */}
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="text-right">
-                  <div className="text-xs font-semibold text-slate-900 leading-tight hidden sm:block">
-                    {user.full_name || user.phone_number}
+                {user.role === 'customer' ? (
+                  <Link href="/customer/profile" className="text-right hover:opacity-80 transition-opacity" title="View Profile">
+                    <div className="text-xs font-semibold text-slate-900 leading-tight hidden sm:block">
+                      {user.full_name || user.phone_number}
+                    </div>
+                    <Badge variant="success">
+                      {user.role.toUpperCase()}
+                    </Badge>
+                  </Link>
+                ) : (
+                  <div className="text-right">
+                    <div className="text-xs font-semibold text-slate-900 leading-tight hidden sm:block">
+                      {user.full_name || user.phone_number}
+                    </div>
+                    <Badge variant={user.role === 'admin' ? 'purple' : 'info'}>
+                      {user.role.toUpperCase()}
+                    </Badge>
                   </div>
-                  <Badge variant={user.role === 'admin' ? 'purple' : user.role === 'cr' ? 'info' : 'success'}>
-                    {user.role.toUpperCase()}
-                  </Badge>
-                </div>
+                )}
 
-                {/* Desktop Signout button */}
+                {/* Signout button */}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={logout}
                   title="Sign out"
-                  className="hidden md:inline-flex text-slate-500 hover:text-rose-600"
+                  className="text-slate-500 hover:text-rose-600 p-1.5"
                 >
                   <Icons.LogOut className="w-4 h-4" />
                 </Button>

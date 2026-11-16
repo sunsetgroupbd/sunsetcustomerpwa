@@ -23,7 +23,8 @@ export default function HomePage() {
     async function loadBusinesses() {
       try {
         const data = await api.businesses.list();
-        setBusinesses(data);
+        const list = Array.isArray(data) ? data : ((data as any)?.items || (data as any)?.data || []);
+        setBusinesses(list);
       } catch (e) {
         // Fallback default divisions if backend is initializing
         setBusinesses([

@@ -32,12 +32,13 @@ function ApplyContent() {
 
     async function init() {
       try {
-        const bizList = await api.businesses.list().catch(() => [
+        const rawBiz = await api.businesses.list().catch(() => [
           { id: '1', code: 'SKH', name: 'Sunset Kuakata Hotel & Resort', slug: 'sunset-kuakata', description: null, logo_url: null, is_active: true },
           { id: '2', code: 'DFI', name: 'Dhaka Fantasy Island', slug: 'dhaka-fantasy-island', description: null, logo_url: null, is_active: true },
           { id: '3', code: 'SCH', name: 'Sun Care Hospital & Diagnostic Centre', slug: 'sun-care-hospital', description: null, logo_url: null, is_active: true },
           { id: '4', code: 'SPC', name: 'Super Combo', slug: 'super-combo', description: null, logo_url: null, is_active: true },
         ]);
+        const bizList: Business[] = Array.isArray(rawBiz) ? rawBiz : ((rawBiz as any)?.items || (rawBiz as any)?.data || []);
         setBusinesses(bizList);
 
         if (appIdParam) {

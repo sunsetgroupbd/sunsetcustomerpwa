@@ -4,9 +4,9 @@ Customer-related Pydantic v2 schemas.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 # ---------------------------------------------------------------------------
@@ -20,14 +20,26 @@ class CustomerProfileBase(BaseModel):
     district: str | None = None
     division: str | None = None
     post_code: str | None = None
+    date_of_birth: date | None = None
+    gender: str | None = None
+    emergency_contact: str | None = None
 
 
 class CustomerProfileCreate(CustomerProfileBase):
     pass
 
 
-class CustomerProfileUpdate(CustomerProfileBase):
-    pass
+class CustomerProfileUpdate(BaseModel):
+    full_name: str | None = None
+    email: EmailStr | None = None
+    preferred_language: str | None = None
+    address: str | None = None
+    district: str | None = None
+    division: str | None = None
+    post_code: str | None = None
+    date_of_birth: date | None = None
+    gender: str | None = None
+    emergency_contact: str | None = None
 
 
 class CustomerProfileResponse(CustomerProfileBase):

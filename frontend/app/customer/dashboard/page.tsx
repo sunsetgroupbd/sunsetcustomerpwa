@@ -28,7 +28,8 @@ export default function CustomerDashboardPage() {
     async function loadApps() {
       try {
         const res = await api.applications.list();
-        setApplications(res.items || []);
+        const items = Array.isArray(res) ? res : ((res as any)?.items || (res as any)?.data || []);
+        setApplications(items);
       } catch (e) {
         console.error('Failed to load customer applications', e);
       } finally {
@@ -50,11 +51,20 @@ export default function CustomerDashboardPage() {
       title={`Welcome back, ${user?.full_name || 'Customer'}`}
       subtitle="Track your Sunset Group ownership applications and investment portfolio."
       actions={
-        <Link href="/customer/apply">
-          <Button variant="primary" leftIcon={<Icons.Plus className="w-4 h-4" />}>
-            New Application
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/customer/profile">
+            <Button variant="outline" size="sm" className="flex items-center gap-1.5">
+              <Icons.User className="w-4 h-4" />
+              <span>My Profile</span>
+            </Button>
+          </Link>
+          <Link href="/customer/apply">
+            <Button variant="primary" size="sm" className="flex items-center gap-1.5">
+              <Icons.Plus className="w-4 h-4" />
+              <span>New Application</span>
+            </Button>
+          </Link>
+        </div>
       }
     >
       <div className="space-y-6">

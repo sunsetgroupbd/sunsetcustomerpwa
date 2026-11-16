@@ -1,9 +1,13 @@
 // Sunset Customer Application Service Worker
-const CACHE_NAME = 'sunset-cache-v1';
+const CACHE_NAME = 'sunset-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/favicon-96x96.png',
+  '/apple-touch-icon.png',
+  '/web-app-manifest-192x192.png',
+  '/web-app-manifest-512x512.png',
 ];
 
 self.addEventListener('install', (event) => {

@@ -41,6 +41,10 @@ export default function AdminUsersPage() {
   } | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
+  // Delete User Modal state
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const loadUsers = async () => {
     setIsLoading(true);
     try {
@@ -48,7 +52,8 @@ export default function AdminUsersPage() {
         role: roleFilter || undefined,
         search: searchTerm || undefined,
       });
-      setUsers(res.items || []);
+      const items = Array.isArray(res) ? res : ((res as any)?.items || (res as any)?.data || []);
+      setUsers(items);
     } catch (err: any) {
       console.error('Failed to load users', err);
     } finally {
@@ -81,6 +86,24 @@ export default function AdminUsersPage() {
       loadUsers();
     } catch (err: any) {
       setStatusMsg({ type: 'error', text: err.message || 'Failed to update user status.' });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    try {
+      await api.admin.deleteUser(userToDelete.id);
+      setStatusMsg({
+        type: 'success',
+        text: `User ${userToDelete.full_name} has been permanently deleted.`,
+      });
+      setUserToDelete(null);
+      loadUsers();
+    } catch (err: any) {
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to delete user.' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -257,16 +280,29 @@ export default function AdminUsersPage() {
                         {new Date(u.created_at).toLocaleDateString()}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        {u.role !== 'admin' && (
-                          <Button
-                            variant={u.is_active ? 'outline' : 'primary'}
-                            size="sm"
-                            onClick={() => handleToggleStatus(u)}
-                            className={u.is_active ? 'text-rose-600 hover:border-rose-300' : ''}
-                          >
-                            {u.is_active ? 'Suspend' : 'Activate'}
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {u.role !== 'admin' && (
+                            <Button
+                              variant={u.is_active ? 'outline' : 'primary'}
+                              size="sm"
+                              onClick={() => handleToggleStatus(u)}
+                              className={u.is_active ? 'text-amber-700 hover:border-amber-300' : ''}
+                            >
+                              {u.is_active ? 'Suspend' : 'Activate'}
+                            </Button>
+                          )}
+                          {String(u.id) !== String(user?.id) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setUserToDelete(u)}
+                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 p-1.5"
+                              title="Delete User"
+                            >
+                              <Icons.Trash className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -422,6 +458,55 @@ export default function AdminUsersPage() {
             </div>
           </form>
         )}
+      </Modal>
+
+      {/* Delete User Confirmation Modal */}
+      <Modal
+        isOpen={!!userToDelete}
+        onClose={() => {
+          if (!isDeleting) setUserToDelete(null);
+        }}
+        title="Delete User Account"
+        description="Permanently remove this account and associated records."
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+              <Icons.Trash className="w-5 h-5" />
+            </div>
+            <div className="text-xs text-rose-900 leading-relaxed">
+              <p className="font-semibold text-rose-800">Are you sure you want to delete this user?</p>
+              <p className="mt-1 text-slate-600">
+                You are about to delete <strong className="text-slate-900">{userToDelete?.full_name}</strong> (
+                <span className="font-mono">{userToDelete?.phone_number || (userToDelete as any)?.mobile}</span>).
+                This action cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setUserToDelete(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleConfirmDelete}
+              isLoading={isDeleting}
+              className="bg-rose-600 hover:bg-rose-700 text-white border-transparent"
+            >
+              Yes, Delete User
+            </Button>
+          </div>
+        </div>
       </Modal>
     </DashboardShell>
   );

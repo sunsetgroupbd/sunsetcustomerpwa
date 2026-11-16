@@ -115,8 +115,22 @@ async def list_users(
             .limit(per_page)
             .all()
         )
+        user_list = [
+            {
+                "id": str(u.id),
+                "full_name": u.full_name,
+                "mobile": u.mobile,
+                "phone_number": u.mobile,
+                "email": u.email,
+                "role": u.role.value if hasattr(u.role, "value") else str(u.role),
+                "is_active": u.is_active,
+                "is_verified": u.is_verified,
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+            }
+            for u in users
+        ]
         return paginated_response(
-            items=users,
+            items=user_list,
             total=total,
             page=page,
             per_page=per_page,
@@ -233,6 +247,88 @@ async def update_user(
     db.commit()
 
     return success_response(data=user, message="User updated successfully.")
+
+
+@router.delete(
+    "/users/{user_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete user (Admin only)",
+)
+async def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_roles(["admin"])),
+):
+    """Delete a user account and cleanly cascade any related records."""
+    if admin_user.id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot delete your own admin account.",
+        )
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
+    deleted_mobile = user.mobile
+    deleted_role = user.role.value if hasattr(user.role, "value") else str(user.role)
+    deleted_name = user.full_name
+
+    from app.models.application import (
+        Application,
+        ApplicantInfo,
+        BankDetail,
+        OwnershipDetail,
+        PaymentDetail,
+        Nominee,
+        ApplicationRemark,
+        ApplicationStatusHistory,
+        CRAssignment,
+    )
+    from app.models.document import Document
+    from app.models.customer import CustomerProfile
+    from app.models.user import RefreshToken, OTPVerification
+
+    # 1. If CR officer, unassign from applications
+    db.query(Application).filter(Application.assigned_cr_id == user_id).update(
+        {Application.assigned_cr_id: None}, synchronize_session=False
+    )
+    db.query(CRAssignment).filter(CRAssignment.cr_user_id == user_id).delete(synchronize_session=False)
+
+    # 2. If customer, clean up their applications
+    apps = db.query(Application).filter(Application.customer_id == user_id).all()
+    for app in apps:
+        app_id = app.id
+        db.query(ApplicantInfo).filter(ApplicantInfo.application_id == app_id).delete(synchronize_session=False)
+        db.query(BankDetail).filter(BankDetail.application_id == app_id).delete(synchronize_session=False)
+        db.query(OwnershipDetail).filter(OwnershipDetail.application_id == app_id).delete(synchronize_session=False)
+        db.query(PaymentDetail).filter(PaymentDetail.application_id == app_id).delete(synchronize_session=False)
+        db.query(Nominee).filter(Nominee.application_id == app_id).delete(synchronize_session=False)
+        db.query(ApplicationRemark).filter(ApplicationRemark.application_id == app_id).delete(synchronize_session=False)
+        db.query(ApplicationStatusHistory).filter(ApplicationStatusHistory.application_id == app_id).delete(synchronize_session=False)
+        db.query(CRAssignment).filter(CRAssignment.application_id == app_id).delete(synchronize_session=False)
+        db.query(Document).filter(Document.application_id == app_id).delete(synchronize_session=False)
+        db.delete(app)
+
+    # 3. Clean up user-related records
+    db.query(CustomerProfile).filter(CustomerProfile.user_id == user_id).delete(synchronize_session=False)
+    db.query(RefreshToken).filter(RefreshToken.user_id == user_id).delete(synchronize_session=False)
+    db.query(OTPVerification).filter(OTPVerification.user_id == user_id).delete(synchronize_session=False)
+
+    db.delete(user)
+    db.commit()
+
+    audit = AuditService(db)
+    audit.log(
+        user_id=admin_user.id,
+        action="admin.user_deleted",
+        entity_type="user",
+        entity_id=str(user_id),
+        metadata={"mobile": deleted_mobile, "name": deleted_name, "role": deleted_role},
+    )
+    db.commit()
+
+    return success_response(message=f"Account for {deleted_name} ({deleted_mobile}) was deleted successfully.")
 
 
 # ---------------------------------------------------------------------------
