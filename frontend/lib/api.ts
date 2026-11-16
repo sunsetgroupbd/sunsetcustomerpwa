@@ -279,6 +279,11 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ is_active: isActive }),
       }),
+    createUser: (data: { full_name: string; mobile: string; password: string; email?: string; role?: string }) =>
+      request<User>('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({ ...data, role: data.role || 'customer' }),
+      }),
   },
 
   // Exports

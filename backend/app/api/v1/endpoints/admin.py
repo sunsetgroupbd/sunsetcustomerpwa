@@ -158,6 +158,13 @@ async def create_user(
         is_verified=True,
     )
     db.add(user)
+    db.flush()
+
+    if user.role == "customer":
+        from app.models.customer import CustomerProfile
+        profile = CustomerProfile(user_id=user.id)
+        db.add(profile)
+
     db.commit()
     db.refresh(user)
 

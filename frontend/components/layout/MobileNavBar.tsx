@@ -15,8 +15,8 @@ export const MobileNavBar: React.FC = () => {
     if (!isAuthenticated || !user) {
       return [
         { label: 'Home', href: '/', icon: Icons.Home },
+        { label: 'Projects', href: '/#projects', icon: Icons.Building },
         { label: 'Sign In', href: '/login', icon: Icons.User },
-        { label: 'Register', href: '/register', icon: Icons.PlusCircle },
       ];
     }
 

@@ -1,69 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { Alert } from '@/components/ui/Alert';
 import { Icons } from '@/components/ui/Icons';
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const { register } = useAuth();
-
-  const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!fullName.trim() || !phoneNumber.trim() || !password) {
-      setError('Please fill in all required fields.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters and include uppercase, lowercase, number, and special character (e.g. Sunset@123).');
-      return;
-    }
-
-    // Bangladesh phone validation
-    const bdPhoneRegex = /^(?:\+?88)?01[3-9]\d{8}$/;
-    if (!bdPhoneRegex.test(phoneNumber.trim())) {
-      setError('Please provide a valid 11-digit Bangladeshi mobile number (e.g. 017XXXXXXXX).');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      await register({
-        full_name: fullName.trim(),
-        phone_number: phoneNumber.trim(),
-        email: email.trim() || undefined,
-        password: password,
-      });
-      router.push('/customer/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Registration failed. Please check the provided information.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
@@ -71,75 +14,44 @@ export default function RegisterPage() {
           <Icons.Logo className="w-14 h-14 object-contain" />
           <span className="text-xl font-bold tracking-tight text-slate-900">SUNSET GROUP</span>
         </Link>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Create a Customer Account</h2>
-        <p className="mt-1 text-xs text-slate-500">Apply and manage your ownership investments</p>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Portal Access Notice</h2>
+        <p className="mt-1 text-xs text-slate-500">Official Ownership &amp; Shareholder Portal</p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
-        <Card>
-          {error && (
-            <Alert type="error" className="mb-5">
-              {error}
-            </Alert>
-          )}
+        <Card className="text-center p-6 space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#008751]/10 text-[#008751] flex items-center justify-center mx-auto">
+            <Icons.Shield className="w-7 h-7" />
+          </div>
 
-          <form onSubmit={handleRegister} className="space-y-4">
-            <Input
-              label="Full Name"
-              required
-              placeholder="e.g. Mohammad Rahman"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Admin Provisioned Accounts</h3>
+            <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+              Customer accounts and ownership registrations are managed and issued directly by the <strong>Sunset Group Administration</strong> and <strong>Customer Relations (CR)</strong> team to safeguard shareholder records and investment privacy.
+            </p>
+          </div>
 
-            <Input
-              label="Mobile Phone Number"
-              required
-              type="tel"
-              placeholder="017XXXXXXXX"
-              helperText="11-digit Bangladeshi mobile number"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-            />
-
-            <Input
-              label="Email Address (Optional)"
-              type="email"
-              placeholder="user@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-
-            <Input
-              label="Password"
-              required
-              type="password"
-              placeholder="••••••••"
-              helperText="Min 8 chars: 1 uppercase, 1 lowercase, 1 number, 1 symbol (e.g. Sunset@123)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-
-            <Input
-              label="Confirm Password"
-              required
-              type="password"
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-
-            <div className="pt-2">
-              <Button type="submit" variant="primary" className="w-full" isLoading={isLoading}>
-                Create Account
-              </Button>
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-left text-xs text-slate-600 space-y-1.5">
+            <div className="flex items-start gap-2">
+              <Icons.CheckCircle className="w-4 h-4 text-[#008751] shrink-0 mt-0.5" />
+              <span>Already received your credentials? Sign in below with your mobile number and password.</span>
             </div>
-          </form>
+            <div className="flex items-start gap-2">
+              <Icons.CheckCircle className="w-4 h-4 text-[#008751] shrink-0 mt-0.5" />
+              <span>Need access? Contact your assigned Sunset Group Relationship Manager.</span>
+            </div>
+          </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-500">
-            Already registered?{' '}
-            <Link href="/login" className="font-semibold text-[#006B3E] hover:underline">
-              Sign in to your account
+          <div className="pt-2 flex flex-col gap-2">
+            <Link href="/login" className="w-full">
+              <Button variant="primary" className="w-full justify-center">
+                Sign In to Your Account
+              </Button>
+            </Link>
+            <Link href="/" className="w-full">
+              <Button variant="ghost" className="w-full justify-center text-xs">
+                Back to Home Page
+              </Button>
             </Link>
           </div>
         </Card>
@@ -147,4 +59,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

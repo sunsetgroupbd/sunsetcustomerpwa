@@ -168,26 +168,26 @@ export default function HomePage() {
 
             {/* Mobile App Native CTAs - Crystal Clear Text Visibility */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <Link href="/register" className="flex-1 sm:flex-initial">
+              <Link href="/login" className="flex-1 sm:flex-initial">
                 <Button
                   variant="white"
                   size="lg"
                   className="w-full sm:w-auto rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-black/10 active:scale-[0.98]"
                 >
-                  <Icons.PlusCircle className="w-5 h-5 text-[#008751]" size={20} />
-                  <span className="font-bold text-[#007043]">Start Application</span>
+                  <Icons.User className="w-5 h-5 text-[#008751]" size={20} />
+                  <span className="font-bold text-[#007043]">Access Client Portal</span>
                 </Button>
               </Link>
-              <Link href="/login" className="flex-1 sm:flex-initial">
+              <a href="#projects" className="flex-1 sm:flex-initial">
                 <Button
                   variant="glass"
                   size="lg"
                   className="w-full sm:w-auto rounded-xl flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
-                  <Icons.User className="w-4 h-4 text-emerald-100" size={16} />
-                  <span className="font-semibold text-white">Access Portal / Sign In</span>
+                  <Icons.Building className="w-4 h-4 text-emerald-100" size={16} />
+                  <span className="font-semibold text-white">Explore Projects</span>
                 </Button>
-              </Link>
+              </a>
             </div>
           </div>
         </section>
@@ -195,15 +195,15 @@ export default function HomePage() {
         {/* Mobile Quick Action Tiles with SVG Accents */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <Link
-            href="/register"
+            href="/login"
             className="group relative overflow-hidden flex items-center gap-3 p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-[#008751]/40 transition-all active:scale-[0.98]"
           >
             <div className="w-10 h-10 rounded-xl bg-[#008751]/10 text-[#008751] group-hover:bg-[#008751] group-hover:text-white transition-colors flex items-center justify-center shrink-0">
               <Icons.PlusCircle className="w-5 h-5" size={20} />
             </div>
             <div className="min-w-0">
-              <span className="text-xs font-bold text-slate-900 block truncate">Apply Now</span>
-              <span className="text-[10px] text-slate-500 block truncate">New ownership</span>
+              <span className="text-xs font-bold text-slate-900 block truncate">Client Login</span>
+              <span className="text-[10px] text-slate-500 block truncate">Investor portal</span>
             </div>
           </Link>
 

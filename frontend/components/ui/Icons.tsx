@@ -188,6 +188,12 @@ export const Icons = {
     </svg>
   ),
 
+  Copy: ({ className = 'w-4 h-4', size = 16, ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+      <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+    </svg>
+  ),
+
   X: ({ className = 'w-4 h-4', size = 16, ...props }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
       <path fillRule="evenodd" d="M5.3 5.3a1 1 0 0 1 1.4 0L12 10.6l5.3-5.3a1 1 0 1 1 1.4 1.4L13.4 12l5.3 5.3a1 1 0 0 1-1.4 1.4L12 13.4l-5.3 5.3a1 1 0 0 1-1.4-1.4L10.6 12 5.3 6.7a1 1 0 0 1 0-1.4z" clipRule="evenodd" />

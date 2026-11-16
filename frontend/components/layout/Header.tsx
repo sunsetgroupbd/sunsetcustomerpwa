@@ -101,13 +101,8 @@ export const Header: React.FC = () => {
           ) : (
             <div className="flex items-center gap-2">
               <Link href="/login">
-                <Button variant="ghost" size="sm">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/register">
                 <Button variant="primary" size="sm">
-                  Register
+                  Sign In
                 </Button>
               </Link>
             </div>
