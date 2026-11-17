@@ -390,18 +390,18 @@ export default function CustomerDashboardPage() {
         </Card>
       </div>
 
-      {/* Animated Birthday Celebration Overlay */}
+      {/* Animated Birthday Celebration Overlay - Pure Floating Balloons & Text (No Background Box) */}
       {showBirthdayModal && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 pointer-events-none flex flex-col items-center justify-center p-4">
           {/* Floating Balloons Canvas */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {BALLOONS_CONFIG.map((b, i) => (
               <div
                 key={i}
                 className="absolute balloon-floating"
                 style={{
                   left: `${b.leftPercent}%`,
-                  bottom: '-80px',
+                  bottom: '-90px',
                   animationDelay: `${b.delaySec}s`,
                   animationDuration: `${b.durationSec}s`,
                 }}
@@ -413,26 +413,22 @@ export default function CustomerDashboardPage() {
                   viewBox="0 0 60 90"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="filter drop-shadow-md"
+                  className="filter drop-shadow-lg"
                 >
-                  {/* Balloon Oval */}
                   <ellipse cx="30" cy="32" rx="26" ry="30" fill={b.color} />
-                  {/* Shiny Highlight */}
                   <ellipse
                     cx="22"
                     cy="20"
                     rx="6"
                     ry="10"
                     fill="white"
-                    fillOpacity="0.4"
+                    fillOpacity="0.45"
                     transform="rotate(-25 22 20)"
                   />
-                  {/* Tie Knot */}
                   <polygon points="26,62 34,62 30,66" fill={b.color} />
-                  {/* Dangling String */}
                   <path
                     d="M30 66 Q26 74 34 82 T30 90"
-                    stroke="#cbd5e1"
+                    stroke="#94a3b8"
                     strokeWidth="1.5"
                     fill="none"
                   />
@@ -441,42 +437,35 @@ export default function CustomerDashboardPage() {
             ))}
           </div>
 
-          {/* Celebratory Card */}
-          <div className="relative z-10 max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 text-center shadow-2xl border-2 border-amber-300 animate-in zoom-in-95 duration-300">
-            {/* Top Confetti & Balloon Icon */}
-            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-tr from-amber-400 via-rose-400 to-[#008751] p-1 shadow-lg shadow-amber-400/30 mb-4 animate-bounce">
-              <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl">
-                🎈
+          {/* Glassmorphic Floating Birthday Card */}
+          <div className="relative z-10 text-center max-w-lg w-full mx-auto pointer-events-auto animate-in zoom-in-95 duration-500 px-4">
+            <div className="relative overflow-hidden rounded-3xl bg-white/70 backdrop-blur-xl border border-white/80 shadow-[0_8px_32px_0_rgba(0,135,81,0.12)] p-6 sm:p-8 ring-1 ring-slate-900/5">
+              {/* Subtle Ambient Glass Gradient Sheen */}
+              <div className="absolute -top-12 -left-12 w-40 h-40 bg-gradient-to-br from-emerald-400/20 via-amber-300/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-gradient-to-tl from-rose-400/15 via-blue-400/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+
+              <div className="relative z-10">
+                <div className="text-4xl sm:text-5xl animate-bounce mb-2">
+                  🎈
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+                  🎉 Happy Birthday, <span className="text-[#008751]">{user?.full_name || 'Valued Partner'}</span>!
+                </h2>
+
+                <p className="text-xs sm:text-sm font-medium text-slate-600 mt-2 leading-relaxed">
+                  Wishing you good health, happiness &amp; prosperity from the entire Sunset Group family!
+                </p>
+
+                <div className="mt-5 flex items-center justify-center">
+                  <button
+                    onClick={handleDismissBirthday}
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#008751] hover:bg-[#007043] text-white text-xs font-bold shadow-md shadow-[#008751]/20 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <span>Thank you so much! 🎈</span>
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <span className="inline-block px-3 py-1 bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold uppercase tracking-wider rounded-full mb-2">
-              🎉 Happy Birthday! 🎉
-            </span>
-
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight mt-1">
-              Wishing You a Joyous Birthday,
-              <br />
-              <span className="text-[#008751]">{user?.full_name || 'Valued Partner'}</span>!
-            </h2>
-
-            <p className="text-xs sm:text-sm text-slate-600 mt-3 leading-relaxed">
-              On this wonderful day, the entire Sunset Group family extends our warmest greetings and best wishes. May your upcoming year be blessed with great health, boundless joy, and extraordinary prosperity!
-            </p>
-
-            <div className="mt-5 py-2.5 px-3 bg-slate-50 rounded-xl border border-slate-200/80 text-[11px] text-slate-500 font-medium leading-tight">
-              Sunset Kuakata Hotel &amp; Resort &bull; Dhaka Fantasy Island &bull; Sun Care Hospital &bull; Super Combo
-            </div>
-
-            <div className="mt-6">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={handleDismissBirthday}
-                className="w-full bg-[#008751] hover:bg-[#007043] text-white shadow-lg shadow-[#008751]/25 text-sm font-bold py-3"
-              >
-                Thank You So Much! 🎈
-              </Button>
             </div>
           </div>
         </div>

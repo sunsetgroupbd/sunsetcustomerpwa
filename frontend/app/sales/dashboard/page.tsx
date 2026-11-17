@@ -199,39 +199,165 @@ Investor Portal: ${window.location.origin}/login`;
       }
     >
       <div className="space-y-6">
-        {/* Metric Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-4 border-l-4 border-l-slate-700">
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
-              Total Managed
-            </span>
-            <div className="text-2xl font-bold text-slate-900 mt-1">{totalCount}</div>
-            <span className="text-[11px] text-slate-400 mt-0.5 block">Initiated applications</span>
-          </Card>
+        {/* Metric Cards - Architectural SVG Geometric Accented */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Total Managed */}
+          <div
+            onClick={() => setStatusFilter('')}
+            className={`cursor-pointer group relative overflow-hidden rounded-2xl bg-white p-4 sm:p-5 border transition-all duration-200 hover:shadow-md ${
+              statusFilter === ''
+                ? 'border-[#008751] ring-2 ring-[#008751]/15 shadow-sm'
+                : 'border-slate-200/90 hover:border-slate-300'
+            }`}
+          >
+            {/* Architectural SVG Background Accent */}
+            <div className="absolute -top-6 -right-6 w-24 h-24 overflow-hidden pointer-events-none rounded-tr-2xl opacity-60 group-hover:opacity-100 transition-opacity">
+              <svg viewBox="0 0 100 100" className="w-full h-full text-emerald-800/[0.08]" fill="currentColor">
+                <path d="M0,0 L100,0 L100,100 C65,100 45,80 35,55 C25,30 15,15 0,0 Z" />
+              </svg>
+            </div>
 
-          <Card className="p-4 border-l-4 border-l-blue-500">
-            <span className="text-xs font-medium text-blue-600 uppercase tracking-wider block">
-              In Review / Processing
-            </span>
-            <div className="text-2xl font-bold text-blue-900 mt-1">{inReviewCount}</div>
-            <span className="text-[11px] text-slate-400 mt-0.5 block">Under CR verification</span>
-          </Card>
+            <div className="relative z-10 flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Total Managed
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-emerald-50/80 border border-emerald-100 flex items-center justify-center text-[#008751] shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                  <Icons.Users className="w-4 h-4 text-[#008751]" size={16} />
+                </div>
+              </div>
 
-          <Card className="p-4 border-l-4 border-l-emerald-600">
-            <span className="text-xs font-medium text-emerald-700 uppercase tracking-wider block">
-              Approved
-            </span>
-            <div className="text-2xl font-bold text-emerald-900 mt-1">{approvedCount}</div>
-            <span className="text-[11px] text-slate-400 mt-0.5 block">Fully verified investors</span>
-          </Card>
+              <div className="mt-2.5">
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-none">
+                  {totalCount}
+                </div>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                  <span className="text-[11px] font-medium text-slate-500 truncate">Initiated applications</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <Card className="p-4 border-l-4 border-l-purple-500">
-            <span className="text-xs font-medium text-purple-700 uppercase tracking-wider block">
-              Action Required
-            </span>
-            <div className="text-2xl font-bold text-purple-900 mt-1">{actionNeededCount}</div>
-            <span className="text-[11px] text-slate-400 mt-0.5 block">Pending corrections / resubmission</span>
-          </Card>
+          {/* In Review / Processing */}
+          <div
+            onClick={() => setStatusFilter(statusFilter === 'submitted' ? '' : 'submitted')}
+            className={`cursor-pointer group relative overflow-hidden rounded-2xl bg-white p-4 sm:p-5 border transition-all duration-200 hover:shadow-md ${
+              statusFilter === 'submitted' || statusFilter === 'under_review'
+                ? 'border-blue-500 ring-2 ring-blue-500/15 shadow-sm'
+                : 'border-slate-200/90 hover:border-slate-300'
+            }`}
+          >
+            {/* Concentric Geometric Rings SVG Accent */}
+            <div className="absolute -top-6 -right-6 w-24 h-24 overflow-hidden pointer-events-none rounded-tr-2xl opacity-60 group-hover:opacity-100 transition-opacity">
+              <svg viewBox="0 0 100 100" className="w-full h-full text-blue-600/[0.08]" fill="currentColor">
+                <circle cx="100" cy="0" r="90" fill="none" stroke="currentColor" strokeWidth="12" />
+                <circle cx="100" cy="0" r="60" fill="none" stroke="currentColor" strokeWidth="12" />
+                <circle cx="100" cy="0" r="30" fill="currentColor" />
+              </svg>
+            </div>
+
+            <div className="relative z-10 flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] sm:text-[11px] font-bold text-blue-700 uppercase tracking-wider">
+                  In Review
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                  <Icons.Clock className="w-4 h-4 text-blue-600" size={16} />
+                </div>
+              </div>
+
+              <div className="mt-2.5">
+                <div className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight leading-none">
+                  {inReviewCount}
+                </div>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                  <span className="text-[11px] font-medium text-blue-600/90 truncate">Under CR verification</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Approved */}
+          <div
+            onClick={() => setStatusFilter(statusFilter === 'approved' ? '' : 'approved')}
+            className={`cursor-pointer group relative overflow-hidden rounded-2xl bg-white p-4 sm:p-5 border transition-all duration-200 hover:shadow-md ${
+              statusFilter === 'approved'
+                ? 'border-emerald-600 ring-2 ring-emerald-600/15 shadow-sm'
+                : 'border-slate-200/90 hover:border-slate-300'
+            }`}
+          >
+            {/* Diamond Shield Facet SVG Accent */}
+            <div className="absolute -top-6 -right-6 w-24 h-24 overflow-hidden pointer-events-none rounded-tr-2xl opacity-70 group-hover:opacity-100 transition-opacity">
+              <svg viewBox="0 0 100 100" className="w-full h-full text-emerald-600/[0.09]" fill="currentColor">
+                <polygon points="100,0 20,0 100,80" />
+                <polygon points="100,30 50,0 100,80" fillOpacity="0.5" />
+                <circle cx="80" cy="20" r="6" fill="#008751" fillOpacity="0.4" />
+              </svg>
+            </div>
+
+            <div className="relative z-10 flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] sm:text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
+                  Approved
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[#008751] shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                  <Icons.CheckCircle className="w-4 h-4 text-[#008751]" size={16} />
+                </div>
+              </div>
+
+              <div className="mt-2.5">
+                <div className="text-2xl sm:text-3xl font-extrabold text-emerald-950 tracking-tight leading-none">
+                  {approvedCount}
+                </div>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span className="text-[11px] font-medium text-emerald-600/90 truncate">Fully verified investors</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Required */}
+          <div
+            onClick={() => setStatusFilter(statusFilter === 'action_required' ? '' : 'action_required')}
+            className={`cursor-pointer group relative overflow-hidden rounded-2xl bg-white p-4 sm:p-5 border transition-all duration-200 hover:shadow-md ${
+              statusFilter === 'action_required'
+                ? 'border-amber-500 ring-2 ring-amber-500/15 shadow-sm'
+                : 'border-slate-200/90 hover:border-slate-300'
+            }`}
+          >
+            {/* Warning Diagonal Geometric Chevron SVG Accent */}
+            <div className="absolute -top-6 -right-6 w-24 h-24 overflow-hidden pointer-events-none rounded-tr-2xl opacity-70 group-hover:opacity-100 transition-opacity">
+              <svg viewBox="0 0 100 100" className="w-full h-full text-amber-500/[0.09]" fill="currentColor">
+                <polygon points="100,0 40,0 100,60" />
+                <polygon points="100,20 60,0 100,60" fillOpacity="0.4" />
+                <circle cx="82" cy="18" r="5" fill="#f59e0b" fillOpacity="0.6" />
+              </svg>
+            </div>
+
+            <div className="relative z-10 flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] sm:text-[11px] font-bold text-amber-700 uppercase tracking-wider">
+                  Action Req.
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                  <Icons.AlertCircle className="w-4 h-4 text-amber-600" size={16} />
+                </div>
+              </div>
+
+              <div className="mt-2.5">
+                <div className="text-2xl sm:text-3xl font-extrabold text-amber-950 tracking-tight leading-none">
+                  {actionNeededCount}
+                </div>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  <span className="text-[11px] font-medium text-amber-600/90 truncate">Pending corrections</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Filter Bar */}
