@@ -26,7 +26,10 @@ class UserCreate(BaseModel):
     mobile: str
     email: EmailStr | None = None
     password: str
-    role: str  # admin | cr | customer
+    role: str  # admin | cr | sales | customer
+    employee_id: str | None = None
+    designation: str | None = None
+    username: str | None = None
 
 
 class UserUpdate(BaseModel):
@@ -34,6 +37,9 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     is_active: bool | None = None
     role: str | None = None
+    employee_id: str | None = None
+    designation: str | None = None
+    username: str | None = None
 
 
 class AuditLogResponse(BaseModel):

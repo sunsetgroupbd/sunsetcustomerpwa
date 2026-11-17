@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
-import { Application, ApplicationStatus } from '@/lib/types';
+import { Application, ApplicationEditRequest, ApplicationStatus } from '@/lib/types';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -16,6 +16,7 @@ import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Alert } from '@/components/ui/Alert';
 import { Icons } from '@/components/ui/Icons';
+import { openSmsWithCredentials } from '@/lib/sms';
 
 export default function CrApplicationDetailPage({
   params,
@@ -48,11 +49,21 @@ export default function CrApplicationDetailPage({
   const [isInternalRemark, setIsInternalRemark] = useState(false);
   const [isPostingRemark, setIsPostingRemark] = useState(false);
 
+  // Edit Request Modal
+  const [editRequests, setEditRequests] = useState<ApplicationEditRequest[]>([]);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editReason, setEditReason] = useState('');
+  const [isSubmittingEditReq, setIsSubmittingEditReq] = useState(false);
+
   const loadData = async () => {
     try {
-      const app = await api.applications.get(resolvedParams.id);
+      const [app, reqs] = await Promise.all([
+        api.applications.get(resolvedParams.id),
+        api.applications.getEditRequests(resolvedParams.id).catch(() => []),
+      ]);
       setApplication(app);
       setNewStatus(app.status);
+      setEditRequests(Array.isArray(reqs) ? reqs : (reqs as any)?.data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load application.');
     } finally {
@@ -138,6 +149,27 @@ export default function CrApplicationDetailPage({
     }
   };
 
+  const handleRequestEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!application || !editReason.trim()) return;
+
+    setIsSubmittingEditReq(true);
+    try {
+      await api.applications.requestEdit(application.id, editReason.trim());
+      setIsEditModalOpen(false);
+      setEditReason('');
+      setStatusMsg({
+        type: 'success',
+        text: 'Edit permission request has been submitted to Administrator. You will be able to edit once approved.',
+      });
+      loadData();
+    } catch (err: any) {
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to submit edit request.' });
+    } finally {
+      setIsSubmittingEditReq(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardShell title="CR Review" subtitle="Loading application...">
@@ -166,6 +198,9 @@ export default function CrApplicationDetailPage({
     );
   }
 
+  const isEditable = application.status === 'draft' || application.is_edit_unlocked || application.status === 'action_required';
+  const pendingEditReq = editRequests.find((r) => r.status === 'pending');
+
   return (
     <DashboardShell
       title={`Review Application: ${application.reference_number}`}
@@ -173,14 +208,64 @@ export default function CrApplicationDetailPage({
         application.submission_date ? new Date(application.submission_date).toLocaleDateString() : 'Draft'
       }`}
       actions={
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {isEditable ? (
+            <Link href={`/customer/apply?application_id=${application.id}`}>
+              <Button variant="primary" size="sm" className="bg-[#008751] hover:bg-[#007043] flex items-center gap-1.5">
+                <Icons.Edit className="w-4 h-4" />
+                <span>Fill / Edit Form</span>
+              </Button>
+            </Link>
+          ) : pendingEditReq ? (
+            <span className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5">
+              <Icons.Clock className="w-4 h-4 text-amber-600" />
+              <span>Edit Pending Admin Approval</span>
+            </span>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setEditReason('');
+                setIsEditModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 text-slate-700"
+            >
+              <Icons.Lock className="w-4 h-4" />
+              <span>Request Edit Permission</span>
+            </Button>
+          )}
+
+          {application.applicant_info?.mobile_number && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                openSmsWithCredentials({
+                  phone: application.applicant_info?.mobile_number || '',
+                  customerName: application.applicant_info?.full_name_en,
+                  tempPassword: 'Sunset@123',
+                  referenceNumber: application.reference_number,
+                  businessCode: application.business?.code,
+                })
+              }
+              className="flex items-center gap-1.5 text-[#008751] bg-emerald-50 hover:bg-emerald-100 border-emerald-200 font-semibold"
+              title="Send login credentials to customer via mobile SMS"
+            >
+              <Icons.MessageSquare className="w-4 h-4 text-[#008751]" />
+              <span>SMS Credentials</span>
+            </Button>
+          )}
+
           <Button
-            variant="primary"
+            variant="outline"
+            size="sm"
             onClick={() => setIsStatusModalOpen(true)}
             leftIcon={<Icons.Shield className="w-4 h-4" />}
           >
-            Update Workflow Status
+            Workflow Status
           </Button>
+
           <Link href="/cr/dashboard">
             <Button variant="ghost" size="sm" leftIcon={<Icons.ArrowLeft className="w-4 h-4" />}>
               Back
@@ -193,6 +278,18 @@ export default function CrApplicationDetailPage({
         {statusMsg && (
           <Alert type={statusMsg.type} className="animate-in fade-in">
             {statusMsg.text}
+          </Alert>
+        )}
+
+        {application.is_edit_unlocked && (
+          <Alert type="success" title="Application Unlocked for Editing">
+            Admin has granted permission to update this application. You can click <strong>&quot;Fill / Edit Form&quot;</strong> to modify customer information. Once submitted, it will be locked again.
+          </Alert>
+        )}
+
+        {pendingEditReq && (
+          <Alert type="warning" title="Edit Permission Pending Review">
+            An edit permission request is currently pending Administrator review: &quot;{pendingEditReq.reason}&quot;.
           </Alert>
         )}
 
@@ -520,6 +617,38 @@ export default function CrApplicationDetailPage({
             </Button>
             <Button variant="danger" size="sm" type="submit" isLoading={isRejectingDoc}>
               Confirm Rejection
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal: Request Edit Permission from Admin */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Request Edit Permission from Admin"
+        description={`Application ${application.reference_number} is currently locked after submission. Explain why changes are needed.`}
+      >
+        <form onSubmit={handleRequestEdit} className="space-y-4">
+          <Textarea
+            label="Reason for Modification / Edit Request"
+            required
+            rows={4}
+            placeholder="e.g. Customer provided revised passport number and updated permanent address..."
+            value={editReason}
+            onChange={(e) => setEditReason(e.target.value)}
+          />
+
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs">
+            Once submitted, an Administrator will review your request. When approved, the application form will unlock so you can update customer details.
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setIsEditModalOpen(false)} disabled={isSubmittingEditReq}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" type="submit" isLoading={isSubmittingEditReq}>
+              Submit Request to Admin
             </Button>
           </div>
         </form>

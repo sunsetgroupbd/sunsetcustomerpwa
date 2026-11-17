@@ -1,5 +1,16 @@
 // Centralized API Client for Sunset Customer Application Platform
-import { ApiResponse, AuthResponse, Application, Business, CustomerProfileData, DashboardStats, PackagePricing, TermsAndConditions, User } from './types';
+import {
+  ApiResponse,
+  AuthResponse,
+  Application,
+  ApplicationEditRequest,
+  Business,
+  CustomerProfileData,
+  DashboardStats,
+  PackagePricing,
+  TermsAndConditions,
+  User,
+} from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -199,7 +210,10 @@ export const api = {
       if (params?.status) q.set('status', params.status);
       if (params?.search) q.set('search', params.search);
       if (params?.page) q.set('page', params.page.toString());
-      if (params?.limit) q.set('limit', params.limit.toString());
+      if (params?.limit) {
+        q.set('limit', params.limit.toString());
+        q.set('per_page', params.limit.toString());
+      }
       const query = q.toString() ? `?${q.toString()}` : '';
       return request<{ items: Application[]; total: number; page: number; limit: number }>(`/applications${query}`);
     },
@@ -207,14 +221,14 @@ export const api = {
     get: (id: string) => request<Application>(`/applications/${id}`),
 
     createDraft: (data: { business_id: string; applicant_info?: any; current_step?: number }) =>
-      request<Application>('/applications/draft', {
+      request<Application>('/applications', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
 
     updateDraft: (id: string, data: Partial<Application>) =>
-      request<Application>(`/applications/draft/${id}`, {
-        method: 'PUT',
+      request<Application>(`/applications/${id}`, {
+        method: 'PATCH',
         body: JSON.stringify(data),
       }),
 
@@ -257,6 +271,15 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ cr_user_id: crUserId }),
       }),
+
+    requestEdit: (id: string, reason: string, requestedChanges?: string) =>
+      request<{ id: number; application_id: number; status: string }>(`/applications/${id}/edit-requests`, {
+        method: 'POST',
+        body: JSON.stringify({ reason, requested_changes: requestedChanges }),
+      }),
+
+    getEditRequests: (id: string) =>
+      request<ApplicationEditRequest[]>(`/applications/${id}/edit-requests`),
   },
 
   // CR Team
@@ -269,7 +292,34 @@ export const api = {
       return request<{ items: Application[]; total: number }>(`/applications/assigned${query}`);
     },
 
-    createOnBehalf: (data: { customer_phone: string; customer_name: string; business_id: string; application_data?: any }) =>
+    createOnBehalf: (data: {
+      customer_phone: string;
+      customer_name: string;
+      business_id: string | number;
+      customer_email?: string;
+      package_type?: string;
+      number_of_shares?: number;
+      total_amount?: number;
+      temporary_password?: string;
+    }) =>
+      request<Application>('/applications/on-behalf', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // Sales Executive Team
+  sales: {
+    createOnBehalf: (data: {
+      customer_phone: string;
+      customer_name: string;
+      business_id: string | number;
+      customer_email?: string;
+      package_type?: string;
+      number_of_shares?: number;
+      total_amount?: number;
+      temporary_password?: string;
+    }) =>
       request<Application>('/applications/on-behalf', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -284,7 +334,9 @@ export const api = {
       if (params?.role) q.set('role', params.role);
       if (params?.search) q.set('search', params.search);
       if (params?.page) q.set('page', params.page.toString());
-      if (params?.limit) q.set('limit', params.limit.toString());
+      const limitVal = (params?.limit || 500).toString();
+      q.set('per_page', limitVal);
+      q.set('limit', limitVal);
       const query = q.toString() ? `?${q.toString()}` : '';
       return request<{ items: User[]; total: number }>(`/admin/users${query}`);
     },
@@ -294,7 +346,16 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ is_active: isActive }),
       }),
-    createUser: (data: { full_name: string; mobile: string; password: string; email?: string; role?: string }) =>
+    createUser: (data: {
+      full_name: string;
+      mobile: string;
+      password: string;
+      email?: string;
+      role?: string;
+      employee_id?: string;
+      designation?: string;
+      username?: string;
+    }) =>
       request<User>('/admin/users', {
         method: 'POST',
         body: JSON.stringify({ ...data, role: data.role || 'customer' }),
@@ -302,6 +363,31 @@ export const api = {
     deleteUser: (userId: string | number) =>
       request<{ success: boolean; message: string }>(`/admin/users/${userId}`, {
         method: 'DELETE',
+      }),
+    importSalesCsv: async (file?: File, csvText?: string) => {
+      const formData = new FormData();
+      if (file) formData.append('file', file);
+      if (csvText) formData.append('csv_text', csvText);
+      return request<{
+        success: boolean;
+        total_rows: number;
+        created: number;
+        updated: number;
+        errors: string[];
+        processed: any[];
+      }>('/admin/users/import-sales-csv', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    listEditRequests: (status?: string) => {
+      const query = status ? `?status=${status}` : '';
+      return request<ApplicationEditRequest[]>(`/admin/edit-requests${query}`);
+    },
+    reviewEditRequest: (requestId: number | string, action: 'approve' | 'reject', adminNotes?: string) =>
+      request<{ status: string; application_id: number }>(`/admin/edit-requests/${requestId}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ action, admin_notes: adminNotes }),
       }),
   },
 
@@ -322,6 +408,11 @@ export const api = {
     }) =>
       request<CustomerProfileData>('/customers/me', {
         method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    changePassword: (data: { current_password: string; new_password: string; confirm_password?: string }) =>
+      request<{ success: boolean; message: string }>('/customers/change-password', {
+        method: 'POST',
         body: JSON.stringify(data),
       }),
   },

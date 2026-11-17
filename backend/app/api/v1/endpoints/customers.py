@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_active_user, get_db, require_roles
 from app.core.responses import paginated_response, success_response
-from app.schemas.customer import CustomerProfileUpdate
+from app.schemas.customer import ChangePasswordRequest, CustomerProfileUpdate
 from app.services.customer_service import CustomerService
 
 logger = logging.getLogger(__name__)
@@ -61,6 +61,37 @@ async def update_my_profile(
         return success_response(data=result, message="Profile updated successfully.")
     except Exception as exc:
         logger.error("Profile update failed for user %s: %s", current_user.id, exc, exc_info=True)
+        raise
+
+
+@router.post(
+    "/change-password",
+    status_code=status.HTTP_200_OK,
+    summary="Change account password",
+)
+async def change_password(
+    payload: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Change the authenticated user's account password."""
+    try:
+        if payload.confirm_password and payload.new_password != payload.confirm_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password and confirmation do not match.",
+            )
+        service = CustomerService(db)
+        await service.change_password(
+            user_id=current_user.id,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+        )
+        return success_response(message="Password changed successfully.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to change password for user %s: %s", current_user.id, exc, exc_info=True)
         raise
 
 

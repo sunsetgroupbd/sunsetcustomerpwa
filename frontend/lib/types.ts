@@ -1,6 +1,6 @@
 // TypeScript interfaces for Sunset Customer Application Platform
 
-export type UserRole = 'customer' | 'cr' | 'admin';
+export type UserRole = 'customer' | 'cr' | 'sales' | 'admin';
 
 export type ApplicationStatus =
   | 'draft'
@@ -34,6 +34,10 @@ export interface User {
   is_active: boolean;
   is_verified: boolean;
   business_id: string | null;
+  employee_id?: string | null;
+  customer_id_number?: string | null;
+  designation?: string | null;
+  username?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +47,7 @@ export interface CustomerProfileData {
   full_name: string;
   mobile: string;
   email: string | null;
+  customer_id_number?: string | null;
   role: UserRole;
   is_active: boolean;
   is_verified: boolean;
@@ -72,6 +77,7 @@ export interface Business {
 export interface ApplicantInfo {
   id?: string;
   ownership_id?: string | null;
+  customer_id_number?: string | null;
   application_date?: string | null;
   full_name_en: string;
   full_name_bn?: string | null;
@@ -118,6 +124,7 @@ export interface OwnershipDetail {
   id?: string;
   package_type: 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | string;
   number_of_ownership: number;
+  number_of_shares?: number;
   price_per_ownership: number;
   discount_amount: number;
   total_price: number;
@@ -163,14 +170,25 @@ export interface Application {
   id: string;
   reference_number: string;
   customer_id: string;
+  customer_id_number?: string | null;
   business_id: string;
   business?: Business;
   assigned_cr_id?: string | null;
   assigned_cr_name?: string | null;
+  assigned_cr_employee_id?: string | null;
   status: ApplicationStatus;
   submission_date?: string | null;
+  submitted_at?: string | null;
   current_step: number;
   is_submitted: boolean;
+  is_edit_unlocked?: boolean;
+  sales_agent_id?: string | null;
+  sales_agent_name?: string | null;
+  sales_agent_employee_id?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  business_code?: string | null;
+  business_name?: string | null;
   rejection_reason?: string | null;
   correction_requested?: string | null;
   applicant_info?: ApplicantInfo | null;
@@ -247,3 +265,22 @@ export interface ApiResponse<T = any> {
     pages?: number;
   };
 }
+
+export interface ApplicationEditRequest {
+  id: number;
+  application_id: number;
+  application_number?: string;
+  applicant_name?: string;
+  applicant_phone?: string;
+  application_status?: string;
+  requested_by_id?: number;
+  requester_name?: string;
+  requester_role: 'cr' | 'customer' | string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_by_name?: string;
+  admin_notes?: string;
+  created_at: string;
+  reviewed_at?: string;
+}
+

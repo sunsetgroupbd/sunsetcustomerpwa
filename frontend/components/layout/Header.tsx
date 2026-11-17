@@ -13,6 +13,7 @@ export const Header: React.FC = () => {
   const getDashboardLink = () => {
     if (!user) return '/login';
     if (user.role === 'admin') return '/admin/dashboard';
+    if (user.role === 'sales') return '/sales/dashboard';
     if (user.role === 'cr') return '/cr/dashboard';
     return '/customer/dashboard';
   };
@@ -48,10 +49,10 @@ export const Header: React.FC = () => {
 
                 {user.role === 'customer' && (
                   <Link
-                    href="/customer/apply"
+                    href="/customer/profile"
                     className="text-sm font-medium text-slate-700 hover:text-[#008751] transition-colors"
                   >
-                    New Application
+                    My Profile
                   </Link>
                 )}
 
@@ -91,8 +92,16 @@ export const Header: React.FC = () => {
                     <div className="text-xs font-semibold text-slate-900 leading-tight hidden sm:block">
                       {user.full_name || user.phone_number}
                     </div>
-                    <Badge variant={user.role === 'admin' ? 'purple' : 'info'}>
-                      {user.role.toUpperCase()}
+                    <Badge
+                      variant={
+                        user.role === 'admin'
+                          ? 'purple'
+                          : user.role === 'sales'
+                            ? 'warning'
+                            : 'info'
+                      }
+                    >
+                      {user.role === 'sales' ? 'SALES' : user.role.toUpperCase()}
                     </Badge>
                   </div>
                 )}

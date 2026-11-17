@@ -23,14 +23,20 @@ export const MobileNavBar: React.FC = () => {
     if (user.role === 'customer') {
       return [
         { label: 'Dashboard', href: '/customer/dashboard', icon: Icons.FileText },
-        { label: 'Apply', href: '/customer/apply', icon: Icons.PlusCircle },
-        { label: 'Profile', href: '/customer/profile', icon: Icons.User },
+        { label: 'My Profile', href: '/customer/profile', icon: Icons.User },
       ];
     }
 
     if (user.role === 'cr') {
       return [
         { label: 'CR Queue', href: '/cr/dashboard', icon: Icons.FileText },
+        { label: 'Home', href: '/', icon: Icons.Home },
+      ];
+    }
+
+    if (user.role === 'sales') {
+      return [
+        { label: 'Sales Desk', href: '/sales/dashboard', icon: Icons.FileText },
         { label: 'Home', href: '/', icon: Icons.Home },
       ];
     }

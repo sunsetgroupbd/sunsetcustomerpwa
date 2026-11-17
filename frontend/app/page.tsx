@@ -91,43 +91,37 @@ export default function HomePage() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-12">
         {/* Mobile App Style Hero Card with Decorative SVG Shapes */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#005a36] via-[#008751] to-[#046A38] text-white p-5 sm:p-10 shadow-xl shadow-[#008751]/20 border border-[#008751]/40 mb-6">
-          {/* SVG Background Shapes */}
+        <section className="relative overflow-hidden rounded-3xl bg-[#008751] text-white p-5 sm:p-10 shadow-lg border border-emerald-800 mb-6">
+          {/* SVG Background Shapes - Solid with Architectural Geometry */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {/* Ambient Radial Color Gradients */}
-            <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-emerald-300/20 blur-3xl" />
-            <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-amber-300/15 blur-2xl" />
-
-            {/* Modern Fluid Curved Wave SVG */}
-            <svg
-              className="absolute -right-20 -bottom-24 w-[480px] h-[320px] text-white/[0.08]"
-              viewBox="0 0 500 340"
-              fill="currentColor"
-            >
-              <path d="M0,160 C120,80 240,240 380,180 C440,150 480,90 500,60 L500,340 L0,340 Z" />
-              <path
-                d="M50,190 C160,130 280,260 410,210 C460,190 490,140 500,120 L500,340 L50,340 Z"
-                fill="currentColor"
-                opacity="0.5"
-              />
-            </svg>
+            {/* Corner Geometric Shape (Matching division cards) */}
+            <div className="absolute top-0 right-0 w-64 h-64 overflow-hidden pointer-events-none">
+              <svg viewBox="0 0 100 100" className="w-full h-full text-white/[0.08]" fill="currentColor">
+                <path d="M0,0 L100,0 L100,100 C70,100 50,80 40,60 C30,40 15,20 0,0 Z" />
+              </svg>
+            </div>
+            <div className="absolute -bottom-10 -left-10 w-48 h-48 overflow-hidden pointer-events-none opacity-40">
+              <svg viewBox="0 0 100 100" className="w-full h-full text-white/[0.08]" fill="currentColor">
+                <path d="M100,100 L0,100 L0,0 C30,0 50,20 60,40 C70,60 85,80 100,100 Z" />
+              </svg>
+            </div>
 
             {/* Concentric Modern Tech Rings SVG */}
             <svg
-              className="absolute -right-10 -top-10 w-72 h-72 text-white/[0.1]"
+              className="absolute -right-8 -bottom-12 w-80 h-80 text-white/[0.09]"
               viewBox="0 0 300 300"
               fill="none"
               stroke="currentColor"
             >
-              <circle cx="150" cy="150" r="55" strokeWidth="1" strokeDasharray="4 4" />
-              <circle cx="150" cy="150" r="90" strokeWidth="1.2" />
-              <circle cx="150" cy="150" r="125" strokeWidth="1" strokeDasharray="6 6" />
-              <circle cx="150" cy="150" r="140" strokeWidth="0.8" opacity="0.6" />
+              <circle cx="150" cy="150" r="50" strokeWidth="1.5" strokeDasharray="4 4" />
+              <circle cx="150" cy="150" r="85" strokeWidth="1.5" />
+              <circle cx="150" cy="150" r="120" strokeWidth="1.5" strokeDasharray="6 6" />
+              <circle cx="150" cy="150" r="145" strokeWidth="1" opacity="0.6" />
             </svg>
 
             {/* Subtle Corner Dot Grid SVG */}
             <svg
-              className="absolute -left-6 -bottom-6 w-40 h-40 text-white/[0.08]"
+              className="absolute left-4 top-4 w-32 h-32 text-white/[0.07]"
               viewBox="0 0 200 200"
               fill="currentColor"
             >
@@ -143,16 +137,12 @@ export default function HomePage() {
               <circle cx="50" cy="80" r="3" />
               <circle cx="80" cy="80" r="3" />
               <circle cx="110" cy="80" r="3" />
-              <circle cx="20" cy="110" r="3" />
-              <circle cx="50" cy="110" r="3" />
-              <circle cx="80" cy="110" r="3" />
-              <circle cx="110" cy="110" r="3" />
             </svg>
           </div>
 
           <div className="relative z-10 max-w-3xl">
             {/* Official Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold bg-white/20 backdrop-blur-md text-white border border-white/30 mb-4 shadow-sm">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold bg-white/15 text-white border border-white/25 mb-4 shadow-xs">
               <Icons.Shield className="w-3.5 h-3.5 text-amber-300 shrink-0" size={14} />
               <span className="truncate">Official Sunset Group Ownership &amp; Registration Portal</span>
             </div>
@@ -176,83 +166,68 @@ export default function HomePage() {
                   className="w-full sm:w-auto rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-black/10 active:scale-[0.98]"
                 >
                   <Icons.User className="w-5 h-5 text-[#008751]" size={20} />
-                  <span className="font-bold text-[#007043]">Access Client Portal</span>
+                  <span className="font-bold text-[#007043]">Access Portal / Login</span>
                 </Button>
               </Link>
-              <a href="#projects" className="flex-1 sm:flex-initial">
+              <a href="#track-section" className="flex-1 sm:flex-initial">
                 <Button
                   variant="glass"
                   size="lg"
                   className="w-full sm:w-auto rounded-xl flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
-                  <Icons.Building className="w-4 h-4 text-emerald-100" size={16} />
-                  <span className="font-semibold text-white">Explore Projects</span>
+                  <Icons.Search className="w-4 h-4 text-emerald-100" size={16} />
+                  <span className="font-semibold text-white">Track Application</span>
                 </Button>
               </a>
             </div>
           </div>
         </section>
 
-        {/* Mobile Quick Action Tiles with SVG Accents */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <Link
-            href="/login"
-            className="group relative overflow-hidden flex items-center gap-3 p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-[#008751]/40 transition-all active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[#008751]/10 text-[#008751] group-hover:bg-[#008751] group-hover:text-white transition-colors flex items-center justify-center shrink-0">
-              <Icons.PlusCircle className="w-5 h-5" size={20} />
-            </div>
-            <div className="min-w-0">
-              <span className="text-xs font-bold text-slate-900 block truncate">Client Login</span>
-              <span className="text-[10px] text-slate-500 block truncate">Investor portal</span>
-            </div>
-          </Link>
+        {/* Quick Application Tracker Section */}
+        <section
+          id="track-section"
+          className="relative overflow-hidden bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-xs mb-8 scroll-mt-20"
+        >
+          {/* Subtle SVG Corner Accent */}
+          <div className="absolute top-0 right-0 w-28 h-28 overflow-hidden pointer-events-none rounded-tr-3xl">
+            <svg viewBox="0 0 100 100" className="w-full h-full text-slate-100/60" fill="currentColor">
+              <path d="M0,0 L100,0 L100,100 C70,100 50,80 40,60 C30,40 15,20 0,0 Z" />
+            </svg>
+          </div>
 
-          <a
-            href="#track-section"
-            className="group relative overflow-hidden flex items-center gap-3 p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-blue-400/40 transition-all active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors flex items-center justify-center shrink-0">
-              <Icons.Search className="w-5 h-5" size={20} />
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-5">
+            <div className="flex items-center gap-3.5 w-full md:w-auto">
+              <div className="w-12 h-12 rounded-2xl bg-[#008751]/10 text-[#008751] flex items-center justify-center shrink-0">
+                <Icons.Search className="w-6 h-6 text-[#008751]" size={24} />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">Track Application Status</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Enter your application reference number from SMS (e.g. SKH-2026-00001) for real-time audit.
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-xs font-bold text-slate-900 block truncate">Track Status</span>
-              <span className="text-[10px] text-slate-500 block truncate">Real-time audit</span>
-            </div>
-          </a>
 
-          <Link
-            href="/customer/apply"
-            className="group relative overflow-hidden flex items-center gap-3 p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-amber-400/40 transition-all active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors flex items-center justify-center shrink-0">
-              <Icons.Star className="w-5 h-5" size={20} />
-            </div>
-            <div className="min-w-0">
-              <span className="text-xs font-bold text-slate-900 block truncate">Packages</span>
-              <span className="text-[10px] text-slate-500 block truncate">Bronze to Platinum</span>
-            </div>
-          </Link>
-
-          <Link
-            href="/login"
-            className="group relative overflow-hidden flex items-center gap-3 p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-purple-400/40 transition-all active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors flex items-center justify-center shrink-0">
-              <Icons.User className="w-5 h-5" size={20} />
-            </div>
-            <div className="min-w-0">
-              <span className="text-xs font-bold text-slate-900 block truncate">My Account</span>
-              <span className="text-[10px] text-slate-500 block truncate">View portfolio</span>
-            </div>
-          </Link>
-        </div>
+            <form onSubmit={handleTrack} className="flex items-center gap-2 w-full md:w-auto">
+              <input
+                type="text"
+                placeholder="Reference No. (e.g. SKH-2026-...)"
+                value={trackRef}
+                onChange={(e) => setTrackRef(e.target.value)}
+                className="px-4 py-2.5 bg-slate-50 border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#008751] w-full md:w-64 font-mono font-medium"
+              />
+              <Button type="submit" variant="primary" size="md" className="rounded-xl shrink-0 font-bold bg-[#008751] hover:bg-[#007043]">
+                Check Status
+              </Button>
+            </form>
+          </div>
+        </section>
 
         {/* Division Filter Header */}
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900">Explore Business Divisions</h2>
-            <p className="text-xs text-slate-500">Tap a division to view details and apply directly</p>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900">Official Project Divisions</h2>
+            <p className="text-xs text-slate-500">Commercial projects managed under Sunset Group ownership</p>
           </div>
         </div>
 
@@ -310,7 +285,7 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* Division Cards Grid with Decorative SVG Corner Geometries */}
+        {/* Division Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {filteredBusinesses.map((biz) => {
             const isSKH = biz.code === 'SKH';
@@ -344,13 +319,13 @@ export default function HomePage() {
                     </span>
                     <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shadow-sm">
                       {isSKH ? (
-                        <Icons.Building className="w-4 h-4 text-[#008751]" size={16} />
+                        <Icons.Hotel className="w-4 h-4 text-[#008751]" size={16} />
                       ) : isDFI ? (
-                        <Icons.Star className="w-4 h-4 text-blue-600" size={16} />
+                        <Icons.ThemePark className="w-4 h-4 text-blue-600" size={16} />
                       ) : isSCH ? (
-                        <Icons.CheckCircle className="w-4 h-4 text-teal-600" size={16} />
+                        <Icons.Hospital className="w-4 h-4 text-teal-600" size={16} />
                       ) : (
-                        <Icons.Sparkles className="w-4 h-4 text-amber-600" size={16} />
+                        <Icons.Layers className="w-4 h-4 text-amber-600" size={16} />
                       )}
                     </div>
                   </div>
@@ -360,7 +335,7 @@ export default function HomePage() {
                     {biz.description || 'Premier commercial development offering secure shared ownership.'}
                   </p>
 
-                  <div className="space-y-1.5 mb-5 pt-3 border-t border-slate-100 text-[11px] text-slate-500">
+                  <div className="space-y-1.5 mb-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500">
                     <div className="flex items-center justify-between">
                       <span>Ownership Deed:</span>
                       <span className="font-semibold text-slate-700">Sub-Kabala</span>
@@ -372,121 +347,16 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="relative z-10">
-                  <Link href={`/customer/apply?business_id=${biz.id}`} className="block">
-                    <Button variant="primary" size="md" className="w-full font-semibold rounded-xl flex items-center justify-center gap-1.5">
-                      <span>Apply for Ownership</span>
-                      <Icons.ArrowRight className="w-4 h-4" size={16} />
-                    </Button>
-                  </Link>
+                <div className="relative z-10 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-slate-500 font-medium">Registration:</span>
+                  <span className="font-bold text-[#008751] bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded text-[11px]">
+                    Sales Desk Managed
+                  </span>
                 </div>
               </Card>
             );
           })}
         </div>
-
-        {/* Quick Application Tracker Section with Decorative SVG Grid Mesh */}
-        <section
-          id="track-section"
-          className="relative overflow-hidden bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-8 shadow-sm mb-8 scroll-mt-20"
-        >
-          {/* Decorative Mesh Background */}
-          <div className="absolute top-0 right-0 h-full w-1/3 overflow-hidden pointer-events-none opacity-[0.05]">
-            <svg className="w-full h-full" viewBox="0 0 200 120" fill="currentColor">
-              <circle cx="20" cy="20" r="3" />
-              <circle cx="50" cy="20" r="3" />
-              <circle cx="80" cy="20" r="3" />
-              <circle cx="110" cy="20" r="3" />
-              <circle cx="140" cy="20" r="3" />
-              <circle cx="170" cy="20" r="3" />
-              <circle cx="20" cy="50" r="3" />
-              <circle cx="50" cy="50" r="3" />
-              <circle cx="80" cy="50" r="3" />
-              <circle cx="110" cy="50" r="3" />
-              <circle cx="140" cy="50" r="3" />
-              <circle cx="170" cy="50" r="3" />
-              <circle cx="20" cy="80" r="3" />
-              <circle cx="50" cy="80" r="3" />
-              <circle cx="80" cy="80" r="3" />
-              <circle cx="110" cy="80" r="3" />
-              <circle cx="140" cy="80" r="3" />
-              <circle cx="170" cy="80" r="3" />
-            </svg>
-          </div>
-
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-[#008751]/10 text-[#008751] flex items-center justify-center shrink-0">
-                <Icons.Search className="w-6 h-6" size={24} />
-              </div>
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">Track Your Application</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Enter your assigned application reference number (e.g. SKH-2026-00001) for real-time audit status.
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleTrack} className="flex items-center gap-2 w-full md:w-auto">
-              <input
-                type="text"
-                placeholder="Enter Reference (e.g. SKH-...)"
-                value={trackRef}
-                onChange={(e) => setTrackRef(e.target.value)}
-                className="px-4 py-2.5 bg-slate-50 border border-slate-300 text-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#008751] w-full md:w-64"
-              />
-              <Button type="submit" variant="primary" size="md" className="rounded-xl shrink-0">
-                Track
-              </Button>
-            </form>
-          </div>
-        </section>
-
-        {/* Enterprise Assurance Pillars */}
-        <section className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 mb-6">
-          <div className="text-center max-w-xl mx-auto mb-6">
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">Enterprise Security &amp; Trust</h3>
-            <p className="text-xs text-slate-500 mt-1">Guaranteed governance standards for all registered owners</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100">
-              <div className="w-10 h-10 rounded-xl bg-[#008751]/10 text-[#008751] flex items-center justify-center shrink-0">
-                <Icons.Shield className="w-5 h-5" size={20} />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-slate-900">Official Ownership Deed</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                  Legally verified registered sub-kabala and shareholder deeds for each asset.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100">
-              <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
-                <Icons.CheckCircle className="w-5 h-5" size={20} />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-slate-900">Seamless Digital Verification</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                  Upload NID, photograph, and nominee certificates directly with real-time audit.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <Icons.Users className="w-5 h-5" size={20} />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-slate-900">Dedicated CR Support</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                  Assigned Customer Relations officers guide and verify every single application.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
       {/* Footer */}

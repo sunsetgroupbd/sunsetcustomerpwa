@@ -5,7 +5,7 @@ Admin endpoints – dashboard analytics, user management, and audit log inspecti
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -14,9 +14,18 @@ from app.core.responses import paginated_response, success_response
 from app.core.security import get_password_hash
 from app.models.audit import AuditLog
 from app.models.user import User
+from app.models.application import (
+    Application,
+    ApplicationEditRequest,
+    EditRequestStatus,
+    ApplicationStatus,
+    ApplicantInfo,
+)
 from app.schemas.admin import UserCreate, UserUpdate
+from app.schemas.application import EditRequestReview
 from app.services.audit_service import AuditService
 from app.services.dashboard_service import DashboardService
+from app.services.sales_team_service import import_sales_team_csv
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +101,7 @@ async def get_document_stats(
 )
 async def list_users(
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(500, ge=1, le=5000),
     role: Optional[str] = Query(None, description="Filter by role (admin, cr, customer)"),
     search: Optional[str] = Query(None, description="Search by name, mobile, email"),
     db: Session = Depends(get_db),
@@ -110,7 +119,7 @@ async def list_users(
 
         total = query.count()
         users = (
-            query.order_by(User.id.desc())
+            query.order_by(User.id.asc())
             .offset((page - 1) * per_page)
             .limit(per_page)
             .all()
@@ -122,6 +131,10 @@ async def list_users(
                 "mobile": u.mobile,
                 "phone_number": u.mobile,
                 "email": u.email,
+                "username": u.username,
+                "employee_id": u.employee_id,
+                "customer_id_number": u.customer_id_number,
+                "designation": u.designation,
                 "role": u.role.value if hasattr(u.role, "value") else str(u.role),
                 "is_active": u.is_active,
                 "is_verified": u.is_verified,
@@ -166,6 +179,9 @@ async def create_user(
         full_name=payload.full_name,
         mobile=payload.mobile,
         email=payload.email,
+        username=payload.username,
+        employee_id=payload.employee_id,
+        designation=payload.designation,
         password_hash=get_password_hash(payload.password),
         role=payload.role.lower(),
         is_active=True,
@@ -372,4 +388,216 @@ async def list_audit_logs(
         per_page=per_page,
         message="Audit logs retrieved.",
     )
+
+
+# ---------------------------------------------------------------------------
+# Sales Team CSV Import
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/users/import-sales-csv",
+    status_code=status.HTTP_200_OK,
+    summary="Bulk import sales team members from CSV",
+)
+async def import_sales_csv(
+    file: Optional[UploadFile] = File(None),
+    csv_text: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_roles(["admin"])),
+):
+    """
+    Import sales team accounts from CSV file or raw CSV text.
+    Columns expected: S.L, Name, Employee ID, Username, Email, Phone Number, Designation
+    """
+    try:
+        content = ""
+        if file:
+            raw_bytes = await file.read()
+            content = raw_bytes.decode("utf-8-sig", errors="replace")
+        elif csv_text:
+            content = csv_text
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Please upload a CSV file or provide CSV text.",
+            )
+
+        res = import_sales_team_csv(db, content)
+
+        audit = AuditService(db)
+        audit.log(
+            user_id=admin_user.id,
+            action="admin.sales_team_imported",
+            entity_type="sales_team",
+            entity_id=str(admin_user.id),
+            metadata={
+                "created": res["created"],
+                "updated": res["updated"],
+                "total": res["total_rows"],
+                "errors_count": len(res["errors"]),
+            },
+        )
+        db.commit()
+
+        return success_response(
+            data=res,
+            message=f"Successfully imported Sales Team: {res['created']} created, {res['updated']} updated.",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to import sales team CSV: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process CSV: {str(exc)}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Application Edit Requests (CR & Customer Edit Permission Flow)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/edit-requests",
+    status_code=status.HTTP_200_OK,
+    summary="List all application edit requests",
+)
+async def list_edit_requests(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    db: Session = Depends(get_db),
+):
+    """Return all edit requests submitted by CR or Customers."""
+    query = db.query(ApplicationEditRequest)
+    if status_filter:
+        query = query.filter(ApplicationEditRequest.status == status_filter)
+
+    requests = query.order_by(ApplicationEditRequest.id.desc()).all()
+    out = []
+    for req in requests:
+        app = db.query(Application).filter(Application.id == req.application_id).first()
+        applicant = None
+        if app:
+            applicant = db.query(ApplicantInfo).filter(ApplicantInfo.application_id == app.id).first()
+        requester = db.query(User).filter(User.id == req.requested_by_id).first()
+        reviewer = (
+            db.query(User).filter(User.id == req.reviewed_by_id).first()
+            if req.reviewed_by_id
+            else None
+        )
+
+        out.append({
+            "id": req.id,
+            "application_id": req.application_id,
+            "application_number": app.application_number if app else "-",
+            "applicant_name": applicant.full_name_en if applicant else (app.customer.full_name if app and app.customer else "-"),
+            "applicant_phone": applicant.mobile_number if applicant else (app.customer.mobile if app and app.customer else "-"),
+            "application_status": app.application_status.value if app else "-",
+            "requested_by_id": req.requested_by_id,
+            "requester_name": requester.full_name if requester else "Unknown",
+            "requester_role": req.requester_role,
+            "reason": req.reason,
+            "status": req.status.value if hasattr(req.status, "value") else str(req.status),
+            "reviewed_by_name": reviewer.full_name if reviewer else None,
+            "admin_notes": req.admin_notes,
+            "created_at": req.created_at.isoformat() if req.created_at else None,
+            "reviewed_at": req.reviewed_at.isoformat() if req.reviewed_at else None,
+        })
+
+    return success_response(data=out, message="Edit requests retrieved successfully.")
+
+
+@router.post(
+    "/edit-requests/{request_id}/review",
+    status_code=status.HTTP_200_OK,
+    summary="Approve or reject application edit request",
+)
+async def review_edit_request(
+    request_id: int,
+    payload: EditRequestReview,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_roles(["admin"])),
+):
+    """
+    Admin approves or rejects an edit request.
+    If approved:
+    - Application is_edit_unlocked is set to True.
+    - Application status is set to CORRECTION_REQUIRED (or unlocked for editing).
+    - Status history is recorded.
+    """
+    from datetime import datetime, timezone
+    from app.models.application import ApplicationStatusHistory
+
+    req = db.query(ApplicationEditRequest).filter(ApplicationEditRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Edit request not found.")
+
+    app = db.query(Application).filter(Application.id == req.application_id).first()
+    if not app:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found.")
+
+    action = payload.action.lower().strip()
+    now = datetime.now(timezone.utc)
+
+    if action == "approve":
+        req.status = EditRequestStatus.APPROVED
+        req.reviewed_by_id = admin_user.id
+        req.admin_notes = payload.admin_notes
+        req.reviewed_at = now
+
+        # Unlock application for editing
+        app.is_edit_unlocked = True
+        old_status = app.application_status
+        app.application_status = ApplicationStatus.CORRECTION_REQUIRED
+
+        # Record history
+        hist = ApplicationStatusHistory(
+            application_id=app.id,
+            previous_status=old_status,
+            new_status=ApplicationStatus.CORRECTION_REQUIRED,
+            changed_by_id=admin_user.id,
+            reason=f"Edit permission granted by Admin. Reason: {req.reason}",
+        )
+        db.add(hist)
+
+        audit = AuditService(db)
+        audit.log(
+            user_id=admin_user.id,
+            action="application.edit_approved",
+            entity_type="application",
+            entity_id=str(app.id),
+            metadata={"request_id": req.id, "requested_by": req.requested_by_id, "notes": payload.admin_notes},
+        )
+        db.commit()
+
+        return success_response(
+            data={"status": "approved", "application_id": app.id},
+            message="Edit request approved. Application is now unlocked for updates.",
+        )
+
+    elif action == "reject":
+        req.status = EditRequestStatus.REJECTED
+        req.reviewed_by_id = admin_user.id
+        req.admin_notes = payload.admin_notes
+        req.reviewed_at = now
+
+        audit = AuditService(db)
+        audit.log(
+            user_id=admin_user.id,
+            action="application.edit_rejected",
+            entity_type="application",
+            entity_id=str(app.id),
+            metadata={"request_id": req.id, "notes": payload.admin_notes},
+        )
+        db.commit()
+
+        return success_response(
+            data={"status": "rejected", "application_id": app.id},
+            message="Edit request has been rejected.",
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Action must be either 'approve' or 'reject'.",
+        )
+
 

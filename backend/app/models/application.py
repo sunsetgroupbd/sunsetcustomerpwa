@@ -67,6 +67,10 @@ class Application(Base):
     assigned_cr_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    sales_agent_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    is_edit_unlocked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     declaration_accepted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -83,6 +87,9 @@ class Application(Base):
     assigned_cr: Mapped["User | None"] = sa_relationship(  # noqa: F821
         "User", foreign_keys=[assigned_cr_id]
     )
+    sales_agent: Mapped["User | None"] = sa_relationship(  # noqa: F821
+        "User", foreign_keys=[sales_agent_id]
+    )
     business: Mapped["Business"] = sa_relationship(  # noqa: F821
         "Business", back_populates="applications"
     )
@@ -92,6 +99,46 @@ class Application(Base):
     nominees: Mapped[list["Nominee"]] = sa_relationship(
         "Nominee", back_populates="application", cascade="all, delete-orphan"
     )
+
+    @property
+    def customer_id_number(self) -> str | None:
+        return self.customer.customer_id_number if self.customer else None
+
+    @property
+    def customer_name(self) -> str | None:
+        if self.applicant_info and self.applicant_info.full_name_en:
+            return self.applicant_info.full_name_en
+        return self.customer.full_name if self.customer else None
+
+    @property
+    def customer_phone(self) -> str | None:
+        if self.applicant_info and self.applicant_info.mobile_number:
+            return self.applicant_info.mobile_number
+        return self.customer.mobile if self.customer else None
+
+    @property
+    def sales_agent_name(self) -> str | None:
+        return self.sales_agent.full_name if self.sales_agent else None
+
+    @property
+    def sales_agent_employee_id(self) -> str | None:
+        return self.sales_agent.employee_id if self.sales_agent else None
+
+    @property
+    def assigned_cr_name(self) -> str | None:
+        return self.assigned_cr.full_name if self.assigned_cr else None
+
+    @property
+    def assigned_cr_employee_id(self) -> str | None:
+        return self.assigned_cr.employee_id if self.assigned_cr else None
+
+    @property
+    def business_code(self) -> str | None:
+        return self.business.code if self.business else None
+
+    @property
+    def business_name(self) -> str | None:
+        return self.business.name if self.business else None
     bank_detail: Mapped["BankDetail | None"] = sa_relationship(
         "BankDetail", back_populates="application", uselist=False
     )
@@ -164,6 +211,10 @@ class ApplicantInfo(Base):
     photograph: Mapped["Document | None"] = sa_relationship(  # noqa: F821
         "Document", foreign_keys=[photograph_file_id]
     )
+
+    @property
+    def customer_id_number(self) -> str | None:
+        return self.application.customer.customer_id_number if self.application and self.application.customer else None
 
 
 class Nominee(Base):
@@ -349,3 +400,43 @@ class CRAssignment(Base):
     )
     cr_user: Mapped["User"] = sa_relationship("User", foreign_keys=[cr_user_id])  # noqa: F821
     assigned_by: Mapped["User"] = sa_relationship("User", foreign_keys=[assigned_by_id])  # noqa: F821
+
+
+class EditRequestStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class ApplicationEditRequest(Base):
+    __tablename__ = "application_edit_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    application_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    requested_by_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    requester_role: Mapped[str] = mapped_column(String(50), nullable=False)  # "cr" or "customer"
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[EditRequestStatus] = mapped_column(
+        Enum(EditRequestStatus, name="editrequeststatus"),
+        nullable=False,
+        default=EditRequestStatus.PENDING,
+    )
+    reviewed_by_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    admin_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    application: Mapped[Application] = sa_relationship("Application", backref="edit_requests")
+    requested_by: Mapped["User"] = sa_relationship("User", foreign_keys=[requested_by_id])  # noqa: F821
+    reviewed_by: Mapped["User | None"] = sa_relationship("User", foreign_keys=[reviewed_by_id])  # noqa: F821
+

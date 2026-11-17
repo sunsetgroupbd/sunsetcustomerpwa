@@ -26,8 +26,10 @@ from app.core.deps import get_current_active_user, get_db, require_roles
 from app.core.responses import paginated_response, success_response
 from app.schemas.application import (
     ApplicationCreate,
+    ApplicationOnBehalfCreate,
     ApplicationUpdate,
     AssignCRRequest,
+    EditRequestCreate,
     NomineeCreate,
     NomineeUpdate,
     RemarkCreate,
@@ -50,6 +52,11 @@ router = APIRouter()
     "/",
     status_code=status.HTTP_201_CREATED,
     summary="Create a new application (customer or CR)",
+)
+@router.post(
+    "/draft",
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a draft application",
 )
 async def create_application(
     payload: ApplicationCreate,
@@ -78,6 +85,44 @@ async def create_application(
         raise
 
 
+@router.post(
+    "/on-behalf",
+    status_code=status.HTTP_201_CREATED,
+    summary="Register customer and initialize application on behalf (Sales Executive / Admin / CR)",
+)
+async def create_application_on_behalf(
+    payload: ApplicationOnBehalfCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["sales", "admin", "cr"])),
+):
+    """
+    Sales Executive, CR Officer, or Admin registers a customer profile
+    and initializes an investment application on their behalf.
+    """
+    try:
+        service = ApplicationService(db)
+        app = await service.create_on_behalf(
+            creator_user=current_user,
+            data=payload,
+        )
+        return success_response(
+            data={
+                "id": app.id,
+                "application_number": app.application_number,
+                "reference_number": app.application_number,
+                "customer_id": app.customer_id,
+                "business_id": app.business_id,
+                "business_code": app.business.code if app.business else "SKH",
+                "status": app.application_status.value if hasattr(app.application_status, "value") else str(app.application_status),
+            },
+            message="Customer application registered on behalf successfully.",
+            status_code=status.HTTP_201_CREATED,
+        )
+    except Exception as exc:
+        logger.error("Failed to register application on behalf: %s", exc, exc_info=True)
+        raise
+
+
 @router.get(
     "/",
     status_code=status.HTTP_200_OK,
@@ -88,7 +133,7 @@ async def list_applications(
     per_page: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None),
     status_filter: Optional[str] = Query(None, alias="status"),
-    business_id: Optional[int] = Query(None),
+    business_id: Optional[str] = Query(None),
     payment_status: Optional[str] = Query(None),
     assigned_cr_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
@@ -154,6 +199,21 @@ async def get_application(
     status_code=status.HTTP_200_OK,
     summary="Update application (draft or correction_required)",
 )
+@router.put(
+    "/{application_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Update application (draft or correction_required) - PUT",
+)
+@router.patch(
+    "/draft/{application_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Update application draft - PATCH",
+)
+@router.put(
+    "/draft/{application_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Update application draft - PUT",
+)
 async def update_application(
     application_id: int,
     payload: ApplicationUpdate,
@@ -192,6 +252,90 @@ async def submit_application(
     except Exception as exc:
         logger.error("Failed to submit application %s: %s", application_id, exc, exc_info=True)
         raise
+
+
+@router.post(
+    "/{application_id}/edit-requests",
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit edit permission request for a submitted application (CR or Customer)",
+)
+async def request_edit_permission(
+    application_id: int,
+    payload: EditRequestCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["cr", "customer", "admin"])),
+):
+    """CR or Customer requests edit permission for a locked/submitted application."""
+    try:
+        service = ApplicationService(db)
+        req = await service.create_edit_request(
+            application_id=application_id,
+            user=current_user,
+            reason=payload.reason,
+            requested_changes=payload.requested_changes,
+        )
+        return success_response(
+            data={
+                "id": req.id,
+                "application_id": req.application_id,
+                "reason": req.reason,
+                "status": req.status.value if hasattr(req.status, "value") else str(req.status),
+                "created_at": req.created_at.isoformat() if req.created_at else None,
+            },
+            message="Edit permission request submitted to Admin for approval.",
+            status_code=status.HTTP_201_CREATED,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to submit edit request: %s", exc, exc_info=True)
+        raise
+
+
+@router.get(
+    "/{application_id}/edit-requests",
+    status_code=status.HTTP_200_OK,
+    summary="Get edit requests for an application",
+)
+async def get_application_edit_requests(
+    application_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """Retrieve status of edit requests for an application."""
+    from app.models.application import ApplicationEditRequest
+
+    try:
+        service = ApplicationService(db)
+        app = await service.get_application(application_id, current_user)
+        reqs = (
+            db.query(ApplicationEditRequest)
+            .filter(ApplicationEditRequest.application_id == app.id)
+            .order_by(ApplicationEditRequest.id.desc())
+            .all()
+        )
+        return success_response(
+            data=[
+                {
+                    "id": r.id,
+                    "application_id": r.application_id,
+                    "reason": r.reason,
+                    "status": r.status.value if hasattr(r.status, "value") else str(r.status),
+                    "requester_role": r.requester_role,
+                    "admin_notes": r.admin_notes,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                    "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+                }
+                for r in reqs
+            ],
+            message="Edit requests retrieved successfully.",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to retrieve edit requests: %s", exc, exc_info=True)
+        raise
+
 
 
 @router.post(

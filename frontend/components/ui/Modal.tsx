@@ -43,33 +43,45 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onClick={onClose} />
+    <div className="fixed inset-0 z-[100] overflow-y-auto">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+
+      {/* Modal Dialog Container */}
       <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
         <div
-          className={`relative w-full ${maxWidthClasses[maxWidth]} bg-white rounded-t-2xl sm:rounded-xl shadow-xl border-t sm:border border-slate-200 overflow-hidden transform transition-all max-h-[90vh] overflow-y-auto`}
+          className={`relative w-full ${maxWidthClasses[maxWidth]} bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] sm:max-h-[88vh] transform transition-all animate-in slide-in-from-bottom-4 duration-200`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Mobile swipe/sheet drag bar */}
-          <div className="sm:hidden flex justify-center pt-2.5 pb-1">
+          {/* Mobile Swipe Handle Indicator */}
+          <div className="sm:hidden flex justify-center pt-2.5 pb-1 shrink-0">
             <div className="w-10 h-1 bg-slate-300 rounded-full" />
           </div>
-          <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-              {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+
+          {/* Modal Header (Fixed at top of modal) */}
+          <div className="flex items-start justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 shrink-0">
+            <div className="pr-3">
+              <h3 className="text-base font-bold text-slate-900 leading-snug">{title}</h3>
+              {description && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{description}</p>}
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              className="p-1.5 -mr-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors shrink-0"
+              aria-label="Close modal"
             >
               <Icons.X className="w-5 h-5" />
             </button>
           </div>
-          <div className="p-5 sm:p-6">{children}</div>
+
+          {/* Modal Body (Fully scrollable on touch and desktop) */}
+          <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 pb-12 sm:pb-6 touch-auto">
+            {children}
+          </div>
         </div>
       </div>
     </div>
   );
 };
-

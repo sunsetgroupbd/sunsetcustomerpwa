@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
-import { Application, DashboardStats, User } from '@/lib/types';
+import { Application, ApplicationEditRequest, Business, DashboardStats, User } from '@/lib/types';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -14,24 +14,35 @@ import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { Alert } from '@/components/ui/Alert';
 import { Icons } from '@/components/ui/Icons';
+import { openSmsWithCredentials } from '@/lib/sms';
 
 function AdminDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentTab = searchParams ? searchParams.get('tab') : null;
   const isApplicationsTab = currentTab === 'applications';
+  const isEditRequestsTab = currentTab === 'edit-requests';
 
   const { user, isLoading: authLoading } = useAuth();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [crEmployees, setCrEmployees] = useState<User[]>([]);
+  const [editRequests, setEditRequests] = useState<ApplicationEditRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters for Applications view
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [businessFilter, setBusinessFilter] = useState('');
+
+  // Edit Requests State
+  const [editReqStatusFilter, setEditReqStatusFilter] = useState('');
+  const [reviewingReq, setReviewingReq] = useState<ApplicationEditRequest | null>(null);
+  const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
+  const [adminNotes, setAdminNotes] = useState('');
+  const [isReviewing, setIsReviewing] = useState(false);
 
   // Assign CR modal
   const [assigningApp, setAssigningApp] = useState<Application | null>(null);
@@ -42,33 +53,40 @@ function AdminDashboardContent() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      if (isApplicationsTab) {
-        const [appsData, crList] = await Promise.all([
+      if (isEditRequestsTab) {
+        const reqs = await api.admin.listEditRequests(editReqStatusFilter || undefined).catch(() => []);
+        setEditRequests(Array.isArray(reqs) ? reqs : (reqs as any)?.data || []);
+      } else if (isApplicationsTab) {
+        const [appsData, crList, bizList] = await Promise.all([
           api.applications.list({
             search: searchTerm || undefined,
             status: statusFilter || undefined,
             business_id: businessFilter || undefined,
-            limit: 50,
+            limit: 100,
           }).catch(() => ({ items: [], total: 0 })),
           api.admin.crTeam().catch(() => []),
+          api.businesses.list().catch(() => []),
         ]);
         const apps = Array.isArray(appsData) ? appsData : ((appsData as any)?.items || (appsData as any)?.data || []);
         setApplications(apps);
         setCrEmployees(crList);
+        setBusinesses(bizList);
         if (crList.length > 0 && !selectedCrId) {
           setSelectedCrId(crList[0].id);
         }
       } else {
-        const [statsData, appsData, crList] = await Promise.all([
+        const [statsData, appsData, crList, bizList] = await Promise.all([
           api.admin.stats().catch(() => null),
           api.applications.list({ limit: 10 }).catch(() => ({ items: [], total: 0 })),
           api.admin.crTeam().catch(() => []),
+          api.businesses.list().catch(() => []),
         ]);
 
         if (statsData) setStats(statsData);
         const apps = Array.isArray(appsData) ? appsData : ((appsData as any)?.items || (appsData as any)?.data || []);
         setApplications(apps);
         setCrEmployees(crList);
+        setBusinesses(bizList);
         if (crList.length > 0 && !selectedCrId) {
           setSelectedCrId(crList[0].id);
         }
@@ -88,7 +106,27 @@ function AdminDashboardContent() {
     if (user) {
       loadData();
     }
-  }, [user, authLoading, isApplicationsTab, statusFilter, businessFilter, router]);
+  }, [user, authLoading, isApplicationsTab, isEditRequestsTab, editReqStatusFilter, statusFilter, businessFilter, router]);
+
+  const handleConfirmReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewingReq) return;
+    setIsReviewing(true);
+    try {
+      await api.admin.reviewEditRequest(reviewingReq.id, reviewAction, adminNotes.trim() || undefined);
+      setStatusMsg({
+        type: 'success',
+        text: `Edit request has been ${reviewAction === 'approve' ? 'approved and application unlocked for changes' : 'rejected'}.`,
+      });
+      setReviewingReq(null);
+      setAdminNotes('');
+      loadData();
+    } catch (err: any) {
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to review edit request.' });
+    } finally {
+      setIsReviewing(false);
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,17 +150,285 @@ function AdminDashboardContent() {
     }
   };
 
+  const renderApplicationQueue = (appsList: Application[]) => {
+    return (
+      <>
+        {/* Mobile View: Rich Audit Cards (No horizontal overflow) */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {appsList.map((app, index) => {
+            const clientName = app.customer_name || app.applicant_info?.full_name_en || 'Registered Customer';
+            const clientPhone = app.customer_phone || app.applicant_info?.mobile_number || '-';
+            const bizCode = app.business_code || app.business?.code || 'SKH';
+            const packageName = app.ownership_detail?.package_type || 'Standard';
+            const shares = app.ownership_detail?.number_of_shares || 1;
+            const salesName = app.sales_agent_name || 'Online Self / Direct';
+            const salesEmpId = app.sales_agent_employee_id;
+            const dateAdded = app.created_at
+              ? new Date(app.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+              : '-';
+            const crName = app.assigned_cr_name || (app.status === 'draft' ? 'Unassigned (Open Pool)' : 'Pending Assignment');
+            const crEmpId = app.assigned_cr_employee_id;
+            const dateSubmitted = (app.submitted_at || app.submission_date)
+              ? new Date(app.submitted_at || app.submission_date!).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+              : (app.status === 'draft' ? 'Form Pending' : '-');
+
+            return (
+              <div key={app.id} className="py-4 hover:bg-slate-50/80 transition-colors space-y-3">
+                {/* Header: Ref Number, Division, Status Badge */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-slate-400 text-xs font-semibold">#{index + 1}</span>
+                    <span className="font-mono font-bold text-xs text-slate-900">{app.reference_number}</span>
+                    <span className="text-[10px] font-bold text-[#008751] bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                      {bizCode}
+                    </span>
+                  </div>
+                  <Badge status={app.status} />
+                </div>
+
+                {/* Customer Information & Official Investor ID */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">{clientName}</h4>
+                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                      Customer ID:{' '}
+                      <span className="font-semibold text-slate-800">
+                        {app.customer_id_number || 'Pending Admin Approval'}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="font-mono font-semibold text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded shrink-0">
+                    {clientPhone}
+                  </span>
+                </div>
+
+                {/* 2-Column Full Operational Audit (Who added vs Who filled) */}
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  {/* Sales Desk (Who Added the Customer) */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">
+                      Added By (Sales)
+                    </span>
+                    <div className="font-bold text-slate-800 truncate">{salesName}</div>
+                    <div className="text-[10px] text-slate-500 font-mono">
+                      {salesEmpId ? `ID: ${salesEmpId}` : 'Direct'}
+                    </div>
+                    <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Icons.Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span>{dateAdded}</span>
+                    </div>
+                  </div>
+
+                  {/* CR Desk (Who Filled & Submitted) */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Handled By (CR)
+                      </span>
+                      <button
+                        onClick={() => setAssigningApp(app)}
+                        className="text-[#008751] hover:underline font-bold text-[10px]"
+                      >
+                        {app.assigned_cr_name ? 'Change' : '+Assign'}
+                      </button>
+                    </div>
+                    <div className="font-bold text-slate-800 truncate">{crName}</div>
+                    <div className="text-[10px] text-slate-500 font-mono">
+                      {crEmpId ? `ID: ${crEmpId}` : (app.status === 'draft' ? 'Open Pool' : '-')}
+                    </div>
+                    <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Icons.CheckCircle className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span className="truncate">{dateSubmitted}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Package & Shares */}
+                <div className="text-[11px] text-slate-600 bg-slate-100/70 px-2.5 py-1.5 rounded flex items-center justify-between">
+                  <span>
+                    Package: <strong>{packageName}</strong> ({shares} {shares > 1 ? 'Shares' : 'Share'})
+                  </span>
+                  <span className="text-slate-500 font-medium">Division: {bizCode}</span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-1 flex items-center gap-2">
+                  <Link href={`/cr/applications/${app.id}`} className="flex-1">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="w-full bg-[#008751] hover:bg-[#007043] text-xs font-bold justify-center py-2"
+                    >
+                      Inspect &amp; Review
+                    </Button>
+                  </Link>
+                  {clientPhone && clientPhone !== '-' && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openSmsWithCredentials({
+                          phone: clientPhone,
+                          customerName: clientName,
+                          tempPassword: 'Sunset@123',
+                          referenceNumber: app.reference_number,
+                          businessCode: bizCode,
+                        })
+                      }
+                      className="p-2 text-[#008751] bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors"
+                      title="SMS Credentials to Customer"
+                    >
+                      <Icons.MessageSquare className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop View: Comprehensive Audit Table */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 text-slate-600 uppercase font-semibold border-y border-slate-200">
+              <tr>
+                <th className="py-3 px-4">Customer / Ref</th>
+                <th className="py-3 px-4">Investment</th>
+                <th className="py-3 px-4">Added By (Sales Desk)</th>
+                <th className="py-3 px-4">Handled By (CR Desk)</th>
+                <th className="py-3 px-4">Status &amp; Timeline</th>
+                <th className="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {appsList.map((app) => {
+                const clientName = app.customer_name || app.applicant_info?.full_name_en || 'Registered Customer';
+                const clientPhone = app.customer_phone || app.applicant_info?.mobile_number || '-';
+                const bizCode = app.business_code || app.business?.code || 'SKH';
+                const packageName = app.ownership_detail?.package_type || 'Standard';
+                const shares = app.ownership_detail?.number_of_shares || 1;
+                const salesName = app.sales_agent_name || 'Online Self / Direct';
+                const salesEmpId = app.sales_agent_employee_id;
+                const dateAdded = app.created_at
+                  ? new Date(app.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                  : '-';
+                const crName = app.assigned_cr_name || (app.status === 'draft' ? 'Unassigned (Open Pool)' : 'Pending Assignment');
+                const crEmpId = app.assigned_cr_employee_id;
+                const dateSubmitted = (app.submitted_at || app.submission_date)
+                  ? new Date(app.submitted_at || app.submission_date!).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                  : (app.status === 'draft' ? 'Form Pending' : '-');
+
+                return (
+                  <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="font-mono font-bold text-slate-900">{app.reference_number}</div>
+                      <div className="font-bold text-slate-900">{clientName}</div>
+                      <div className="text-[11px] text-slate-500 font-mono">{clientPhone}</div>
+                      {app.customer_id_number && (
+                        <div className="text-[10px] text-[#008751] font-mono font-bold mt-0.5">
+                          Cust ID: {app.customer_id_number}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="font-bold text-[#008751] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[11px]">
+                        {bizCode}
+                      </span>
+                      <div className="font-semibold text-slate-800 mt-1">{packageName}</div>
+                      <div className="text-[11px] text-slate-500">{shares} {shares > 1 ? 'Shares' : 'Share'}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-slate-800">{salesName}</div>
+                      {salesEmpId && <div className="text-[11px] text-slate-500 font-mono">ID: {salesEmpId}</div>}
+                      <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                        <Icons.Clock className="w-3 h-3 text-slate-400" />
+                        <span>{dateAdded}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-800">{crName}</span>
+                        <button
+                          onClick={() => setAssigningApp(app)}
+                          className="text-slate-400 hover:text-slate-700"
+                          title="Change / Assign CR"
+                        >
+                          <Icons.Users className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {crEmpId && <div className="text-[11px] text-slate-500 font-mono">ID: {crEmpId}</div>}
+                      <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                        <Icons.CheckCircle className="w-3 h-3 text-slate-400" />
+                        <span>{dateSubmitted}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge status={app.status} />
+                      <div className="text-[10px] text-slate-400 mt-1">
+                        {app.status === 'draft'
+                          ? 'CR Form Pending'
+                          : app.status === 'submitted'
+                          ? 'Needs Admin Approval'
+                          : app.status === 'approved'
+                          ? 'Active Investor'
+                          : app.status}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {clientPhone && clientPhone !== '-' && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openSmsWithCredentials({
+                                phone: clientPhone,
+                                customerName: clientName,
+                                tempPassword: 'Sunset@123',
+                                referenceNumber: app.reference_number,
+                                businessCode: bizCode,
+                              })
+                            }
+                            className="p-1.5 text-slate-500 hover:text-[#008751] hover:bg-emerald-50 rounded border border-transparent hover:border-emerald-200 transition-colors"
+                            title="SMS Credentials"
+                          >
+                            <Icons.MessageSquare className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <Link href={`/cr/applications/${app.id}`}>
+                          <Button variant="ghost" size="sm" className="text-[#008751] hover:text-[#007043] font-bold">
+                            Inspect
+                          </Button>
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </>
+    );
+  };
+
   return (
     <DashboardShell
-      title={isApplicationsTab ? "Applications Master Directory" : "Executive Admin Dashboard"}
+      title={
+        isEditRequestsTab
+          ? "Application Edit Requests"
+          : isApplicationsTab
+          ? "Applications Master Directory"
+          : "Executive Admin Dashboard"
+      }
       subtitle={
-        isApplicationsTab
+        isEditRequestsTab
+          ? "Review and approve requests from CR Officers and Customers to unlock submitted applications for editing."
+          : isApplicationsTab
           ? "Search, inspect, and manage customer applications across all Sunset Group divisions."
           : "Real-time monitoring and analytics across all Sunset Group business divisions."
       }
       actions={
         <div className="flex items-center gap-2">
-          {isApplicationsTab ? (
+          {isApplicationsTab || isEditRequestsTab ? (
             <Link href="/admin/dashboard">
               <Button variant="outline" size="sm" className="flex items-center gap-1.5">
                 <Icons.Building className="w-4 h-4" />
@@ -149,8 +455,136 @@ function AdminDashboardContent() {
       <div className="space-y-6">
         {statusMsg && <Alert type={statusMsg.type}>{statusMsg.text}</Alert>}
 
-        {/* ---------------- APPLICATIONS MASTER VIEW ---------------- */}
-        {isApplicationsTab ? (
+        {/* ---------------- EDIT REQUESTS TAB VIEW ---------------- */}
+        {isEditRequestsTab ? (
+          <div className="space-y-6">
+            <Card className="p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-700">Filter by Status:</span>
+                  <select
+                    value={editReqStatusFilter}
+                    onChange={(e) => setEditReqStatusFilter(e.target.value)}
+                    className="px-3 py-1.5 bg-white text-slate-900 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#008751]/30"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending Review</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+                <div className="text-xs text-slate-500">
+                  Total Requests: <strong>{editRequests.length}</strong>
+                </div>
+              </div>
+            </Card>
+
+            <Card
+              title="Application Edit & Information Change Requests"
+              subtitle="Review permission requests from CR Officers and Customers to modify submitted applications."
+            >
+              {isLoading ? (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  <Icons.Spinner className="w-6 h-6 text-[#008751] mx-auto mb-2" />
+                  Loading edit requests...
+                </div>
+              ) : editRequests.length === 0 ? (
+                <div className="text-center py-10 text-xs text-slate-500">
+                  No edit requests found matching criteria.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 uppercase font-semibold border-y border-slate-200">
+                      <tr>
+                        <th className="py-3 px-4">Application Ref</th>
+                        <th className="py-3 px-4">Applicant</th>
+                        <th className="py-3 px-4">Requested By</th>
+                        <th className="py-3 px-4">Reason for Edit</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {editRequests.map((req) => (
+                        <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                            {req.application_number || `APP-${req.application_id}`}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-slate-900">{req.applicant_name || '-'}</div>
+                            <div className="text-[11px] text-slate-500 font-mono">{req.applicant_phone || '-'}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="font-medium text-slate-800 block">{req.requester_name}</span>
+                            <Badge variant={req.requester_role === 'cr' ? 'info' : 'success'} className="text-[10px] uppercase">
+                              {req.requester_role === 'cr' ? 'CR Officer' : 'Customer'}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 max-w-xs text-slate-700">
+                            <p className="line-clamp-2">{req.reason}</p>
+                            {req.admin_notes && (
+                              <p className="text-[11px] text-slate-400 mt-0.5 italic">Note: {req.admin_notes}</p>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                req.status === 'approved'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : req.status === 'rejected'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              }`}
+                            >
+                              {req.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
+                            {req.created_at ? new Date(req.created_at).toLocaleDateString() : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {req.status === 'pending' ? (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => {
+                                    setReviewingReq(req);
+                                    setReviewAction('approve');
+                                    setAdminNotes('');
+                                  }}
+                                  className="text-xs"
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setReviewingReq(req);
+                                    setReviewAction('reject');
+                                    setAdminNotes('');
+                                  }}
+                                  className="text-xs text-rose-600 hover:border-rose-300"
+                                >
+                                  Reject
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-slate-400">Reviewed</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </div>
+        ) : isApplicationsTab ? (
           <div className="space-y-6">
             {/* Filter and Search Bar */}
             <Card className="p-4">
@@ -167,6 +601,19 @@ function AdminDashboardContent() {
                 </div>
 
                 <select
+                  value={businessFilter}
+                  onChange={(e) => setBusinessFilter(e.target.value)}
+                  className="px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#008751]/30 font-medium"
+                >
+                  <option value="">All Business Divisions</option>
+                  {businesses.map((b) => (
+                    <option key={b.id} value={b.code}>
+                      {b.code} &mdash; {b.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#008751]/30 font-medium"
@@ -180,9 +627,26 @@ function AdminDashboardContent() {
                   <option value="draft">Draft</option>
                 </select>
 
-                <Button type="submit" variant="primary" size="sm">
-                  Search
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button type="submit" variant="primary" size="sm" className="bg-[#008751] hover:bg-[#007043]">
+                    Search
+                  </Button>
+                  {(searchTerm || statusFilter || businessFilter) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSearchTerm('');
+                        setStatusFilter('');
+                        setBusinessFilter('');
+                      }}
+                      className="text-xs border-slate-300 text-slate-600 hover:bg-slate-50"
+                    >
+                      Reset
+                    </Button>
+                  )}
+                </div>
               </form>
             </Card>
 
@@ -207,75 +671,7 @@ function AdminDashboardContent() {
                   No applications found matching your criteria.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-600 uppercase font-semibold border-y border-slate-200">
-                      <tr>
-                        <th className="py-3 px-4">Reference No.</th>
-                        <th className="py-3 px-4">Applicant</th>
-                        <th className="py-3 px-4">Division</th>
-                        <th className="py-3 px-4">Package</th>
-                        <th className="py-3 px-4">Assigned CR</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {applications.map((app) => (
-                        <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                            {app.reference_number}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="font-semibold text-slate-900">
-                              {app.applicant_info?.full_name_en || 'Pending Name'}
-                            </div>
-                            <div className="text-[11px] font-mono text-slate-500">
-                              {app.applicant_info?.mobile_number || (app as any).customer_phone || '-'}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 font-semibold text-slate-700">
-                            {app.business?.code || (app as any).business_code || 'SKH'}
-                          </td>
-                          <td className="py-3 px-4 text-slate-600">
-                            {app.ownership_detail?.package_type || 'Standard'}
-                          </td>
-                          <td className="py-3 px-4 text-slate-600">
-                            {app.assigned_cr_name ? (
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-semibold text-slate-800">{app.assigned_cr_name}</span>
-                                <button
-                                  onClick={() => setAssigningApp(app)}
-                                  className="text-slate-400 hover:text-slate-700"
-                                  title="Change CR"
-                                >
-                                  <Icons.Users className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setAssigningApp(app)}
-                                className="text-xs text-[#008751] hover:underline font-semibold"
-                              >
-                                + Assign CR
-                              </button>
-                            )}
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge status={app.status} />
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <Link href={`/cr/applications/${app.id}`}>
-                              <Button variant="ghost" size="sm" className="text-[#008751] hover:text-[#007043]">
-                                Inspect
-                              </Button>
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                renderApplicationQueue(applications)
               )}
             </Card>
           </div>
@@ -380,70 +776,7 @@ function AdminDashboardContent() {
               ) : applications.length === 0 ? (
                 <div className="text-center py-8 text-xs text-slate-500">No applications registered yet.</div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-600 uppercase font-semibold border-y border-slate-200">
-                      <tr>
-                        <th className="py-3 px-4">Reference No.</th>
-                        <th className="py-3 px-4">Applicant</th>
-                        <th className="py-3 px-4">Division</th>
-                        <th className="py-3 px-4">Package</th>
-                        <th className="py-3 px-4">Assigned CR</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {applications.map((app) => (
-                        <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                            {app.reference_number}
-                          </td>
-                          <td className="py-3 px-4 font-medium text-slate-800">
-                            {app.applicant_info?.full_name_en || 'Pending'}
-                          </td>
-                          <td className="py-3 px-4 font-semibold text-slate-700">
-                            {app.business?.code || 'SKH'}
-                          </td>
-                          <td className="py-3 px-4 text-slate-600">
-                            {app.ownership_detail?.package_type || 'Silver'}
-                          </td>
-                          <td className="py-3 px-4 text-slate-600">
-                            {app.assigned_cr_name ? (
-                              <span className="font-semibold text-slate-800">{app.assigned_cr_name}</span>
-                            ) : (
-                              <button
-                                onClick={() => setAssigningApp(app)}
-                                className="text-xs text-[#008751] hover:underline font-semibold"
-                              >
-                                + Assign CR
-                              </button>
-                            )}
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge status={app.status} />
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => setAssigningApp(app)}
-                                className="p-1 text-slate-500 hover:text-slate-800 rounded"
-                                title="Reassign CR"
-                              >
-                                <Icons.Users className="w-4 h-4" />
-                              </button>
-                              <Link href={`/cr/applications/${app.id}`}>
-                                <Button variant="ghost" size="sm" className="text-[#008751]">
-                                  Inspect
-                                </Button>
-                              </Link>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                renderApplicationQueue(applications)
               )}
             </Card>
           </div>
@@ -476,6 +809,53 @@ function AdminDashboardContent() {
             </Button>
             <Button variant="primary" size="sm" type="submit" isLoading={isAssigning}>
               Save Assignment
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal: Review Edit Request */}
+      <Modal
+        isOpen={!!reviewingReq}
+        onClose={() => setReviewingReq(null)}
+        title={reviewAction === 'approve' ? 'Approve Application Edit Permission' : 'Reject Edit Request'}
+        description={
+          reviewAction === 'approve'
+            ? `Grant permission to edit application ${reviewingReq?.application_number}. The application form will be unlocked for updates.`
+            : `Reject edit permission for application ${reviewingReq?.application_number}.`
+        }
+      >
+        <form onSubmit={handleConfirmReview} className="space-y-4">
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1">
+            <div><strong>Requested By:</strong> {reviewingReq?.requester_name} ({reviewingReq?.requester_role.toUpperCase()})</div>
+            <div><strong>Reason:</strong> {reviewingReq?.reason}</div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Admin Notes / Instructions (Optional)
+            </label>
+            <textarea
+              rows={3}
+              value={adminNotes}
+              onChange={(e) => setAdminNotes(e.target.value)}
+              placeholder="e.g. Please update the permanent address and notify when completed."
+              className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#008751]/30"
+            />
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setReviewingReq(null)} disabled={isReviewing}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              isLoading={isReviewing}
+              className={reviewAction === 'reject' ? 'bg-rose-600 hover:bg-rose-700 text-white border-transparent' : ''}
+            >
+              {reviewAction === 'approve' ? 'Confirm & Unlock Application' : 'Confirm Rejection'}
             </Button>
           </div>
         </form>

@@ -19,6 +19,7 @@ from app.db.base import Base
 class UserRole(str, enum.Enum):
     admin = "admin"
     cr = "cr"
+    sales = "sales"
     customer = "customer"
 
 
@@ -35,6 +36,10 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     mobile: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    username: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True, index=True)
+    employee_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    customer_id_number: Mapped[str | None] = mapped_column(String(50), nullable=True, unique=True, index=True)
+    designation: Mapped[str | None] = mapped_column(String(150), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="userrole"), nullable=False, default=UserRole.customer

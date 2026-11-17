@@ -44,6 +44,84 @@ export const Icons = {
     </svg>
   ),
 
+  // Hospitality & Resort (SKH)
+  Hotel: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+      <path fillRule="evenodd" d="M3 3a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3zm4 3a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H7zm7 0a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2zM7 11a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1H7zm7 0a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1h-2zm-6 4a1 1 0 0 0-1 1v6h10v-6a1 1 0 0 0-1-1H8zm2 2h4v4h-4v-4z" clipRule="evenodd" />
+    </svg>
+  ),
+
+  // Theme Park / Amusement Park (DFI)
+  FerrisWheel: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+      <path d="M12 2v4" />
+      <path d="m6.8 15-3.5 2" />
+      <path d="m20.7 7-3.5 2" />
+      <path d="M6.8 9 3.3 7" />
+      <path d="m20.7 17-3.5-2" />
+      <path d="m9 22 3-8 3 8" />
+      <path d="M8 22h8" />
+      <circle cx="12" cy="12" r="10" />
+    </svg>
+  ),
+
+  ThemePark: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+      <path d="M12 2v4" />
+      <path d="m6.8 15-3.5 2" />
+      <path d="m20.7 7-3.5 2" />
+      <path d="M6.8 9 3.3 7" />
+      <path d="m20.7 17-3.5-2" />
+      <path d="m9 22 3-8 3 8" />
+      <path d="M8 22h8" />
+      <circle cx="12" cy="12" r="10" />
+    </svg>
+  ),
+
+  // Healthcare / Hospital & Diagnostic Centre (SCH)
+  Hospital: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+      <path fillRule="evenodd" d="M4 2a2 2 0 0 0-2 2v18a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V4a2 2 0 0 0-2-2H4zm7 3a1 1 0 0 1 2 0v2h2a1 1 0 1 1 0 2h-2v2a1 1 0 1 1-2 0V9H9a1 1 0 0 1 0-2h2V5zm-4 8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-2zm7 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-2zM9 18a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4H9v-4z" clipRule="evenodd" />
+    </svg>
+  ),
+
+  // Multi-Division Combo / Bundled Portfolio (SPC)
+  Layers: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+      <path fillRule="evenodd" d="M12 2 2 7l10 5 10-5-10-5zm-8.3 8.8L12 15l8.3-4.2 1.7.9-10 5-10-5 1.7-.9zm0 4.5L12 19.5l8.3-4.2 1.7.9-10 5-10-5 1.7-.9z" clipRule="evenodd" />
+    </svg>
+  ),
+
+  Combo: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+      <path fillRule="evenodd" d="M12 2 2 7l10 5 10-5-10-5zm-8.3 8.8L12 15l8.3-4.2 1.7.9-10 5-10-5 1.7-.9zm0 4.5L12 19.5l8.3-4.2 1.7.9-10 5-10-5 1.7-.9z" clipRule="evenodd" />
+    </svg>
+  ),
+
   Shield: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
       <path fillRule="evenodd" d="M12 1.5a1 1 0 0 0-.41.09L3.59 5.59A1 1 0 0 0 3 6.5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12v-6a1 1 0 0 0-.59-.91l-8-4A1 1 0 0 0 12 1.5z" clipRule="evenodd" />
@@ -89,6 +167,12 @@ export const Icons = {
   FileText: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
       <path fillRule="evenodd" d="M4 3a2 2 0 0 1 2-2h8.59a2 2 0 0 1 1.41.59l4.41 4.41a2 2 0 0 1 .59 1.41V21a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V3zm10 0v5h5l-5-5zm-6 8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2H8zm0 4a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2H8zm0 4a1 1 0 1 0 0 2h5a1 1 0 1 0 0-2H8z" clipRule="evenodd" />
+    </svg>
+  ),
+
+  Edit: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
     </svg>
   ),
 
@@ -161,6 +245,12 @@ export const Icons = {
   Phone: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
       <path fillRule="evenodd" d="M2.01 4.27a1.99 1.99 0 0 1 1.76-1.26c1.1-.09 2.22.47 2.8 1.42l1.63 2.65a2 2 0 0 1-.29 2.45l-1.07 1.07a11.05 11.05 0 0 0 5.27 5.27l1.07-1.07a2 2 0 0 1 2.45-.29l2.65 1.63c.95.58 1.51 1.7 1.42 2.8a1.99 1.99 0 0 1-1.26 1.76c-1.39.6-3.03.49-4.82-.32a18.06 18.06 0 0 1-7.85-6.22 18.06 18.06 0 0 1-3.44-8.07c-.4-1.84-.25-3.48.34-4.82z" clipRule="evenodd" />
+    </svg>
+  ),
+
+  MessageSquare: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+      <path fillRule="evenodd" d="M3 4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7.41l-3.7 3.7A1 1 0 0 1 2 21V4a2 2 0 0 1 1-1zm3 4a1 1 0 0 0 0 2h12a1 1 0 1 0 0-2H6zm0 4a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2H6z" clipRule="evenodd" />
     </svg>
   ),
 

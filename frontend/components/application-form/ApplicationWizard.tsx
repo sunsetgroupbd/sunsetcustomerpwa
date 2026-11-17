@@ -180,15 +180,16 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
 
     if (step === 1) {
       if (!formData.full_name_en.trim()) errs.full_name_en = 'Full name (English) is required';
+      if (!formData.full_name_bn.trim()) errs.full_name_bn = 'Full name (Bangla) is required';
       if (!formData.father_name.trim()) errs.father_name = "Father's name is required";
       if (!formData.mother_name.trim()) errs.mother_name = "Mother's name is required";
       if (!formData.mobile_number.trim()) errs.mobile_number = 'Mobile number is required';
       if (!formData.date_of_birth) errs.date_of_birth = 'Date of birth is required';
+      if (!formData.religion.trim()) errs.religion = 'Religion is required';
       if (!formData.nid_or_passport.trim()) errs.nid_or_passport = 'NID or Passport number is required';
       if (!formData.present_address.trim()) errs.present_address = 'Present address is required';
       if (!formData.permanent_address.trim()) errs.permanent_address = 'Permanent address is required';
     } else if (step === 2) {
-      if (!formData.company_name?.trim()) errs.company_name = 'Company name is required';
       if (!formData.designation?.trim()) errs.designation = 'Designation is required';
     } else if (step === 3) {
       const nom1 = formData.nominees[0];
@@ -211,10 +212,154 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     return Object.keys(errs).length === 0;
   };
 
+  // Comprehensive completeness check across all steps before final submission
+  const validateAllBeforeSubmit = (): boolean => {
+    const missing: string[] = [];
+    const newErrors: Record<string, string> = {};
+    let firstMissingStep: number | null = null;
+
+    // Step 1: Personal Details
+    if (!formData.full_name_en.trim()) {
+      missing.push('Full Name (English)');
+      newErrors.full_name_en = 'Full Name (English) is required';
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+    if (!formData.full_name_bn.trim()) {
+      missing.push('Full Name (Bangla)');
+      newErrors.full_name_bn = 'Full Name (Bangla) is required';
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+    if (!formData.father_name.trim()) {
+      missing.push("Father's Name");
+      newErrors.father_name = "Father's Name is required";
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+    if (!formData.mother_name.trim()) {
+      missing.push("Mother's Name");
+      newErrors.mother_name = "Mother's Name is required";
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+    if (!formData.mobile_number.trim()) {
+      missing.push('Mobile Number');
+      newErrors.mobile_number = 'Mobile Number is required';
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+    if (!formData.date_of_birth) {
+      missing.push('Date of Birth');
+      newErrors.date_of_birth = 'Date of Birth is required';
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+    if (!formData.nationality.trim()) {
+      missing.push('Nationality');
+      newErrors.nationality = 'Nationality is required';
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+    if (!formData.religion.trim()) {
+      missing.push('Religion');
+      newErrors.religion = 'Religion is required';
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+    if (!formData.nid_or_passport.trim()) {
+      missing.push('NID or Passport Number');
+      newErrors.nid_or_passport = 'NID or Passport Number is required';
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+    if (!formData.present_address.trim()) {
+      missing.push('Present Address');
+      newErrors.present_address = 'Present Address is required';
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+    if (!formData.permanent_address.trim()) {
+      missing.push('Permanent Address');
+      newErrors.permanent_address = 'Permanent Address is required';
+      if (!firstMissingStep) firstMissingStep = 1;
+    }
+
+    // Step 2: Profession (company_name and office_address are explicitly OPTIONAL)
+    if (!formData.designation.trim()) {
+      missing.push('Designation');
+      newErrors.designation = 'Designation is required';
+      if (!firstMissingStep) firstMissingStep = 2;
+    }
+
+    // Step 3: Nominees
+    const nom1 = formData.nominees?.[0];
+    if (!nom1 || !nom1.full_name?.trim()) {
+      missing.push('Primary Nominee Name');
+      newErrors.nominee_1_name = 'Primary Nominee Name is required';
+      if (!firstMissingStep) firstMissingStep = 3;
+    }
+    if (!nom1 || !nom1.relation?.trim()) {
+      missing.push('Nominee Relationship');
+      newErrors.nominee_1_relation = 'Nominee Relationship is required';
+      if (!firstMissingStep) firstMissingStep = 3;
+    }
+    if (!nom1 || !nom1.cell_number?.trim()) {
+      missing.push('Nominee Cell Number');
+      newErrors.nominee_1_phone = 'Nominee Cell Number is required';
+      if (!firstMissingStep) firstMissingStep = 3;
+    }
+    if (!nom1 || !nom1.nid_or_passport?.trim()) {
+      missing.push('Nominee NID / Passport');
+      newErrors.nominee_1_nid = 'Nominee NID / Passport is required';
+      if (!firstMissingStep) firstMissingStep = 3;
+    }
+
+    // Step 4: Bank Details
+    if (!formData.account_name.trim()) {
+      missing.push('Bank Account Name');
+      newErrors.account_name = 'Bank Account Name is required';
+      if (!firstMissingStep) firstMissingStep = 4;
+    }
+    if (!formData.account_number.trim()) {
+      missing.push('Bank Account Number');
+      newErrors.account_number = 'Bank Account Number is required';
+      if (!firstMissingStep) firstMissingStep = 4;
+    }
+    if (!formData.bank_name.trim()) {
+      missing.push('Bank Name');
+      newErrors.bank_name = 'Bank Name is required';
+      if (!firstMissingStep) firstMissingStep = 4;
+    }
+    if (!formData.branch_name.trim()) {
+      missing.push('Bank Branch');
+      newErrors.branch_name = 'Bank Branch is required';
+      if (!firstMissingStep) firstMissingStep = 4;
+    }
+
+    // Step 5: Ownership
+    if (!formData.package_type) {
+      missing.push('Package Type');
+      if (!firstMissingStep) firstMissingStep = 5;
+    }
+
+    // Step 8: Declaration
+    if (!formData.declaration_accepted) {
+      missing.push('Terms & Declaration acceptance');
+      newErrors.declaration = 'You must accept the terms declaration before submission.';
+      if (!firstMissingStep) firstMissingStep = 8;
+    }
+
+    setErrors(newErrors);
+
+    if (missing.length > 0) {
+      setStatusMessage({
+        type: 'error',
+        text: `Cannot submit incomplete application. All fields must be filled except Personal Email, TIN, Company Name, and Office Address. Missing: ${missing.join(', ')}`,
+      });
+      if (firstMissingStep) {
+        setCurrentStep(firstMissingStep);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return false;
+    }
+    return true;
+  };
+
   // Save draft to backend
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (silent = false) => {
     setIsSavingDraft(true);
-    setStatusMessage(null);
+    if (!silent) setStatusMessage(null);
     try {
       const payload = {
         business_id: business.id,
@@ -277,10 +422,14 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
         setApplicationId(result.id);
         setReferenceNumber(result.reference_number);
       }
-      setStatusMessage({ type: 'success', text: `Draft saved successfully (Ref: ${result.reference_number})` });
+      if (!silent) {
+        setStatusMessage({ type: 'success', text: `Draft saved successfully (Ref: ${result.reference_number})` });
+      }
       return result;
     } catch (err: any) {
-      setStatusMessage({ type: 'error', text: err.message || 'Failed to save draft' });
+      if (!silent) {
+        setStatusMessage({ type: 'error', text: err.message || 'Failed to save draft' });
+      }
       return null;
     } finally {
       setIsSavingDraft(false);
@@ -288,24 +437,36 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
   };
 
   const handleNext = async () => {
-    if (!validateStep(currentStep)) return;
+    // Clear errors when navigating so next step is unblocked
+    setErrors({});
+    setStatusMessage(null);
 
-    // Automatically sync draft when moving steps
-    const saved = await handleSaveDraft();
-    if (saved || applicationId) {
-      setCurrentStep((prev) => Math.min(prev + 1, 9));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    // Auto-save draft in the background silently
+    handleSaveDraft(true).catch(() => {});
+
+    setCurrentStep((prev) => Math.min(prev + 1, 9));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handlePrev = () => {
+    setErrors({});
+    setStatusMessage(null);
     setCurrentStep((prev) => Math.max(prev - 1, 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goToStep = (stepNumber: number) => {
+    if (stepNumber < 1 || stepNumber > 8) return;
+    setErrors({});
+    setStatusMessage(null);
+    handleSaveDraft(true).catch(() => {});
+    setCurrentStep(stepNumber);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Submit Application
   const handleSubmit = async () => {
-    if (!validateStep(8)) return;
+    if (!validateAllBeforeSubmit()) return;
     if (!applicationId) {
       setStatusMessage({ type: 'error', text: 'Application draft not found. Please click Save Draft first.' });
       return;
@@ -375,18 +536,38 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       </div>
 
       {/* Mobile App Stepper */}
-      <div className="md:hidden bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
-        <div className="flex items-center justify-between text-xs mb-2">
+      <div className="md:hidden bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs space-y-2.5">
+        <div className="flex items-center justify-between text-xs">
           <span className="font-bold text-[#006B3E] uppercase tracking-wider text-[11px] bg-[#006B3E]/10 px-2 py-0.5 rounded">
             Step {currentStep} of {steps.length}
           </span>
-          <span className="font-bold text-slate-800">{steps[currentStep - 1].title}</span>
+          <span className="font-bold text-slate-800">{steps[currentStep - 1]?.title}</span>
         </div>
         <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
           <div
             className="bg-[#006B3E] h-2 rounded-full transition-all duration-300"
             style={{ width: `${(currentStep / steps.length) * 100}%` }}
           />
+        </div>
+        {/* Quick Step Buttons for Mobile */}
+        <div className="flex items-center justify-between gap-1 overflow-x-auto pt-0.5 pb-1">
+          {steps.slice(0, 8).map((s) => (
+            <button
+              key={s.number}
+              type="button"
+              onClick={() => goToStep(s.number)}
+              className={`w-7 h-7 rounded-full text-xs font-bold shrink-0 transition-colors ${
+                currentStep === s.number
+                  ? 'bg-[#006B3E] text-white shadow-xs'
+                  : currentStep > s.number
+                  ? 'bg-emerald-100 text-[#006B3E]'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+              title={s.title}
+            >
+              {s.number}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -396,29 +577,33 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
           {steps.map((s, idx) => {
             const isCompleted = currentStep > s.number;
             const isCurrent = currentStep === s.number;
-            const Icon = s.icon;
             return (
               <React.Fragment key={s.number}>
-                <div className="flex flex-col items-center text-center">
+                <button
+                  type="button"
+                  onClick={() => s.number <= 8 && goToStep(s.number)}
+                  className="flex flex-col items-center text-center group cursor-pointer focus:outline-none"
+                  title={`Jump to ${s.title}`}
+                >
                   <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition-colors ${
+                    className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                       isCompleted
-                        ? 'bg-[#006B3E] text-white'
+                        ? 'bg-[#006B3E] text-white group-hover:scale-105'
                         : isCurrent
-                        ? 'border-2 border-[#006B3E] text-[#006B3E] bg-white ring-4 ring-[#006B3E]/10'
-                        : 'bg-slate-100 text-slate-400'
+                        ? 'border-2 border-[#006B3E] text-[#006B3E] bg-white ring-4 ring-[#006B3E]/10 group-hover:scale-105'
+                        : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
                     }`}
                   >
                     {isCompleted ? <Icons.Check className="w-4 h-4 text-white" /> : s.number}
                   </div>
                   <span
-                    className={`text-[11px] font-medium mt-1.5 whitespace-nowrap ${
-                      isCurrent ? 'text-slate-900 font-semibold' : 'text-slate-500'
+                    className={`text-[11px] font-medium mt-1.5 whitespace-nowrap transition-colors ${
+                      isCurrent ? 'text-slate-900 font-bold' : 'text-slate-500 group-hover:text-slate-800'
                     }`}
                   >
                     {s.title}
                   </span>
-                </div>
+                </button>
                 {idx < steps.length - 1 && (
                   <div
                     className={`flex-1 h-0.5 mx-2 ${
@@ -588,12 +773,11 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Company / Organization Name"
-                required
+                label="Company / Organization Name (Optional)"
                 value={formData.company_name}
                 onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
                 error={errors.company_name}
-                placeholder="e.g. Grameenphone Ltd / Business Owner"
+                placeholder="e.g. Grameenphone Ltd / Business Owner (Optional)"
               />
               <Input
                 label="Designation"
@@ -604,18 +788,18 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 placeholder="e.g. Senior Manager / Managing Director"
               />
               <Input
-                label="Office Contact / Cell Number"
+                label="Office Contact / Cell Number (Optional)"
                 value={formData.office_phone}
                 onChange={(e) => setFormData({ ...formData, office_phone: e.target.value })}
                 placeholder="Office Phone or extension"
               />
               <div className="sm:col-span-2">
                 <Textarea
-                  label="Office / Workplace Address"
+                  label="Office / Workplace Address (Optional)"
                   rows={2}
                   value={formData.office_address}
                   onChange={(e) => setFormData({ ...formData, office_address: e.target.value })}
-                  placeholder="Plot/Road, Commercial Area, City"
+                  placeholder="Plot/Road, Commercial Area, City (Optional)"
                 />
               </div>
             </div>
@@ -1173,7 +1357,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleSaveDraft}
+                onClick={() => handleSaveDraft(false)}
                 isLoading={isSavingDraft}
                 leftIcon={<Icons.FileText className="w-4 h-4" />}
               >

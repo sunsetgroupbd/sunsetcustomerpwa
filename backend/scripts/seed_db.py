@@ -84,6 +84,22 @@ USERS_SEED = [
         "email": "farzana.cr@sunsetgroup.com",
     },
     {
+        "mobile": "01600000000",
+        "full_name": "Kamrul Hasan (Sales Executive)",
+        "role": UserRole.sales,
+        "employee_id": "SL-101",
+        "password": "Sales@123",
+        "email": "kamrul.sales@sunsetgroup.com",
+    },
+    {
+        "mobile": "01611111111",
+        "full_name": "Sabina Akter (Sales Executive)",
+        "role": UserRole.sales,
+        "employee_id": "SL-102",
+        "password": "Sales@123",
+        "email": "sabina.sales@sunsetgroup.com",
+    },
+    {
         "mobile": "01900000000",
         "full_name": "Mohammad Rahim",
         "role": UserRole.customer,
@@ -141,6 +157,7 @@ def seed_users(db: Session) -> dict[str, User]:
                 mobile=u_data["mobile"],
                 full_name=u_data["full_name"],
                 role=u_data["role"],
+                employee_id=u_data.get("employee_id"),
                 email=u_data.get("email"),
                 is_verified=True,
                 is_active=True,
@@ -162,6 +179,8 @@ def seed_users(db: Session) -> dict[str, User]:
 
             print(f"  [CREATED] User: {user.mobile} ({user.role.value}) -> {user.full_name}")
         else:
+            if u_data.get("employee_id") and not user.employee_id:
+                user.employee_id = u_data["employee_id"]
             print(f"  [EXISTS]  User: {user.mobile} ({user.role.value}) -> {user.full_name}")
         user_map[user.mobile] = user
     db.commit()
@@ -485,6 +504,9 @@ def seed_applications(
         db.add(app)
         db.flush()
 
+        if data["status"] == ApplicationStatus.APPROVED and not data["customer"].customer_id_number:
+            data["customer"].customer_id_number = "SG-CUST-2026-0001"
+
         # 1. Applicant info
         if data.get("applicant"):
             ai = ApplicantInfo(
@@ -572,6 +594,17 @@ def run_seed() -> None:
     try:
         businesses = seed_businesses(db)
         users = seed_users(db)
+
+        # Import Sales Team CSV if present
+        import os
+        from app.services.sales_team_service import import_sales_team_csv
+        csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "sales_team.csv")
+        if os.path.exists(csv_path):
+            print("\n--- 2b. Seeding 66 Sales Team Members from CSV ---")
+            with open(csv_path, "r", encoding="utf-8") as f:
+                res = import_sales_team_csv(db, f.read())
+                print(f"  [CSV IMPORT] {res['created']} created, {res['updated']} updated.")
+
         admin = users["01700000000"]
         seed_pricing_and_terms(db, businesses, admin)
         seed_applications(db, businesses, users)
@@ -586,6 +619,8 @@ def run_seed() -> None:
     print("  SEEDING COMPLETE! ALL ROLES READY FOR LOGIN:")
     print("=" * 60)
     print("  ADMIN:     Mobile: 01700000000   Password: Admin@123")
+    print("  SALES:     Mobile: 01600000000   Password: Sales@123")
+    print("  SALES 2:   Mobile: 01611111111   Password: Sales@123")
     print("  CR TEAM:   Mobile: 01800000000   Password: Cr@123456")
     print("  CR TEAM 2: Mobile: 01811111111   Password: Cr@123456")
     print("  CUSTOMER:  Mobile: 01900000000   Password: Customer@123")

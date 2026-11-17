@@ -16,6 +16,7 @@ class CustomerProfile(Base):
     profile_photo_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("documents.id", ondelete="SET NULL"), nullable=True
     )
+    customer_id_number: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     preferred_language: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     district: Mapped[str | None] = mapped_column(String(100), nullable=True)

@@ -30,6 +30,11 @@ function ApplyContent() {
       return;
     }
 
+    if (!authLoading && user && user.role === 'customer') {
+      router.push('/customer/dashboard');
+      return;
+    }
+
     async function init() {
       try {
         const rawBiz = await api.businesses.list().catch(() => [
@@ -70,6 +75,32 @@ function ApplyContent() {
         <div className="py-16 text-center text-xs text-slate-500">
           <Icons.Spinner className="w-8 h-8 text-[#006B3E] mx-auto mb-3" />
           Initializing registration wizard...
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  if (user?.role === 'customer') {
+    return (
+      <DashboardShell title="Application Access Notice" subtitle="Customer Application Process">
+        <div className="max-w-xl mx-auto py-12">
+          <Card className="text-center p-8">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 text-[#008751] flex items-center justify-center mx-auto mb-4">
+              <Icons.Shield className="w-8 h-8" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mb-2">Customer Relations Managed Applications</h3>
+            <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              In accordance with Sunset Group policy, application forms are initiated by your assigned Sales Executive and officially verified and submitted by our Customer Relations (CR) team.
+            </p>
+            <p className="text-xs text-slate-500 mb-6">
+              You can review your completed application information and submit an official information change request from your personal dashboard.
+            </p>
+            <div className="flex justify-center gap-3">
+              <Button variant="primary" size="md" onClick={() => router.push('/customer/dashboard')}>
+                Go to Customer Dashboard
+              </Button>
+            </div>
+          </Card>
         </div>
       </DashboardShell>
     );

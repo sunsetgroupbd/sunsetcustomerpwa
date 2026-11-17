@@ -24,18 +24,24 @@ function NavTabs() {
 
   const isAdmin = user?.role === 'admin';
   const isCr = user?.role === 'cr';
+  const isSales = user?.role === 'sales';
 
-  if (!isAdmin && !isCr) return null;
+  if (!isAdmin && !isCr && !isSales) return null;
 
   const adminNav = [
     { label: 'Overview', href: '/admin/dashboard', icon: Icons.Building },
     { label: 'Applications', href: '/admin/dashboard?tab=applications', icon: Icons.FileText },
+    { label: 'Edit Requests', href: '/admin/dashboard?tab=edit-requests', icon: Icons.Shield },
     { label: 'Users & Permissions', href: '/admin/users', icon: Icons.Users },
     { label: 'Export Center', href: '/admin/exports', icon: Icons.Download },
   ];
 
   const crNav = [
     { label: 'Assigned Applications', href: '/cr/dashboard', icon: Icons.FileText },
+  ];
+
+  const salesNav = [
+    { label: 'Sales Desk', href: '/sales/dashboard', icon: Icons.FileText },
   ];
 
   const checkIsActive = (href: string) => {
@@ -51,18 +57,17 @@ function NavTabs() {
 
   return (
     <div className="mb-6 flex border-b border-slate-200 overflow-x-auto no-scrollbar">
-      {(isAdmin ? adminNav : crNav).map((item) => {
+      {(isAdmin ? adminNav : isCr ? crNav : salesNav).map((item) => {
         const isActive = checkIsActive(item.href);
         const Icon = item.icon;
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-2 py-2.5 px-3.5 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
-              isActive
-                ? 'border-[#008751] text-[#008751] bg-[#008751]/5 font-semibold'
-                : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-            }`}
+            className={`flex items-center gap-2 py-2.5 px-3.5 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${isActive
+              ? 'border-[#008751] text-[#008751] bg-[#008751]/5 font-semibold'
+              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+              }`}
           >
             <Icon className="w-4 h-4" />
             {item.label}

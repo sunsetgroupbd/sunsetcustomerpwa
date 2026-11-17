@@ -37,6 +37,7 @@ class CustomerService:
             "full_name": user.full_name,
             "mobile": user.mobile,
             "email": user.email,
+            "customer_id_number": user.customer_id_number or (profile.customer_id_number if profile else None),
             "role": user.role.value if hasattr(user.role, "value") else str(user.role),
             "is_active": user.is_active,
             "is_verified": user.is_verified,
@@ -122,4 +123,29 @@ class CustomerService:
 
     async def get_customer(self, customer_id: int) -> dict:
         return await self.get_profile(customer_id)
+
+    async def change_password(
+        self,
+        user_id: int,
+        current_password: str,
+        new_password: str,
+    ) -> None:
+        from app.core.security import get_password_hash, verify_password
+
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise NotFoundError("User not found.")
+
+        if user.password_hash:
+            if not verify_password(current_password, user.password_hash):
+                raise ValidationError("Current password is incorrect.")
+
+        if len(new_password) < 6:
+            raise ValidationError("New password must be at least 6 characters long.")
+
+        if user.password_hash and verify_password(new_password, user.password_hash):
+            raise ValidationError("New password cannot be the same as your current password.")
+
+        user.password_hash = get_password_hash(new_password)
+        self.db.commit()
 

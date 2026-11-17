@@ -155,8 +155,25 @@ class AuthService:
         Authenticate a user and issue access + refresh tokens.
         """
         from app.core.exceptions import AuthenticationError, ValidationError
+        from app.models.user import UserRole
+        from sqlalchemy import func
 
-        user = self.db.query(User).filter(User.mobile == data.mobile).first()
+        identifier = (data.mobile or data.phone_number or "").strip()
+
+        # 1. First check by mobile number
+        user = self.db.query(User).filter(User.mobile == identifier).first()
+
+        # 2. If not found by mobile, allow ONLY sales executives to authenticate via Employee ID
+        if not user and identifier:
+            user = (
+                self.db.query(User)
+                .filter(
+                    User.role == UserRole.sales,
+                    func.lower(User.employee_id) == identifier.lower(),
+                )
+                .first()
+            )
+
         if not user:
             raise AuthenticationError("Invalid credentials.")
 
@@ -164,18 +181,33 @@ class AuthService:
         now = datetime.now(timezone.utc)
         if user.locked_until and user.locked_until.replace(tzinfo=timezone.utc) > now:
             remaining = int((user.locked_until.replace(tzinfo=timezone.utc) - now).total_seconds() / 60)
-            raise AuthenticationError(
-                f"Account is locked. Try again in {remaining} minute(s)."
-            )
+            if remaining <= 0:
+                user.locked_until = None
+                user.failed_login_attempts = 0
+                self.db.commit()
+            else:
+                raise AuthenticationError(
+                    f"Account is locked due to 6 consecutive failed attempts. Try again in {remaining} minute(s)."
+                )
 
         # 3 & 4. Password verification
         if not verify_password(data.password, user.password_hash):
             user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
-            if user.failed_login_attempts >= 5:
+            attempts_remaining = max(0, 6 - user.failed_login_attempts)
+            if user.failed_login_attempts >= 6:
                 user.locked_until = now + timedelta(minutes=30)
-                logger.warning("Account locked for mobile %s after 5 failed attempts", user.mobile)
+                logger.warning("Account locked for user %s after 6 failed attempts", user.mobile or user.employee_id)
+                self.db.commit()
+                self._log_attempt(user.id, ip, success=False)
+                raise AuthenticationError(
+                    "Account is locked due to 6 failed attempts. Try again in 30 minute(s)."
+                )
             self.db.commit()
             self._log_attempt(user.id, ip, success=False)
+            if attempts_remaining <= 3:
+                raise AuthenticationError(
+                    f"Invalid credentials. {attempts_remaining} attempt(s) remaining before account is locked."
+                )
             raise AuthenticationError("Invalid credentials.")
 
         # 5. Reset failure counter

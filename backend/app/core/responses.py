@@ -82,6 +82,7 @@ class ErrorResponse(BaseModel):
 def success_response(
     data: Any = None,
     message: str = "Operation completed successfully",
+    **kwargs: Any,
 ) -> dict:
     """Return a serialisable dict for a successful single-resource response."""
     return {

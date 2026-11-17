@@ -31,6 +31,7 @@ export default function LoginPage() {
     try {
       const user = await login(phoneNumber.trim(), password);
       if (user.role === 'admin') router.push('/admin/dashboard');
+      else if (user.role === 'sales') router.push('/sales/dashboard');
       else if (user.role === 'cr') router.push('/cr/dashboard');
       else router.push('/customer/dashboard');
     } catch (err: any) {
@@ -63,7 +64,7 @@ export default function LoginPage() {
             <Input
               label="Mobile Phone Number"
               required
-              type="tel"
+              type="text"
               placeholder="017XXXXXXXX"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}

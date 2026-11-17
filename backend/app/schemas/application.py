@@ -6,8 +6,9 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -46,6 +47,7 @@ class ApplicantInfoUpdate(ApplicantInfoCreate):
 class ApplicantInfoResponse(ApplicantInfoCreate):
     id: int
     application_id: int
+    customer_id_number: str | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -167,7 +169,11 @@ class ApplicationUpdate(BaseModel):
     bank_detail: BankDetailCreate | None = None
     ownership_detail: OwnershipDetailCreate | None = None
     payment_detail: PaymentDetailCreate | None = None
+    nominees: list[Any] | None = None
     declaration_accepted: bool | None = None
+    current_step: int | None = None
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class ApplicationListItem(BaseModel):
@@ -177,9 +183,20 @@ class ApplicationListItem(BaseModel):
     business_id: int
     application_status: str
     payment_status: str
-    assigned_cr_id: int | None
+    assigned_cr_id: int | None = None
+    assigned_cr_name: str | None = None
+    assigned_cr_employee_id: str | None = None
+    sales_agent_id: int | None = None
+    sales_agent_name: str | None = None
+    sales_agent_employee_id: str | None = None
+    customer_id_number: str | None = None
+    customer_name: str | None = None
+    customer_phone: str | None = None
+    business_code: str | None = None
+    business_name: str | None = None
+    is_edit_unlocked: bool = False
     declaration_accepted: bool
-    submitted_at: datetime | None
+    submitted_at: datetime | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -251,4 +268,44 @@ ApplicationStatusUpdateRequest = StatusUpdateRequest
 ApplicationAssignRequest = AssignCRRequest
 class ApplicationSubmitRequest(BaseModel):
     declaration_accepted: bool = True
+
+
+class ApplicationOnBehalfCreate(BaseModel):
+    customer_name: str
+    customer_phone: str
+    customer_email: EmailStr | str | None = None
+    business_id: int | str
+    package_type: str | None = None
+    number_of_shares: int = 1
+    total_amount: Decimal | None = None
+    temporary_password: str | None = None
+
+    @field_validator("customer_email", mode="before")
+    @classmethod
+    def clean_email(cls, v: Any) -> Any:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            v_s = v.strip()
+            return v_s.lower() if v_s else None
+        return v
+
+    @field_validator("business_id", mode="before")
+    @classmethod
+    def clean_biz_id(cls, v: Any) -> Any:
+        if isinstance(v, str) and v.strip().isdigit():
+            return int(v.strip())
+        return v
+
+
+class EditRequestCreate(BaseModel):
+    reason: str
+    requested_changes: str | None = None
+
+
+class EditRequestReview(BaseModel):
+    action: str  # "approve" or "reject"
+    admin_notes: str | None = None
+
+
 

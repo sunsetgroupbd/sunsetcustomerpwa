@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional, Tuple
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import (
@@ -19,11 +19,13 @@ from app.core.exceptions import (
 from app.models.application import (
     ApplicantInfo,
     Application,
+    ApplicationEditRequest,
     ApplicationRemark,
     ApplicationStatus,
     ApplicationStatusHistory,
     BankDetail,
     CRAssignment,
+    EditRequestStatus,
     Nominee,
     OwnershipDetail,
     PaymentDetail,
@@ -33,6 +35,7 @@ from app.models.business import Business
 from app.models.user import User
 from app.schemas.application import (
     ApplicationCreate,
+    ApplicationOnBehalfCreate,
     ApplicationUpdate,
     StatusUpdateRequest,
 )
@@ -158,6 +161,152 @@ class ApplicationService:
         return application
 
     # -------------------------------------------------------------------------
+    # Create Application on Behalf (Sales Executive / Admin / CR)
+    # -------------------------------------------------------------------------
+    async def create_on_behalf(
+        self,
+        creator_user: User,
+        data: ApplicationOnBehalfCreate,
+    ) -> Application:
+        """
+        Sales Executive, CR Officer, or Admin registers a customer profile and creates
+        an application on their behalf. If customer does not exist, an account is auto-created.
+        """
+        from app.models.user import User, UserRole
+        from app.models.customer import CustomerProfile
+        from app.core.security import get_password_hash
+
+        phone = data.customer_phone.strip()
+        name = data.customer_name.strip()
+
+        # 1. Prevent duplicate customer registration with the same mobile number
+        existing_user = self.db.query(User).filter(User.mobile == phone).first()
+        if existing_user:
+            existing_app = (
+                self.db.query(Application)
+                .filter(Application.customer_id == existing_user.id)
+                .order_by(Application.created_at.desc())
+                .first()
+            )
+            app_info = f" (Application: {existing_app.application_number})" if existing_app else ""
+            raise ValidationError(
+                f"Customer with mobile number '{phone}' is already registered{app_info}. Multiple registrations with the same mobile number are not allowed."
+            )
+
+        existing_applicant = (
+            self.db.query(ApplicantInfo)
+            .filter(ApplicantInfo.mobile_number == phone)
+            .first()
+        )
+        if existing_applicant:
+            existing_app = self.db.query(Application).filter(Application.id == existing_applicant.application_id).first()
+            app_info = f" (Application: {existing_app.application_number})" if existing_app else ""
+            raise ValidationError(
+                f"Customer with mobile number '{phone}' is already registered{app_info}. Multiple registrations with the same mobile number are not allowed."
+            )
+
+        temp_pwd = data.temporary_password or "Sunset@123"
+        customer = User(
+            full_name=name,
+            mobile=phone,
+            email=data.customer_email.strip().lower() if data.customer_email else None,
+            password_hash=get_password_hash(temp_pwd),
+            role=UserRole.customer,
+            is_active=True,
+            is_verified=True,
+        )
+        self.db.add(customer)
+        self.db.flush()
+
+        profile = CustomerProfile(user_id=customer.id)
+        self.db.add(profile)
+        self.db.flush()
+
+        # 2. Business division
+        biz_lookup = data.business_id
+        if isinstance(biz_lookup, int):
+            business = self.db.query(Business).filter(Business.id == biz_lookup).first()
+        else:
+            business = self.db.query(Business).filter(
+                (Business.code == str(biz_lookup).strip().upper()) |
+                (Business.name == str(biz_lookup).strip())
+            ).first()
+            if not business and str(biz_lookup).strip().isdigit():
+                business = self.db.query(Business).filter(Business.id == int(str(biz_lookup).strip())).first()
+
+        if not business:
+            raise NotFoundError("Business division not found.")
+        if not business.is_active:
+            raise ValidationError("Selected business division is currently inactive.")
+
+        # 3. Unique application number
+        seq = await self._get_next_sequence(business.id)
+        year = datetime.now(timezone.utc).year
+        app_number = f"{business.code}-{year}-{seq:05d}"
+
+        # 4. Create application
+        is_sales = creator_user.role == UserRole.sales if hasattr(UserRole, "sales") else str(creator_user.role) == "sales"
+        application = Application(
+            application_number=app_number,
+            customer_id=customer.id,
+            business_id=business.id,
+            sales_agent_id=creator_user.id if is_sales else None,
+            application_date=datetime.now(timezone.utc).date(),
+            application_status=ApplicationStatus.DRAFT,
+            payment_status=PaymentStatus.PENDING,
+            declaration_accepted=False,
+            is_edit_unlocked=True,
+            submitted_at=None,
+        )
+        self.db.add(application)
+        self.db.flush()
+
+        # 5. Populate initial ApplicantInfo
+        applicant_info = ApplicantInfo(
+            application_id=application.id,
+            full_name_en=name,
+            mobile_number=phone,
+        )
+        self.db.add(applicant_info)
+
+        # 6. Populate OwnershipDetail if provided
+        if data.package_type or data.number_of_shares:
+            ownership_detail = OwnershipDetail(
+                application_id=application.id,
+                package=data.package_type or "Standard Ownership",
+                number_of_ownership=data.number_of_shares or 1,
+                total_price=data.total_amount,
+            )
+            self.db.add(ownership_detail)
+
+        # 7. Add history
+        role_label = creator_user.role.value if hasattr(creator_user.role, "value") else str(creator_user.role)
+        self._record_history(
+            application.id,
+            None,
+            ApplicationStatus.DRAFT,
+            creator_user.id,
+            f"Client registered by {role_label.capitalize()} ({creator_user.full_name}) as draft for CR completion.",
+        )
+
+        self._audit.log(
+            user_id=creator_user.id,
+            action="application.registered_on_behalf",
+            entity_type="application",
+            entity_id=str(application.id),
+            metadata={
+                "customer_phone": phone,
+                "customer_name": name,
+                "business_code": business.code,
+                "registered_by_role": role_label,
+            },
+        )
+
+        self.db.commit()
+        self.db.refresh(application)
+        return application
+
+    # -------------------------------------------------------------------------
     # Get Application
     # -------------------------------------------------------------------------
     async def get_application(self, application_id: int, user: User) -> Application:
@@ -199,20 +348,31 @@ class ApplicationService:
                 joinedload(Application.applicant_info),
                 joinedload(Application.business),
                 joinedload(Application.assigned_cr),
+                joinedload(Application.sales_agent),
+                joinedload(Application.customer),
+                joinedload(Application.ownership_detail),
             )
         )
 
         # Role restrictions
-        if user.role == "customer":
+        user_role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
+        if user_role_str == "customer":
             query = query.filter(Application.customer_id == user.id)
-        elif user.role == "cr":
+        elif user_role_str == "sales":
+            # Sales executive sees applications they initiated on behalf
+            query = query.filter(Application.sales_agent_id == user.id)
+        elif user_role_str == "cr":
             # If not assigned to specific, CR can view business applications or their assigned ones
             if filters.get("assigned_only"):
                 query = query.filter(Application.assigned_cr_id == user.id)
 
         # Field filters
         if filters.get("business_id"):
-            query = query.filter(Application.business_id == filters["business_id"])
+            b_val = str(filters["business_id"]).strip()
+            if b_val.isdigit():
+                query = query.filter(Application.business_id == int(b_val))
+            else:
+                query = query.join(Application.business, isouter=True).filter(Business.code == b_val.upper())
         if filters.get("status"):
             query = query.filter(Application.application_status == filters["status"])
         if filters.get("payment_status"):
@@ -226,12 +386,16 @@ class ApplicationService:
 
         if filters.get("search"):
             term = f"%{filters['search']}%"
-            query = query.join(Application.applicant_info, isouter=True).filter(
+            query = query.join(Application.applicant_info, isouter=True).join(Application.customer, isouter=True).filter(
                 or_(
                     Application.application_number.ilike(term),
                     ApplicantInfo.full_name_en.ilike(term),
                     ApplicantInfo.mobile_number.ilike(term),
+                    ApplicantInfo.phone_number.ilike(term),
                     ApplicantInfo.nid_number.ilike(term),
+                    User.full_name.ilike(term),
+                    User.mobile.ilike(term),
+                    User.customer_id_number.ilike(term),
                 )
             )
 
@@ -252,10 +416,18 @@ class ApplicationService:
         """Update draft or correction_required applications."""
         app = await self.get_application(application_id, user)
 
-        status_str = app.application_status.value
-        if user.role == "customer" and status_str not in ("draft", "correction_required"):
+        role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
+        status_val = (
+            app.application_status.value
+            if hasattr(app.application_status, "value")
+            else str(app.application_status)
+        )
+        is_draft_or_corr = status_val in ("draft", "correction_required")
+        can_edit = is_draft_or_corr or app.is_edit_unlocked or role_str == "admin"
+
+        if not can_edit:
             raise AuthorizationError(
-                f"You cannot edit this application while it is in '{status_str}' status."
+                f"Application is in '{status_val}' status and locked for editing. Please request edit permission from Admin."
             )
 
         # Update declaration if provided
@@ -298,6 +470,26 @@ class ApplicationService:
             for k, v in data.payment_detail.model_dump(exclude_unset=True).items():
                 setattr(pay, k, v)
 
+        # Update Nominees
+        if data.nominees:
+            from app.models.application import Nominee
+            self.db.query(Nominee).filter(Nominee.application_id == app.id).delete()
+            for idx, nom in enumerate(data.nominees, 1):
+                nom_dict = nom if isinstance(nom, dict) else (nom.model_dump() if hasattr(nom, "model_dump") else nom.__dict__)
+                name_val = nom_dict.get("name") or nom_dict.get("full_name") or ""
+                rel_val = nom_dict.get("relationship") or nom_dict.get("relation") or ""
+                if name_val or rel_val:
+                    new_nom = Nominee(
+                        application_id=app.id,
+                        nominee_number=idx,
+                        name=name_val,
+                        relationship=rel_val,
+                        father_or_husband_name=nom_dict.get("father_or_husband_name"),
+                        nid_number=nom_dict.get("nid_or_passport") or nom_dict.get("nid_number"),
+                        mobile_number=nom_dict.get("cell_number") or nom_dict.get("mobile_number"),
+                    )
+                    self.db.add(new_nom)
+
         app.updated_at = datetime.now(timezone.utc)
 
         self._audit.log(
@@ -315,26 +507,105 @@ class ApplicationService:
     # Submit Application
     # -------------------------------------------------------------------------
     async def submit_application(self, application_id: int, user: User) -> Application:
-        """Customer submits application for review."""
+        """Submit completed application for review with strict completeness checks."""
         app = await self.get_application(application_id, user)
 
-        if app.application_status != ApplicationStatus.DRAFT:
+        role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
+        status_val = (
+            app.application_status.value
+            if hasattr(app.application_status, "value")
+            else str(app.application_status)
+        )
+        is_submittable = status_val in ("draft", "correction_required") or app.is_edit_unlocked or role_str == "admin"
+        if not is_submittable:
             raise ValidationError(
-                f"Cannot submit application in '{app.application_status.value}' status."
+                f"Cannot submit application in '{status_val}' status."
             )
+
         if not app.declaration_accepted:
             raise ValidationError("You must accept the terms declaration before submitting.")
 
+        # Strict completeness validation
+        # All fields are mandatory EXCEPT personal_email and tin_number
+        missing: list[str] = []
+        info = app.applicant_info
+        if not info:
+            missing.append("Applicant Personal Details")
+        else:
+            if not (info.full_name_en and info.full_name_en.strip()):
+                missing.append("Full Name (English)")
+            if not (info.full_name_bn and info.full_name_bn.strip()):
+                missing.append("Full Name (Bangla)")
+            if not (info.father_name and info.father_name.strip()):
+                missing.append("Father's Name")
+            if not (info.mother_name and info.mother_name.strip()):
+                missing.append("Mother's Name")
+            if not (info.present_address and info.present_address.strip()):
+                missing.append("Present Address")
+            if not (info.permanent_address and info.permanent_address.strip()):
+                missing.append("Permanent Address")
+            if not (info.mobile_number and info.mobile_number.strip()):
+                missing.append("Mobile Number")
+            if not info.date_of_birth:
+                missing.append("Date of Birth")
+            if not (info.nationality and info.nationality.strip()):
+                missing.append("Nationality")
+            if not (info.religion and info.religion.strip()):
+                missing.append("Religion")
+            if not (info.nid_number or info.passport_number):
+                missing.append("NID or Passport Number")
+            if not (info.designation and info.designation.strip()):
+                missing.append("Designation")
+            # Personal Email, TIN Number, Company Name, and Office Address are explicitly OPTIONAL!
+
+        if not app.nominees or len(app.nominees) == 0:
+            missing.append("Nominee Details (at least 1 nominee required)")
+        else:
+            for i, nom in enumerate(app.nominees, 1):
+                if not (nom.name and nom.name.strip()):
+                    missing.append(f"Nominee {i} Name")
+                if not (nom.relationship and nom.relationship.strip()):
+                    missing.append(f"Nominee {i} Relationship")
+
+        bank = app.bank_detail
+        if not bank:
+            missing.append("Bank Account Details")
+        else:
+            if not (bank.account_name and bank.account_name.strip()):
+                missing.append("Bank Account Name")
+            if not (bank.account_number and bank.account_number.strip()):
+                missing.append("Bank Account Number")
+            if not (bank.bank_name and bank.bank_name.strip()):
+                missing.append("Bank Name")
+            if not (bank.branch and bank.branch.strip()):
+                missing.append("Branch Name")
+
+        own = app.ownership_detail
+        if not own:
+            missing.append("Ownership Details")
+        else:
+            if not (own.package or own.number_of_ownership):
+                missing.append("Ownership Package / Shares")
+
+        if missing:
+            raise ValidationError(
+                f"Cannot submit incomplete application. All fields are required except Personal Email and TIN. Missing: {', '.join(missing)}"
+            )
+
         old_status = app.application_status
         app.application_status = ApplicationStatus.SUBMITTED
+        app.is_edit_unlocked = False  # Lock application after submission
         app.submitted_at = datetime.now(timezone.utc)
 
+        role_label = user.role.value if hasattr(user.role, "value") else str(user.role)
+        if not app.assigned_cr_id and role_label == "cr":
+            app.assigned_cr_id = user.id
         self._record_history(
             app.id,
             old_status,
             ApplicationStatus.SUBMITTED,
             user.id,
-            "Submitted by applicant.",
+            f"Submitted by {role_label.upper()} ({user.full_name}). Locked for editing.",
         )
 
         self._audit.log(
@@ -347,6 +618,45 @@ class ApplicationService:
         self.db.commit()
         self.db.refresh(app)
         return app
+
+    # -------------------------------------------------------------------------
+    # Application Edit Requests (Permission Request)
+    # -------------------------------------------------------------------------
+    async def create_edit_request(
+        self,
+        application_id: int,
+        user: User,
+        reason: str,
+        requested_changes: Optional[str] = None,
+    ) -> ApplicationEditRequest:
+        """Submit request to unlock/edit application."""
+        app = await self.get_application(application_id, user)
+        role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
+
+        # Check existing pending request
+        pending = (
+            self.db.query(ApplicationEditRequest)
+            .filter(
+                ApplicationEditRequest.application_id == app.id,
+                ApplicationEditRequest.status == EditRequestStatus.PENDING,
+            )
+            .first()
+        )
+        if pending:
+            raise ValidationError("An edit request is already pending review by Admin for this application.")
+
+        req = ApplicationEditRequest(
+            application_id=app.id,
+            requested_by_id=user.id,
+            requester_role=role_str,
+            reason=reason.strip(),
+            status=EditRequestStatus.PENDING,
+        )
+        self.db.add(req)
+        self.db.commit()
+        self.db.refresh(req)
+        return req
+
 
     # -------------------------------------------------------------------------
     # Update Status (Workflow State Machine)
@@ -380,6 +690,36 @@ class ApplicationService:
         new_status_enum = ApplicationStatus(target_status_val)
         app.application_status = new_status_enum
         app.updated_at = datetime.now(timezone.utc)
+
+        # Generate and assign Customer ID when application is APPROVED by Admin
+        if new_status_enum == ApplicationStatus.APPROVED:
+            customer = self.db.query(User).filter(User.id == app.customer_id).first()
+            if customer and not customer.customer_id_number:
+                year = datetime.now(timezone.utc).year
+                prefix = f"SG-CUST-{year}-"
+                count = (
+                    self.db.query(func.count(User.id))
+                    .filter(User.customer_id_number.like(f"{prefix}%"))
+                    .scalar()
+                    or 0
+                )
+                seq = count + 1
+                cust_id = f"{prefix}{seq:04d}"
+                while self.db.query(User).filter(User.customer_id_number == cust_id).first():
+                    seq += 1
+                    cust_id = f"{prefix}{seq:04d}"
+
+                customer.customer_id_number = cust_id
+                if customer.customer_profile:
+                    customer.customer_profile.customer_id_number = cust_id
+
+                self._audit.log(
+                    user_id=user.id,
+                    action="customer.id_assigned",
+                    entity_type="user",
+                    entity_id=str(customer.id),
+                    metadata={"customer_id_number": cust_id, "application_id": app.id},
+                )
 
         self._record_history(
             app.id,
@@ -603,10 +943,13 @@ class ApplicationService:
         self.db.add(history)
 
     def _assert_access(self, app: Application, user: User) -> None:
-        if user.role == "admin":
+        role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
+        if role_str == "admin":
             return
-        if user.role == "customer" and app.customer_id != user.id:
+        if role_str == "customer" and app.customer_id != user.id:
             raise AuthorizationError("You do not have access to this application.")
-        if user.role == "cr" and app.assigned_cr_id and app.assigned_cr_id != user.id:
+        if role_str == "sales" and app.sales_agent_id and app.sales_agent_id != user.id:
+            raise AuthorizationError("You do not have access to this application.")
+        if role_str == "cr" and app.assigned_cr_id and app.assigned_cr_id != user.id:
             # Note: Unassigned applications can be viewed by CR team to claim/review
             pass
