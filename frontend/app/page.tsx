@@ -70,6 +70,15 @@ export default function HomePage() {
       }
     }
     loadBusinesses();
+
+    if (typeof window !== 'undefined' && window.location.hash === '#projects') {
+      setTimeout(() => {
+        const el = document.getElementById('projects');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 200);
+    }
   }, []);
 
   const handleTrack = (e: React.FormEvent) => {
@@ -223,13 +232,14 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Division Filter Header */}
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900">Official Project Divisions</h2>
-            <p className="text-xs text-slate-500">Commercial projects managed under Sunset Group ownership</p>
+        {/* Official Project Divisions Section */}
+        <section id="projects" className="scroll-mt-20">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">Official Project Divisions</h2>
+              <p className="text-xs text-slate-500">Commercial projects managed under Sunset Group ownership</p>
+            </div>
           </div>
-        </div>
 
         {/* Horizontal Scroll Filter Chips */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-4">
@@ -357,6 +367,7 @@ export default function HomePage() {
             );
           })}
         </div>
+        </section>
       </main>
 
       {/* Footer */}

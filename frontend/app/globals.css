@@ -3753,3 +3753,7 @@ input, select, textarea {
     transform: none;
   }
 }
+
+html {
+  scroll-behavior: smooth;
+}

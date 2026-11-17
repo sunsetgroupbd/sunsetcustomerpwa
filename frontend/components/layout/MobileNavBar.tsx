@@ -51,6 +51,21 @@ export const MobileNavBar: React.FC = () => {
 
   const navItems = getNavItems();
 
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href === '/#projects') {
+      if (pathname === '/') {
+        e.preventDefault();
+        const el = document.getElementById('projects');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    } else if (href === '/' && pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1 shadow-lg">
       <div className="flex items-center justify-around h-14 max-w-md mx-auto">
@@ -61,6 +76,7 @@ export const MobileNavBar: React.FC = () => {
             <Link
               key={item.href}
               href={item.href}
+              onClick={(e) => handleNavClick(e, item.href)}
               className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
                 isActive ? 'text-[#008751]' : 'text-slate-500 hover:text-slate-900'
               }`}
