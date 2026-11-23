@@ -378,6 +378,16 @@ async def assign_cr(
     status_code=status.HTTP_200_OK,
     summary="Update application status (CR / admin)",
 )
+@router.patch(
+    "/{application_id}/status",
+    status_code=status.HTTP_200_OK,
+    summary="Update application status via PATCH (CR / admin)",
+)
+@router.put(
+    "/{application_id}/status",
+    status_code=status.HTTP_200_OK,
+    summary="Update application status via PUT (CR / admin)",
+)
 async def update_status(
     application_id: int,
     payload: StatusUpdateRequest,

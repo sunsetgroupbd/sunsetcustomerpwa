@@ -153,6 +153,7 @@
     --color-slate-700: oklch(37.2% .044 257.287);
     --color-slate-800: oklch(27.9% .041 260.031);
     --color-slate-900: oklch(20.8% .042 265.755);
+    --color-slate-950: oklch(12.9% .042 264.695);
     --color-black: #000;
     --color-white: #fff;
     --spacing: .25rem;
@@ -821,6 +822,10 @@
     display: none;
   }
 
+  .inline-block {
+    display: inline-block;
+  }
+
   .inline-flex {
     display: inline-flex;
   }
@@ -933,8 +938,16 @@
     height: 18px;
   }
 
+  .h-\[60vh\] {
+    height: 60vh;
+  }
+
   .h-\[62vh\] {
     height: 62vh;
+  }
+
+  .h-auto {
+    height: auto;
   }
 
   .h-full {
@@ -951,6 +964,10 @@
 
   .max-h-\[62vh\] {
     max-height: 62vh;
+  }
+
+  .max-h-\[65vh\] {
+    max-height: 65vh;
   }
 
   .max-h-\[70vh\] {
@@ -1147,6 +1164,10 @@
 
   .max-w-\[170px\] {
     max-width: 170px;
+  }
+
+  .max-w-\[180px\] {
+    max-width: 180px;
   }
 
   .max-w-\[200px\] {
@@ -1493,6 +1514,10 @@
 
   .rounded-lg {
     border-radius: var(--radius-lg);
+  }
+
+  .rounded-md {
+    border-radius: var(--radius-md);
   }
 
   .rounded-xl {
@@ -1907,6 +1932,16 @@
     }
   }
 
+  .bg-black\/40 {
+    background-color: #0006;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-black\/40 {
+      background-color: color-mix(in oklab, var(--color-black) 40%, transparent);
+    }
+  }
+
   .bg-black\/60 {
     background-color: #0009;
   }
@@ -2223,6 +2258,10 @@
     .bg-slate-900\/70 {
       background-color: color-mix(in oklab, var(--color-slate-900) 70%, transparent);
     }
+  }
+
+  .bg-slate-950 {
+    background-color: var(--color-slate-950);
   }
 
   .bg-teal-50 {
@@ -3083,6 +3122,10 @@
     opacity: .25;
   }
 
+  .opacity-30 {
+    opacity: .3;
+  }
+
   .opacity-40 {
     opacity: .4;
   }
@@ -3520,6 +3563,10 @@
       background-color: #008751;
     }
 
+    .hover\:bg-amber-50:hover {
+      background-color: var(--color-amber-50);
+    }
+
     .hover\:bg-emerald-50:hover {
       background-color: var(--color-emerald-50);
     }
@@ -3536,6 +3583,10 @@
       .hover\:bg-emerald-100\/90:hover {
         background-color: color-mix(in oklab, var(--color-emerald-100) 90%, transparent);
       }
+    }
+
+    .hover\:bg-emerald-700:hover {
+      background-color: var(--color-emerald-700);
     }
 
     .hover\:bg-purple-50:hover {
@@ -3658,6 +3709,11 @@
 
     .hover\:shadow-md:hover {
       --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, #0000001a), 0 2px 4px -2px var(--tw-shadow-color, #0000001a);
+      box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+    }
+
+    .hover\:shadow-sm:hover {
+      --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, #0000001a), 0 1px 2px -1px var(--tw-shadow-color, #0000001a);
       box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
     }
 
@@ -4129,6 +4185,10 @@
   @media (min-width: 64rem) {
     .lg\:col-span-2 {
       grid-column: span 2 / span 2;
+    }
+
+    .lg\:col-span-3 {
+      grid-column: span 3 / span 3;
     }
 
     .lg\:grid-cols-3 {

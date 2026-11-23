@@ -7,9 +7,12 @@ export type ApplicationStatus =
   | 'submitted'
   | 'under_review'
   | 'action_required'
+  | 'correction_required'
+  | 'documents_required'
   | 'approved'
   | 'rejected'
-  | 'returned';
+  | 'returned'
+  | 'cancelled';
 
 export type DocumentType =
   | 'applicant_photo'
@@ -102,9 +105,11 @@ export interface ApplicantInfo {
 
 export interface Nominee {
   id?: string;
-  nominee_order: number;
+  nominee_order?: number;
   full_name: string;
+  name?: string;
   relation: string;
+  relationship?: string;
   father_or_husband_name: string;
   nid_or_passport: string;
   cell_number: string;
@@ -117,30 +122,37 @@ export interface BankDetail {
   account_name: string;
   account_number: string;
   bank_name: string;
-  branch_name: string;
+  branch_name?: string;
+  branch?: string;
+  routing_number?: string | null;
 }
 
 export interface OwnershipDetail {
   id?: string;
   package_type: 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | string;
+  package?: string;
   number_of_ownership: number;
   number_of_shares?: number;
-  price_per_ownership: number;
-  discount_amount: number;
+  price_per_ownership?: number;
+  discount_amount?: number;
   total_price: number;
   amount_in_words?: string | null;
 }
 
 export interface PaymentDetail {
   id?: string;
-  token_money: number;
+  token_money?: number;
   booking_money: number;
   booking_date?: string | null;
-  installment_type: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly';
+  installment_type?: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly' | string;
   number_of_installments: number;
   installment_amount: number;
   installment_start_date?: string | null;
-  dues_amount: number;
+  dues_amount?: number;
+  payment_type?: string;
+  payment_mode?: string;
+  cheque_number?: string | null;
+  bank_name?: string | null;
 }
 
 export interface ApplicationDocument {
@@ -171,6 +183,7 @@ export interface Application {
   reference_number: string;
   customer_id: string;
   customer_id_number?: string | null;
+  customer?: any;
   business_id: string;
   business?: Business;
   assigned_cr_id?: string | null;
@@ -179,6 +192,7 @@ export interface Application {
   status: ApplicationStatus;
   submission_date?: string | null;
   submitted_at?: string | null;
+  application_date?: string | null;
   current_step: number;
   is_submitted: boolean;
   is_edit_unlocked?: boolean;

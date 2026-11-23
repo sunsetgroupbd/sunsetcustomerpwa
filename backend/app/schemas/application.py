@@ -8,7 +8,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, computed_field
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, computed_field, model_validator
 
 
 def parse_optional_date(v: Any) -> date | None:
@@ -291,8 +291,24 @@ class ApplicationDetail(ApplicationListItem):
 
 
 class StatusUpdateRequest(BaseModel):
-    new_status: str
+    new_status: str | None = None
+    status: str | None = None
     reason: str | None = None
+    notes: str | None = None
+    correction_details: str | None = None
+
+    @model_validator(mode="after")
+    def normalize_status_fields(self) -> StatusUpdateRequest:
+        target = (self.new_status or self.status or "").strip().lower()
+        if not target:
+            raise ValueError("Status field ('new_status' or 'status') is required.")
+        # Normalize frontend variant names
+        if target == "action_required":
+            target = "correction_required"
+        self.new_status = target
+        self.status = target
+        self.reason = self.reason or self.notes or self.correction_details
+        return self
 
 
 class AssignCRRequest(BaseModel):

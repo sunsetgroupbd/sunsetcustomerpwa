@@ -280,8 +280,14 @@ export const api = {
 
     updateStatus: (id: string, status: string, notes?: string, correctionDetails?: string) =>
       request<Application>(`/applications/${id}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status, notes, correction_details: correctionDetails }),
+        method: 'POST',
+        body: JSON.stringify({
+          new_status: status,
+          status,
+          reason: notes || correctionDetails || undefined,
+          notes: notes || undefined,
+          correction_details: correctionDetails || undefined,
+        }),
       }),
 
     addRemark: (id: string, text: string, isInternal: boolean = false) =>

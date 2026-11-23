@@ -50,12 +50,12 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 VALID_TRANSITIONS: dict[str, list[str]] = {
     "draft": ["submitted", "cancelled"],
-    "submitted": ["under_review", "cancelled"],
-    "under_review": ["documents_required", "correction_required", "approved", "rejected"],
-    "documents_required": ["under_review", "cancelled"],
+    "submitted": ["under_review", "approved", "correction_required", "documents_required", "rejected", "cancelled"],
+    "under_review": ["documents_required", "correction_required", "approved", "rejected", "cancelled"],
+    "documents_required": ["under_review", "submitted", "cancelled"],
     "correction_required": ["submitted", "cancelled"],
-    "approved": [],
-    "rejected": [],
+    "approved": ["approved"],
+    "rejected": ["under_review", "rejected"],
     "cancelled": [],
 }
 
