@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Icons } from '../ui/Icons';
 import { Button } from '../ui/Button';
 import { getDivisionLogo } from './ApplicationWizard';
@@ -79,6 +79,8 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
   onClose,
   data,
 }) => {
+  const printContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -94,10 +96,6 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   const app = data.applicantInfo || {};
   const own = data.ownershipDetail || {};
@@ -126,107 +124,484 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
   const grossTotal = pricePerUnit * qty;
   const discount = Number(own.discount_amount || own.discount) || 0;
   const netTotal = Number(own.total_price) || Math.max(0, grossTotal - discount);
+  const bookingPaid = Number(pay.booking_money || pay.token_money) || 0;
+  const remainingDues = Number(pay.dues_amount) || Math.max(0, netTotal - bookingPaid);
+
+  // Standalone, isolated print function to guarantee NO blank white page
+  const handlePrint = () => {
+    // 1. Temporarily restore body overflow so browsers won't clip printing
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'visible';
+
+    // 2. Build isolated clean printable HTML
+    const printableHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <title>Receipt - ${data.referenceNumber || 'Application'}</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+            font-size: 12px;
+            line-height: 1.4;
+          }
+          .receipt-box {
+            max-width: 190mm;
+            margin: 0 auto;
+            border: 1px solid #cbd5e1;
+            padding: 16px 20px;
+            background: #ffffff;
+          }
+          .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #006B3E;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+          }
+          .company-info h1 {
+            font-size: 20px;
+            font-weight: 800;
+            color: #006B3E;
+            margin: 0 0 2px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .company-info p {
+            margin: 0;
+            font-size: 10px;
+            color: #64748b;
+          }
+          .division-info {
+            text-align: right;
+          }
+          .division-info .div-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+          }
+          .division-info .div-code {
+            font-size: 10px;
+            font-weight: 600;
+            color: #006B3E;
+            text-transform: uppercase;
+          }
+          .receipt-title-box {
+            text-align: center;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            padding: 6px 10px;
+            margin-bottom: 14px;
+            border-radius: 4px;
+          }
+          .receipt-title {
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #0f172a;
+            margin: 0;
+            letter-spacing: 0.5px;
+          }
+          .receipt-meta {
+            display: flex;
+            justify-content: space-between;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 14px;
+            font-size: 11px;
+          }
+          .receipt-meta-item strong {
+            color: #475569;
+            text-transform: uppercase;
+            font-size: 10px;
+            display: block;
+          }
+          .receipt-meta-item span {
+            font-weight: 700;
+            color: #0f172a;
+          }
+          .ref-highlight {
+            color: #006B3E !important;
+            font-family: monospace;
+            font-size: 12px;
+          }
+          .section-heading {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #006B3E;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 3px;
+            margin: 12px 0 6px 0;
+            letter-spacing: 0.3px;
+          }
+          table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+          }
+          table.data-table th,
+          table.data-table td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 8px;
+            font-size: 11px;
+            text-align: left;
+          }
+          table.data-table th {
+            background-color: #f8fafc;
+            font-weight: 700;
+            color: #334155;
+            text-transform: uppercase;
+            font-size: 10px;
+          }
+          .text-right {
+            text-align: right !important;
+          }
+          .text-center {
+            text-align: center !important;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 16px;
+            margin-bottom: 10px;
+            font-size: 11px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            border-bottom: 1px dotted #e2e8f0;
+          }
+          .info-label {
+            color: #64748b;
+          }
+          .info-val {
+            font-weight: 600;
+            color: #1e293b;
+            text-align: right;
+          }
+          .signatures-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 32px;
+            padding-top: 8px;
+          }
+          .signature-box {
+            width: 38%;
+            text-align: center;
+          }
+          .sig-line {
+            border-top: 1px dashed #64748b;
+            margin-bottom: 4px;
+            height: 1px;
+          }
+          .sig-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #334155;
+          }
+          .footer-note {
+            text-align: center;
+            font-size: 9px;
+            color: #94a3b8;
+            margin-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 6px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="receipt-box">
+          <!-- Header -->
+          <div class="header-row">
+            <div class="company-info">
+              <h1>SUNSET GROUP</h1>
+              <p>Corporate Office: Gulshan, Dhaka / Cox's Bazar, Bangladesh</p>
+              <p>Hotline: +880 9612-SUNSET &bull; Web: www.sunsetgroupbd.com</p>
+            </div>
+            <div class="division-info">
+              <div class="div-name">${businessName}</div>
+              <div class="div-code">Division: ${businessCode}</div>
+              <p style="margin:2px 0 0 0; font-size:10px; color:#64748b;">Official Client Copy</p>
+            </div>
+          </div>
+
+          <!-- Document Title -->
+          <div class="receipt-title-box">
+            <h2 class="receipt-title">MONEY RECEIPT &amp; APPLICATION ACKNOWLEDGEMENT</h2>
+          </div>
+
+          <!-- Reference Meta Bar -->
+          <div class="receipt-meta">
+            <div class="receipt-meta-item">
+              <strong>Receipt / Ref No</strong>
+              <span class="ref-highlight">${data.referenceNumber || 'SKH-2026-00001'}</span>
+            </div>
+            <div class="receipt-meta-item">
+              <strong>Date</strong>
+              <span>${formattedDate}</span>
+            </div>
+            <div class="receipt-meta-item">
+              <strong>Division</strong>
+              <span>${businessCode}</span>
+            </div>
+            <div class="receipt-meta-item">
+              <strong>Status</strong>
+              <span style="color:#006B3E;">${(data.status || 'SUBMITTED').toUpperCase()}</span>
+            </div>
+          </div>
+
+          <!-- Section 1: Customer Details -->
+          <div class="section-heading">1. Customer Particulars</div>
+          <div class="info-grid">
+            <div class="info-row">
+              <span class="info-label">Applicant Name:</span>
+              <span class="info-val">${app.full_name_en || '—'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Mobile Number:</span>
+              <span class="info-val">${app.mobile_number || '—'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Father's Name:</span>
+              <span class="info-val">${app.father_name || '—'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">NID / Passport No:</span>
+              <span class="info-val">${app.nid_or_passport || '—'}</span>
+            </div>
+            <div class="info-row" style="grid-column: span 2;">
+              <span class="info-label">Present Address:</span>
+              <span class="info-val">${app.present_address || '—'}</span>
+            </div>
+          </div>
+
+          <!-- Section 2: Ownership & Investment Details -->
+          <div class="section-heading">2. Investment &amp; Package Particulars</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Project / Division</th>
+                <th>Package Type</th>
+                <th class="text-center">Units</th>
+                <th class="text-right">Unit Rate (৳)</th>
+                <th class="text-right">Discount (৳)</th>
+                <th class="text-right">Total Price (৳)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${businessName}</td>
+                <td><strong>${own.package_type || own.package || 'Ownership Unit'}</strong></td>
+                <td class="text-center">${qty}</td>
+                <td class="text-right">৳ ${pricePerUnit.toLocaleString('en-IN')}</td>
+                <td class="text-right">${discount > 0 ? `৳ ${discount.toLocaleString('en-IN')}` : '৳ 0'}</td>
+                <td class="text-right" style="font-weight:700; background:#f8fafc;">৳ ${netTotal.toLocaleString('en-IN')}</td>
+              </tr>
+            </tbody>
+          </table>
+          ${
+            own.amount_in_words
+              ? `<div style="font-size:11px; margin-bottom:10px; color:#334155;"><strong>Amount in words:</strong> Taka ${own.amount_in_words} Only</div>`
+              : ''
+          }
+
+          <!-- Section 3: Payment Particulars -->
+          <div class="section-heading">3. Payment &amp; Installment Details</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Booking / Token Money Paid</th>
+                <th>Remaining Balance</th>
+                <th>Installment Schedule</th>
+                <th>Bank / Payment Mode</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:700; color:#006B3E;">৳ ${bookingPaid.toLocaleString('en-IN')}</td>
+                <td style="font-weight:700; color:#b91c1c;">৳ ${remainingDues.toLocaleString('en-IN')}</td>
+                <td>
+                  ${
+                    pay.number_of_installments
+                      ? `${pay.number_of_installments} &times; ৳ ${(Number(pay.installment_amount) || 0).toLocaleString('en-IN')} (${pay.installment_type || 'Monthly'})`
+                      : 'Full Payment / Lump Sum'
+                  }
+                </td>
+                <td>${bank.bank_name ? `${bank.bank_name} (${bank.branch_name || 'Main'})` : 'Cash / Direct Cheque'}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Section 4: Nominee (if any) -->
+          ${
+            nom1.name || nom1.full_name
+              ? `
+              <div class="section-heading">4. Nominee Particulars</div>
+              <div class="info-grid" style="margin-bottom:8px;">
+                <div class="info-row">
+                  <span class="info-label">Nominee Name:</span>
+                  <span class="info-val">${nom1.full_name || nom1.name}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Relationship:</span>
+                  <span class="info-val">${nom1.relation || nom1.relationship || 'Nominee'}</span>
+                </div>
+              </div>
+            `
+              : ''
+          }
+
+          <!-- Section 5: Signatures -->
+          <div class="signatures-row">
+            <div class="signature-box">
+              <div class="sig-line"></div>
+              <div class="sig-title">Customer / Applicant Signature</div>
+            </div>
+            <div class="signature-box">
+              <div class="sig-line"></div>
+              <div class="sig-title">Authorized Signatory (Sunset Group)</div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="footer-note">
+            This is a computer-generated official acknowledgement receipt from Sunset Group. Valid subject to document verification &amp; cheque clearance.
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // 3. Isolated invisible iframe printing technique (100% reliable)
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.visibility = 'hidden';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(printableHtml);
+        doc.close();
+
+        setTimeout(() => {
+          try {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+          } catch {
+            window.print();
+          } finally {
+            setTimeout(() => {
+              try {
+                document.body.removeChild(iframe);
+              } catch {
+                // ignore cleanup if already detached
+              }
+              document.body.style.overflow = prevOverflow;
+            }, 1000);
+          }
+        }, 300);
+        return;
+      }
+    } catch {
+      // Fallback to normal window print if iframe blocked
+    }
+
+    // Fallback: standard print
+    window.print();
+    document.body.style.overflow = prevOverflow;
+  };
 
   return (
     <div className="fixed inset-0 z-[200] overflow-y-auto">
-      {/* Print CSS Injection: Strictly Isolates #printable-receipt When Printing */}
+      {/* Print CSS Injection for Fallback */}
       <style jsx global>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 8mm 8mm;
+            margin: 8mm;
           }
           html, body {
+            background: white !important;
+            color: #1e293b !important;
             margin: 0 !important;
             padding: 0 !important;
-            background: white !important;
-            color: #0f172a !important;
             height: auto !important;
             overflow: visible !important;
-            font-size: 10pt !important;
           }
-          /* Hide all non-receipt elements */
           .no-print,
-          header,
           nav,
+          header,
           footer,
-          button,
-          .fixed.inset-0.bg-slate-900\/70 {
+          button {
             display: none !important;
           }
-          /* Neutralize modal wrapper styles so the document flows naturally on page */
-          .fixed.inset-0.z-\\[200\\] {
-            position: static !important;
-            overflow: visible !important;
-            display: block !important;
-            background: white !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .min-h-full,
-          .max-h-\\[95vh\\],
-          .overflow-y-auto {
-            min-height: 0 !important;
-            max-height: none !important;
-            overflow: visible !important;
-            border: none !important;
+          #simple-receipt-card {
             box-shadow: none !important;
-            background: white !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          #printable-receipt-container {
-            position: static !important;
-            display: block !important;
+            border: 1px solid #cbd5e1 !important;
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
-            padding: 4mm 6mm !important;
-            border: none !important;
-            box-shadow: none !important;
-            background: white !important;
-            page-break-after: avoid !important;
-            page-break-inside: avoid !important;
-          }
-          #printable-receipt-container * {
-            visibility: visible !important;
-          }
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+            padding: 12px 16px !important;
           }
         }
       `}</style>
 
-      {/* Modal Backdrop */}
+      {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs transition-opacity animate-in fade-in duration-200 no-print"
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity no-print"
         onClick={onClose}
       />
 
-      {/* Modal Dialog Container */}
+      {/* Modal Dialog */}
       <div className="flex min-h-full items-center justify-center p-2 sm:p-4 md:p-6">
         <div
-          className="relative w-full max-w-4xl bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 flex flex-col max-h-[95vh] overflow-hidden transform transition-all animate-in zoom-in-95 duration-200"
+          className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Top Modal Action Bar */}
-          <div className="bg-white border-b border-slate-200 px-4 py-3 sm:px-6 flex items-center justify-between gap-3 shrink-0 no-print">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-[#006B3E] flex items-center justify-center shrink-0">
-                <Icons.FileText className="w-5 h-5" />
+          {/* Action Header */}
+          <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 sm:px-6 flex items-center justify-between gap-3 shrink-0 no-print">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 text-[#006B3E] flex items-center justify-center shrink-0">
+                <Icons.FileText className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">
-                  Official Application &amp; Booking Receipt
+                <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                  Application &amp; Booking Receipt
                 </h3>
-                <span className="text-[11px] text-slate-500 font-mono">
-                  Ref: {data.referenceNumber || 'N/A'} • {formattedDate}
+                <span className="text-xs text-slate-500 font-mono">
+                  Ref: {data.referenceNumber || 'SKH-2026-00001'}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2">
               <Button
                 variant="primary"
                 size="sm"
@@ -239,7 +614,7 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
                 title="Close receipt preview"
               >
                 <Icons.X className="w-5 h-5" />
@@ -247,405 +622,267 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
             </div>
           </div>
 
-          {/* Quick PDF Save Tip Banner */}
-          <div className="bg-emerald-50/90 border-b border-emerald-200/80 px-4 py-2 sm:px-6 text-[11px] sm:text-xs text-emerald-800 flex items-center justify-between shrink-0 no-print">
-            <span>
-              💡 <strong>How to save as PDF:</strong> Click <strong>Print / Save PDF</strong> and select{' '}
-              <strong>&quot;Save as PDF&quot;</strong> in your browser&apos;s printer destination dropdown.
-            </span>
-            <span className="text-emerald-700 font-medium hidden sm:inline">Official Client Copy</span>
-          </div>
-
-          {/* Scrollable Receipt Body (Screen Preview) */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-200/60">
+          {/* Receipt Preview Area */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-100/70">
             <div
-              id="printable-receipt-container"
-              className="bg-white text-slate-900 max-w-[210mm] mx-auto rounded-xl sm:rounded-2xl shadow-md border border-slate-200 p-5 sm:p-8 md:p-10"
+              id="simple-receipt-card"
+              ref={printContainerRef}
+              className="bg-white text-slate-800 rounded-lg shadow-sm border border-slate-300 p-5 sm:p-7 max-w-[190mm] mx-auto text-xs"
             >
-              {/* Receipt Header: Corporate Brand & Division */}
-              <div className="flex items-center justify-between gap-4 pb-4 border-b-2 border-[#006B3E]">
-                {/* Left: Sunset Group Master Logo */}
-                <div className="flex items-center gap-3">
+              {/* Receipt Header */}
+              <div className="flex items-center justify-between pb-3 border-b-2 border-[#006B3E] mb-3">
+                <div className="flex items-center gap-2.5">
                   <img
                     src="/Sunset-Group-Logo.png"
                     alt="Sunset Group"
-                    className="h-12 sm:h-14 w-auto object-contain"
+                    className="h-10 sm:h-12 w-auto object-contain"
                     onError={(e) => {
                       (e.target as HTMLElement).style.display = 'none';
                     }}
                   />
                   <div>
-                    <h1 className="text-lg sm:text-2xl font-black tracking-tight text-[#006B3E] uppercase font-serif">
+                    <h1 className="text-base sm:text-lg font-black tracking-tight text-[#006B3E] uppercase font-serif leading-tight">
                       SUNSET GROUP
                     </h1>
-                    <p className="text-[10px] sm:text-xs font-semibold text-slate-600 tracking-wide uppercase">
-                      Cox&apos;s Bazar &bull; Dhaka &bull; Bangladesh
+                    <p className="text-[10px] text-slate-500 leading-tight">
+                      Corporate Office: Gulshan, Dhaka / Cox&apos;s Bazar, Bangladesh
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-tight">
+                      Hotline: +880 9612-SUNSET &bull; Web: www.sunsetgroupbd.com
                     </p>
                   </div>
                 </div>
 
-                {/* Right: Division Logo & Identifier */}
-                <div className="flex items-center gap-2.5 text-right">
-                  <div className="hidden sm:block">
-                    <span className="text-[10px] font-bold tracking-widest text-[#006B3E] uppercase block">
-                      DIVISION: {businessCode}
+                <div className="text-right flex items-center gap-2">
+                  <div>
+                    <h2 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">
+                      {businessName}
+                    </h2>
+                    <span className="text-[10px] font-bold text-[#006B3E] uppercase block">
+                      Division: {businessCode}
                     </span>
-                    <h2 className="text-xs sm:text-sm font-bold text-slate-800">{businessName}</h2>
+                    <span className="text-[10px] text-slate-400 block">Official Client Copy</span>
                   </div>
                   <img
                     src={divisionLogo}
                     alt={businessName}
-                    className="h-11 sm:h-13 w-auto object-contain rounded-lg p-0.5 bg-slate-50 border border-slate-200"
+                    className="h-9 sm:h-11 w-auto object-contain rounded p-0.5 border border-slate-200 bg-slate-50"
                   />
                 </div>
               </div>
 
-              {/* Sub-header Address & Contact Line */}
-              <div className="py-2 border-b border-slate-200/80 text-[10px] sm:text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-2">
-                <span>
-                  <strong>Corporate HQ:</strong> Sunset Tower, Plot #12, Block #B, Gulshan / Cox&apos;s Bazar, Bangladesh
-                </span>
-                <span>
-                  <strong>Hotline:</strong> +880 9612-SUNSET &bull; <strong>Web:</strong> www.sunsetgroupbd.com
-                </span>
-              </div>
-
-              {/* Document Title Banner */}
-              <div className="my-4 py-2.5 px-4 bg-slate-900 text-white rounded-lg text-center">
-                <h2 className="text-xs sm:text-sm md:text-base font-extrabold uppercase tracking-wider">
-                  INVESTMENT APPLICATION &amp; BOOKING ACKNOWLEDGEMENT RECEIPT
+              {/* Document Title */}
+              <div className="text-center bg-slate-100 border border-slate-200 rounded py-1.5 px-3 mb-3">
+                <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-slate-900">
+                  MONEY RECEIPT &amp; APPLICATION ACKNOWLEDGEMENT
                 </h2>
-                <p className="text-[10px] sm:text-[11px] text-emerald-400 font-medium tracking-wide">
-                  OFFICIAL INVESTOR COPY &bull; DIGITALLY REGISTERED &bull; APPLICATION REF: {data.referenceNumber || 'N/A'}
-                </p>
               </div>
 
-              {/* Top Reference Metadata Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-lg bg-emerald-50/60 border border-emerald-200 text-xs mb-5">
+              {/* Meta Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 border border-slate-200 rounded p-2.5 mb-4 text-[11px]">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Application Ref No</span>
-                  <span className="text-xs sm:text-sm font-mono font-bold text-[#006B3E]">
+                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Receipt / Ref No</span>
+                  <span className="font-mono font-bold text-[#006B3E]">
                     {data.referenceNumber || 'SKH-2026-00001'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Submission Date</span>
-                  <span className="text-xs font-semibold text-slate-900">{formattedDate}</span>
+                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Date</span>
+                  <span className="font-semibold text-slate-800">{formattedDate}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Project / Division</span>
-                  <span className="text-xs font-semibold text-slate-900 truncate block">
-                    {businessName} ({businessCode})
-                  </span>
+                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Division</span>
+                  <span className="font-semibold text-slate-800">{businessCode}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Registration Status</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    SUBMITTED
+                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Status</span>
+                  <span className="font-bold text-[#006B3E]">
+                    {(data.status || 'SUBMITTED').toUpperCase()}
                   </span>
                 </div>
               </div>
 
-              {/* SECTION 1: APPLICANT PARTICULARS */}
-              <div className="mb-5">
-                <div className="flex items-center gap-2 pb-1.5 mb-2.5 border-b border-slate-200">
-                  <span className="w-5 h-5 rounded bg-[#006B3E] text-white flex items-center justify-center text-[10px] font-bold">
-                    1
-                  </span>
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wide">
-                    Applicant Particulars
-                  </h3>
+              {/* 1. Customer Details */}
+              <div className="mb-4">
+                <div className="text-[11px] font-bold text-[#006B3E] uppercase border-b border-slate-200 pb-1 mb-2">
+                  1. Customer Particulars
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">Applicant Name (EN):</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
+                  <div className="flex justify-between py-0.5 border-b border-slate-100">
+                    <span className="text-slate-500">Applicant Name:</span>
                     <span className="font-bold text-slate-900 uppercase">{app.full_name_en || '—'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">Applicant Name (BN):</span>
-                    <span className="font-semibold text-slate-900">{app.full_name_bn || '—'}</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">Father&apos;s Name:</span>
-                    <span className="font-semibold text-slate-900">{app.father_name || '—'}</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">Mother&apos;s Name:</span>
-                    <span className="font-semibold text-slate-900">{app.mother_name || '—'}</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">Spouse&apos;s Name:</span>
-                    <span className="font-semibold text-slate-900">{app.spouse_name || '—'}</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">Mobile / Cell:</span>
+                  <div className="flex justify-between py-0.5 border-b border-slate-100">
+                    <span className="text-slate-500">Mobile Number:</span>
                     <span className="font-bold text-slate-900">{app.mobile_number || '—'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">NID / Passport No:</span>
-                    <span className="font-mono font-bold text-slate-900">{app.nid_or_passport || '—'}</span>
+                  <div className="flex justify-between py-0.5 border-b border-slate-100">
+                    <span className="text-slate-500">Father&apos;s Name:</span>
+                    <span className="font-semibold text-slate-800">{app.father_name || '—'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">Date of Birth &amp; Nationality:</span>
-                    <span className="font-semibold text-slate-900">
-                      {app.date_of_birth || '—'} &bull; {app.nationality || 'Bangladeshi'}
-                    </span>
+                  <div className="flex justify-between py-0.5 border-b border-slate-100">
+                    <span className="text-slate-500">NID / Passport:</span>
+                    <span className="font-mono font-semibold text-slate-800">{app.nid_or_passport || '—'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100 sm:col-span-2">
+                  <div className="flex justify-between py-0.5 border-b border-slate-100 sm:col-span-2">
                     <span className="text-slate-500 shrink-0">Present Address:</span>
                     <span className="font-medium text-slate-800 text-right">{app.present_address || '—'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100 sm:col-span-2">
-                    <span className="text-slate-500 shrink-0">Permanent Address:</span>
-                    <span className="font-medium text-slate-800 text-right">{app.permanent_address || '—'}</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100 sm:col-span-2">
-                    <span className="text-slate-500 shrink-0">Occupation &amp; Organization:</span>
-                    <span className="font-semibold text-slate-900 text-right">
-                      {app.designation || '—'}
-                      {app.company_name ? `, ${app.company_name}` : ''}
-                    </span>
-                  </div>
                 </div>
               </div>
 
-              {/* SECTION 2: OWNERSHIP & INVESTMENT DETAILS */}
-              <div className="mb-5">
-                <div className="flex items-center gap-2 pb-1.5 mb-2.5 border-b border-slate-200">
-                  <span className="w-5 h-5 rounded bg-[#006B3E] text-white flex items-center justify-center text-[10px] font-bold">
-                    2
-                  </span>
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wide">
-                    Investment Package &amp; Ownership Allocation
-                  </h3>
+              {/* 2. Investment Package */}
+              <div className="mb-4">
+                <div className="text-[11px] font-bold text-[#006B3E] uppercase border-b border-slate-200 pb-1 mb-2">
+                  2. Investment &amp; Package Particulars
                 </div>
-
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border border-slate-200 rounded-lg overflow-hidden">
-                    <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+                  <table className="w-full text-[11px] border-collapse border border-slate-200">
+                    <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px]">
                       <tr>
-                        <th className="p-2 border-b border-r border-slate-200">Division / Project</th>
-                        <th className="p-2 border-b border-r border-slate-200">Package Type</th>
-                        <th className="p-2 border-b border-r border-slate-200 text-center">Units</th>
-                        <th className="p-2 border-b border-r border-slate-200 text-right">Rate/Unit (৳)</th>
-                        <th className="p-2 border-b border-r border-slate-200 text-right">Discount (৳)</th>
-                        <th className="p-2 border-b border-slate-200 text-right">Net Consideration (৳)</th>
+                        <th className="p-1.5 border border-slate-200 text-left">Project / Division</th>
+                        <th className="p-1.5 border border-slate-200 text-left">Package Type</th>
+                        <th className="p-1.5 border border-slate-200 text-center">Units</th>
+                        <th className="p-1.5 border border-slate-200 text-right">Unit Rate (৳)</th>
+                        <th className="p-1.5 border border-slate-200 text-right">Discount (৳)</th>
+                        <th className="p-1.5 border border-slate-200 text-right">Total Price (৳)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
+                    <tbody className="bg-white">
                       <tr>
-                        <td className="p-2 border-r border-slate-200 font-semibold">{businessName}</td>
-                        <td className="p-2 border-r border-slate-200 font-bold text-[#006B3E]">
-                          {own.package_type || own.package || 'Standard Ownership'}
+                        <td className="p-1.5 border border-slate-200 font-semibold">{businessName}</td>
+                        <td className="p-1.5 border border-slate-200 font-bold text-[#006B3E]">
+                          {own.package_type || own.package || 'Ownership Unit'}
                         </td>
-                        <td className="p-2 border-r border-slate-200 text-center font-bold">{qty}</td>
-                        <td className="p-2 border-r border-slate-200 text-right font-mono">
+                        <td className="p-1.5 border border-slate-200 text-center font-bold">{qty}</td>
+                        <td className="p-1.5 border border-slate-200 text-right font-mono">
                           ৳ {pricePerUnit.toLocaleString('en-IN')}
                         </td>
-                        <td className="p-2 border-r border-slate-200 text-right font-mono text-amber-700">
-                          {discount > 0 ? `- ৳ ${discount.toLocaleString('en-IN')}` : '৳ 0'}
+                        <td className="p-1.5 border border-slate-200 text-right font-mono text-amber-700">
+                          {discount > 0 ? `৳ ${discount.toLocaleString('en-IN')}` : '৳ 0'}
                         </td>
-                        <td className="p-2 text-right font-mono font-bold text-slate-900 bg-emerald-50/50">
+                        <td className="p-1.5 border border-slate-200 text-right font-mono font-bold text-slate-900 bg-slate-50">
                           ৳ {netTotal.toLocaleString('en-IN')}
                         </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-
-                {/* Amount in words banner */}
-                <div className="mt-2 p-2 rounded bg-slate-50 border border-slate-200 text-[11px] flex items-center justify-between gap-2">
-                  <span className="text-slate-500 font-semibold">Total Net Payable (In Words):</span>
-                  <span className="font-bold text-slate-900 italic text-right">
-                    {own.amount_in_words ? `Taka ${own.amount_in_words} Only` : `৳ ${netTotal.toLocaleString('en-IN')}`}
-                  </span>
-                </div>
+                {own.amount_in_words && (
+                  <div className="mt-1 text-[10px] text-slate-600">
+                    <strong>In Words:</strong> Taka {own.amount_in_words} Only
+                  </div>
+                )}
               </div>
 
-              {/* SECTION 3: PAYMENT BREAKDOWN & SCHEDULE */}
-              <div className="mb-5">
-                <div className="flex items-center gap-2 pb-1.5 mb-2.5 border-b border-slate-200">
-                  <span className="w-5 h-5 rounded bg-[#006B3E] text-white flex items-center justify-center text-[10px] font-bold">
-                    3
-                  </span>
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wide">
-                    Payment Breakdown &amp; Financial Schedule
-                  </h3>
+              {/* 3. Payment Details */}
+              <div className="mb-4">
+                <div className="text-[11px] font-bold text-[#006B3E] uppercase border-b border-slate-200 pb-1 mb-2">
+                  3. Payment &amp; Financial Particulars
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/80">
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">Token Money Paid</span>
-                    <span className="text-xs sm:text-sm font-mono font-bold text-slate-900">
-                      ৳ {(Number(pay.token_money) || 0).toLocaleString('en-IN')}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  <div className="p-2 rounded border border-slate-200 bg-slate-50">
+                    <span className="text-[9px] uppercase font-bold text-slate-500 block">Booking Money Paid</span>
+                    <span className="font-mono font-bold text-[#006B3E] text-xs">
+                      ৳ {bookingPaid.toLocaleString('en-IN')}
                     </span>
                   </div>
-
-                  <div className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/50">
-                    <span className="text-[10px] text-emerald-800 uppercase font-semibold block">Booking Money</span>
-                    <span className="text-xs sm:text-sm font-mono font-bold text-[#006B3E]">
-                      ৳ {(Number(pay.booking_money) || 0).toLocaleString('en-IN')}
+                  <div className="p-2 rounded border border-slate-200 bg-slate-50">
+                    <span className="text-[9px] uppercase font-bold text-slate-500 block">Remaining Balance</span>
+                    <span className="font-mono font-bold text-rose-700 text-xs">
+                      ৳ {remainingDues.toLocaleString('en-IN')}
                     </span>
-                    {pay.booking_date && (
-                      <span className="text-[10px] text-slate-500 block mt-0.5">Date: {pay.booking_date}</span>
+                  </div>
+                  <div className="p-2 rounded border border-slate-200 bg-slate-50">
+                    <span className="text-[9px] uppercase font-bold text-slate-500 block">Installment Plan</span>
+                    <span className="font-bold text-slate-800 text-[11px] block">
+                      {pay.number_of_installments ? `${pay.number_of_installments} Months` : 'Lump Sum'}
+                    </span>
+                    {pay.installment_amount ? (
+                      <span className="text-[10px] text-slate-500">
+                        ৳ {(Number(pay.installment_amount) || 0).toLocaleString('en-IN')}/mo
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="p-2 rounded border border-slate-200 bg-slate-50">
+                    <span className="text-[9px] uppercase font-bold text-slate-500 block">Payment Mode</span>
+                    <span className="font-semibold text-slate-800 text-[11px] block truncate">
+                      {bank.bank_name ? bank.bank_name : 'Direct / Online'}
+                    </span>
+                    {bank.account_number && (
+                      <span className="text-[9px] text-slate-500 font-mono block truncate">
+                        A/C: {bank.account_number}
+                      </span>
                     )}
                   </div>
-
-                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/80">
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">Remaining Balance</span>
-                    <span className="text-xs sm:text-sm font-mono font-bold text-rose-700">
-                      ৳ {(Number(pay.dues_amount) || 0).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/80">
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">Installment Plan</span>
-                    <span className="text-xs font-bold text-slate-900 block">
-                      {pay.number_of_installments || 0} &times; ৳ {(Number(pay.installment_amount) || 0).toLocaleString('en-IN')}
-                    </span>
-                    <span className="text-[10px] text-slate-500 capitalize">
-                      {pay.installment_type || 'Monthly'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bank Account Details Row */}
-                <div className="mt-2.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div>
-                    <span className="text-[10px] text-slate-500 block">Bank Name:</span>
-                    <span className="font-semibold text-slate-900">{bank.bank_name || '—'}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 block">Account Name:</span>
-                    <span className="font-semibold text-slate-900">{bank.account_name || '—'}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 block">Account Number:</span>
-                    <span className="font-mono font-semibold text-slate-900">{bank.account_number || '—'}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 block">Branch:</span>
-                    <span className="font-semibold text-slate-900">{bank.branch_name || '—'}</span>
-                  </div>
                 </div>
               </div>
 
-              {/* SECTION 4: NOMINEE & DECLARATION */}
-              <div className="mb-6">
-                <div className="flex items-center gap-2 pb-1.5 mb-2.5 border-b border-slate-200">
-                  <span className="w-5 h-5 rounded bg-[#006B3E] text-white flex items-center justify-center text-[10px] font-bold">
-                    4
-                  </span>
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wide">
-                    Nominee &amp; Verification Declaration
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 rounded-lg border border-slate-200 bg-white space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Primary Nominee</span>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Name:</span>
-                      <span className="font-bold text-slate-900">{nom1.full_name || nom1.name || '—'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Relationship:</span>
-                      <span className="font-semibold text-slate-900">{nom1.relation || nom1.relationship || '—'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Contact / Cell:</span>
-                      <span className="font-semibold text-slate-900">{nom1.cell_number || '—'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">NID / Passport:</span>
-                      <span className="font-mono text-slate-800">{nom1.nid_or_passport || '—'}</span>
-                    </div>
+              {/* 4. Nominee (if present) */}
+              {(nom1.name || nom1.full_name) && (
+                <div className="mb-4">
+                  <div className="text-[11px] font-bold text-[#006B3E] uppercase border-b border-slate-200 pb-1 mb-2">
+                    4. Nominee Particulars
                   </div>
-
-                  <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/50 flex flex-col justify-between">
+                  <div className="flex flex-wrap gap-4 text-[11px]">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-emerald-900 block mb-1">
-                        Legal Declaration &amp; Acceptance
-                      </span>
-                      <p className="text-[11px] text-slate-600 leading-relaxed italic">
-                        &quot;I solemnly declare that the particulars furnished above are true and correct to the best of
-                        my knowledge. I agree to abide by the rules and regulations of Sunset Group and {businessName}.&quot;
-                      </p>
+                      <span className="text-slate-500 mr-1.5">Nominee Name:</span>
+                      <strong className="text-slate-900">{nom1.full_name || nom1.name}</strong>
                     </div>
-
-                    <div className="mt-2 pt-2 border-t border-emerald-200 flex items-center justify-between text-[11px]">
-                      <span className="text-emerald-900 font-semibold flex items-center gap-1">
-                        <Icons.CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        Digitally Verified
-                      </span>
-                      <span className="text-slate-500 font-mono text-[10px]">Timestamp: {formattedDate}</span>
+                    <div>
+                      <span className="text-slate-500 mr-1.5">Relationship:</span>
+                      <span className="text-slate-800 font-semibold">{nom1.relation || nom1.relationship || 'Nominee'}</span>
                     </div>
+                    {nom1.cell_number && (
+                      <div>
+                        <span className="text-slate-500 mr-1.5">Contact:</span>
+                        <span className="text-slate-800">{nom1.cell_number}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* SECTION 5: SIGNATURE & OFFICIAL AUTHENTICATION BLOCKS */}
-              <div className="pt-6 border-t-2 border-slate-200 grid grid-cols-3 gap-4 text-center mt-8">
-                <div>
-                  <div className="h-12 border-b border-dashed border-slate-400 flex items-end justify-center pb-1">
-                    <span className="text-[11px] font-serif italic text-emerald-800 font-bold">
-                      {app.full_name_en ? `${app.full_name_en}` : 'Digitally Signed'}
+              {/* Signatures */}
+              <div className="pt-6 mt-6 border-t border-slate-200 flex items-end justify-between">
+                <div className="text-center w-40">
+                  <div className="border-b border-dashed border-slate-400 pb-1 mb-1">
+                    <span className="font-serif italic text-xs text-slate-700">
+                      {app.full_name_en || 'Customer'}
                     </span>
                   </div>
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase block mt-1.5">
-                    Applicant Signature
+                  <span className="text-[10px] font-bold uppercase text-slate-600 block">
+                    Customer Signature
                   </span>
-                  <span className="text-[9px] text-slate-400 block">Authorized Customer</span>
                 </div>
 
-                <div>
-                  <div className="h-12 border-b border-dashed border-slate-400 flex items-end justify-center pb-1">
-                    <div className="w-8 h-8 rounded-full border border-emerald-400/80 bg-emerald-50/60 flex items-center justify-center text-[7px] font-black text-emerald-800 uppercase leading-none tracking-tighter text-center">
-                      CR SEAL
-                    </div>
-                  </div>
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase block mt-1.5">
-                    Customer Relations (CR)
-                  </span>
-                  <span className="text-[9px] text-slate-400 block">Verification Officer</span>
-                </div>
-
-                <div>
-                  <div className="h-12 border-b border-dashed border-slate-400 flex items-end justify-center pb-1">
-                    <span className="text-[10px] font-mono text-slate-500 uppercase font-semibold">
-                      SUNSET GROUP BD
+                <div className="text-center w-48">
+                  <div className="border-b border-dashed border-slate-400 pb-1 mb-1">
+                    <span className="text-[10px] font-mono text-[#006B3E] font-bold uppercase">
+                      Sunset Group Authority
                     </span>
                   </div>
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase block mt-1.5">
+                  <span className="text-[10px] font-bold uppercase text-slate-600 block">
                     Authorized Signatory
                   </span>
-                  <span className="text-[9px] text-slate-400 block">Sunset Group Management</span>
                 </div>
               </div>
 
-              {/* SECTION 6: FOOTER SECURITY & VERIFICATION NOTICE */}
-              <div className="mt-8 pt-3 border-t border-slate-200 text-center text-[9px] sm:text-[10px] text-slate-400 space-y-0.5">
-                <p>
-                  This official document is generated electronically via the Sunset Group Customer PWA Portal and
-                  constitutes official record of application.
-                </p>
-                <p className="font-mono text-slate-500 font-semibold">
-                  SECURITY IDENTIFIER: {data.referenceNumber || 'SKH-2026-00001'} &bull; GENERATED ON {formattedDate}
-                </p>
+              {/* Footer Note */}
+              <div className="mt-6 pt-2 border-t border-slate-200 text-center text-[9px] text-slate-400">
+                This is a computer-generated official acknowledgement receipt from Sunset Group. Valid subject to document verification &amp; cheque clearance.
               </div>
             </div>
           </div>
 
-          {/* Modal Bottom Controls */}
+          {/* Modal Footer Controls */}
           <div className="bg-white border-t border-slate-200 px-4 py-3 sm:px-6 flex items-center justify-between gap-3 shrink-0 no-print">
             <span className="text-xs text-slate-500">
-              Receipt Reference: <strong className="text-slate-800">{data.referenceNumber || 'N/A'}</strong>
+              Reference: <strong className="text-slate-800">{data.referenceNumber || 'SKH-2026-00001'}</strong>
             </span>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={onClose}>
-                Close Preview
+                Close
               </Button>
               <Button
                 variant="primary"
