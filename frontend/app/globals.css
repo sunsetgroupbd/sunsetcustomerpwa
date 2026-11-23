@@ -494,12 +494,24 @@
     position: relative;
   }
 
+  .static {
+    position: static;
+  }
+
   .sticky {
     position: sticky;
   }
 
   .inset-0 {
     inset: 0;
+  }
+
+  .inset-x-3 {
+    inset-inline: calc(var(--spacing) * 3);
+  }
+
+  .-top-0\.5 {
+    top: calc(var(--spacing) * -.5);
   }
 
   .-top-6 {
@@ -532,6 +544,10 @@
 
   .top-4 {
     top: calc(var(--spacing) * 4);
+  }
+
+  .top-16 {
+    top: calc(var(--spacing) * 16);
   }
 
   .-right-0\.5 {
@@ -682,6 +698,10 @@
 
   .mx-auto {
     margin-inline: auto;
+  }
+
+  .my-2 {
+    margin-block: calc(var(--spacing) * 2);
   }
 
   .my-4 {
@@ -962,6 +982,10 @@
     max-height: calc(var(--spacing) * 56);
   }
 
+  .max-h-\[60vh\] {
+    max-height: 60vh;
+  }
+
   .max-h-\[62vh\] {
     max-height: 62vh;
   }
@@ -974,16 +998,16 @@
     max-height: 70vh;
   }
 
+  .max-h-\[80vh\] {
+    max-height: 80vh;
+  }
+
   .max-h-\[92vh\] {
     max-height: 92vh;
   }
 
   .max-h-\[95vh\] {
     max-height: 95vh;
-  }
-
-  .max-h-\[380px\] {
-    max-height: 380px;
   }
 
   .max-h-full {
@@ -1178,6 +1202,10 @@
     max-width: 210mm;
   }
 
+  .max-w-\[calc\(100vw-1\.5rem\)\] {
+    max-width: calc(100vw - 1.5rem);
+  }
+
   .max-w-full {
     max-width: 100%;
   }
@@ -1204,6 +1232,10 @@
 
   .min-w-0 {
     min-width: 0;
+  }
+
+  .min-w-\[16px\] {
+    min-width: 16px;
   }
 
   .min-w-\[18px\] {
@@ -2240,6 +2272,16 @@
     }
   }
 
+  .bg-slate-900\/50 {
+    background-color: #0f172b80;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-slate-900\/50 {
+      background-color: color-mix(in oklab, var(--color-slate-900) 50%, transparent);
+    }
+  }
+
   .bg-slate-900\/60 {
     background-color: #0f172b99;
   }
@@ -2611,6 +2653,10 @@
 
   .pb-12 {
     padding-bottom: calc(var(--spacing) * 12);
+  }
+
+  .pb-16 {
+    padding-bottom: calc(var(--spacing) * 16);
   }
 
   .pb-20 {
@@ -3306,6 +3352,16 @@
     }
   }
 
+  .ring-rose-600\/30 {
+    --tw-ring-color: #e700444d;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .ring-rose-600\/30 {
+      --tw-ring-color: color-mix(in oklab, var(--color-rose-600) 30%, transparent);
+    }
+  }
+
   .ring-slate-900\/5 {
     --tw-ring-color: #0f172b0d;
   }
@@ -3398,6 +3454,11 @@
     transition-property: transform, translate, scale, rotate;
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+
+  .duration-150 {
+    --tw-duration: .15s;
+    transition-duration: .15s;
   }
 
   .duration-200 {
@@ -3627,6 +3688,26 @@
       background-color: var(--color-slate-200);
     }
 
+    .hover\:bg-slate-200\/50:hover {
+      background-color: #e2e8f080;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-slate-200\/50:hover {
+        background-color: color-mix(in oklab, var(--color-slate-200) 50%, transparent);
+      }
+    }
+
+    .hover\:bg-slate-200\/60:hover {
+      background-color: #e2e8f099;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-slate-200\/60:hover {
+        background-color: color-mix(in oklab, var(--color-slate-200) 60%, transparent);
+      }
+    }
+
     .hover\:bg-slate-900:hover {
       background-color: var(--color-slate-900);
     }
@@ -3824,6 +3905,10 @@
     scale: .99;
   }
 
+  .active\:bg-slate-100:active {
+    background-color: var(--color-slate-100);
+  }
+
   .active\:bg-white\/30:active {
     background-color: #ffffff4d;
   }
@@ -3843,6 +3928,22 @@
   }
 
   @media (min-width: 40rem) {
+    .sm\:absolute {
+      position: absolute;
+    }
+
+    .sm\:inset-x-auto {
+      inset-inline: auto;
+    }
+
+    .sm\:top-full {
+      top: 100%;
+    }
+
+    .sm\:right-0 {
+      right: 0;
+    }
+
     .sm\:bottom-20 {
       bottom: calc(var(--spacing) * 20);
     }
@@ -3853,6 +3954,10 @@
 
     .sm\:mx-auto {
       margin-inline: auto;
+    }
+
+    .sm\:mt-2 {
+      margin-top: calc(var(--spacing) * 2);
     }
 
     .sm\:mb-8 {
@@ -3893,6 +3998,10 @@
 
     .sm\:max-h-\[88vh\] {
       max-height: 88vh;
+    }
+
+    .sm\:max-h-\[380px\] {
+      max-height: 380px;
     }
 
     .sm\:min-h-0 {
@@ -3977,6 +4086,10 @@
 
     .sm\:rounded-2xl {
       border-radius: var(--radius-2xl);
+    }
+
+    .sm\:rounded-xl {
+      border-radius: var(--radius-xl);
     }
 
     .sm\:p-3 {

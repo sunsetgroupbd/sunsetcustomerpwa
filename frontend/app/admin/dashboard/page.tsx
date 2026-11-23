@@ -15,6 +15,7 @@ import { Select } from '@/components/ui/Select';
 import { Alert } from '@/components/ui/Alert';
 import { Icons } from '@/components/ui/Icons';
 import { openSmsWithCredentials } from '@/lib/sms';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 function AdminDashboardContent() {
   const router = useRouter();
@@ -428,6 +429,7 @@ function AdminDashboardContent() {
       }
       actions={
         <div className="flex items-center gap-2">
+          <NotificationBell />
           {isApplicationsTab || isEditRequestsTab ? (
             <Link href="/admin/dashboard">
               <Button variant="outline" size="sm" className="flex items-center gap-1.5">

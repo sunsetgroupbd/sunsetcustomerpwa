@@ -134,33 +134,62 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
         @media print {
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 8mm 8mm;
           }
-          body {
-            background: white !important;
-            color: #0f172a !important;
-            font-size: 11pt !important;
-          }
-          /* Hide everything in the page except the printable receipt */
-          body * {
-            visibility: hidden !important;
-          }
-          #printable-receipt-container,
-          #printable-receipt-container * {
-            visibility: visible !important;
-          }
-          #printable-receipt-container {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
+          html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
-            display: block !important;
+            color: #0f172a !important;
+            height: auto !important;
+            overflow: visible !important;
+            font-size: 10pt !important;
           }
-          .no-print {
+          /* Hide all non-receipt elements */
+          .no-print,
+          header,
+          nav,
+          footer,
+          button,
+          .fixed.inset-0.bg-slate-900\/70 {
             display: none !important;
+          }
+          /* Neutralize modal wrapper styles so the document flows naturally on page */
+          .fixed.inset-0.z-\\[200\\] {
+            position: static !important;
+            overflow: visible !important;
+            display: block !important;
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .min-h-full,
+          .max-h-\\[95vh\\],
+          .overflow-y-auto {
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          #printable-receipt-container {
+            position: static !important;
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 4mm 6mm !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          #printable-receipt-container * {
+            visibility: visible !important;
           }
           * {
             -webkit-print-color-adjust: exact !important;
@@ -176,13 +205,13 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
       />
 
       {/* Modal Dialog Container */}
-      <div className="flex min-h-full items-center justify-center p-2 sm:p-4 md:p-6 no-print">
+      <div className="flex min-h-full items-center justify-center p-2 sm:p-4 md:p-6">
         <div
           className="relative w-full max-w-4xl bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 flex flex-col max-h-[95vh] overflow-hidden transform transition-all animate-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Top Modal Action Bar */}
-          <div className="bg-white border-b border-slate-200 px-4 py-3 sm:px-6 flex items-center justify-between gap-3 shrink-0">
+          <div className="bg-white border-b border-slate-200 px-4 py-3 sm:px-6 flex items-center justify-between gap-3 shrink-0 no-print">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-emerald-50 text-[#006B3E] flex items-center justify-center shrink-0">
                 <Icons.FileText className="w-5 h-5" />
@@ -219,7 +248,7 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
           </div>
 
           {/* Quick PDF Save Tip Banner */}
-          <div className="bg-emerald-50/90 border-b border-emerald-200/80 px-4 py-2 sm:px-6 text-[11px] sm:text-xs text-emerald-800 flex items-center justify-between shrink-0">
+          <div className="bg-emerald-50/90 border-b border-emerald-200/80 px-4 py-2 sm:px-6 text-[11px] sm:text-xs text-emerald-800 flex items-center justify-between shrink-0 no-print">
             <span>
               💡 <strong>How to save as PDF:</strong> Click <strong>Print / Save PDF</strong> and select{' '}
               <strong>&quot;Save as PDF&quot;</strong> in your browser&apos;s printer destination dropdown.

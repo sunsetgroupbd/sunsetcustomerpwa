@@ -150,9 +150,17 @@ export const NotificationBell: React.FC = () => {
         )}
       </button>
 
-      {/* Dropdown Popover */}
+      {/* Mobile Backdrop */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden transform transition-all animate-in fade-in-0 zoom-in-95">
+        <div
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 sm:hidden animate-in fade-in duration-150"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Dropdown Popover (Mobile Responsive Centered, Desktop Right-Aligned) */}
+      {isOpen && (
+        <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-96 max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl sm:rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden transform transition-all animate-in fade-in-0 zoom-in-95">
           {/* Header */}
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -163,18 +171,27 @@ export const NotificationBell: React.FC = () => {
                 </span>
               )}
             </div>
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllAsRead}
+                  className="text-xs font-medium text-[#008751] hover:text-[#008751]/80 hover:underline transition-colors"
+                >
+                  Mark all read
+                </button>
+              )}
               <button
-                onClick={handleMarkAllAsRead}
-                className="text-xs font-medium text-[#008751] hover:text-[#008751]/80 hover:underline transition-colors"
+                onClick={() => setIsOpen(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 sm:hidden"
+                aria-label="Close notifications"
               >
-                Mark all read
+                <Icons.X className="w-4 h-4" />
               </button>
-            )}
+            </div>
           </div>
 
           {/* List */}
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100">
+          <div className="max-h-[60vh] sm:max-h-[380px] overflow-y-auto divide-y divide-slate-100">
             {notifications.length === 0 ? (
               <div className="py-10 px-4 text-center">
                 <div className="w-10 h-10 mx-auto mb-2 text-slate-300 flex items-center justify-center">

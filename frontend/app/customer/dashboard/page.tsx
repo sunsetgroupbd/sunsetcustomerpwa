@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Icons } from '@/components/ui/Icons';
 import { ApplicationReceiptModal } from '@/components/application-form/ApplicationReceiptModal';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 // Colorful Floating Balloon Celebration Component
 interface BalloonProps {
@@ -156,6 +157,7 @@ export default function CustomerDashboardPage() {
       subtitle="Track your Sunset Group ownership applications and investment portfolio."
       actions={
         <div className="flex items-center gap-2">
+          <NotificationBell />
           <Link href="/customer/profile">
             <Button variant="outline" size="sm" className="flex items-center gap-1.5">
               <Icons.User className="w-4 h-4" />

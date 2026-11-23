@@ -16,6 +16,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Alert } from '@/components/ui/Alert';
 import { Icons } from '@/components/ui/Icons';
 import { openSmsWithCredentials } from '@/lib/sms';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 export default function SalesDashboardPage() {
   const router = useRouter();
@@ -186,16 +187,19 @@ Investor Portal: ${window.location.origin}/login`;
       title="Sales Executive Desk"
       subtitle="Register prospective investors on behalf, track ownership applications, and monitor onboarding pipeline."
       actions={
-        <Button
-          variant="primary"
-          onClick={() => {
-            resetModal();
-            setIsModalOpen(true);
-          }}
-          leftIcon={<Icons.Plus className="w-4 h-4" />}
-        >
-          Register Customer on Behalf
-        </Button>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <Button
+            variant="primary"
+            onClick={() => {
+              resetModal();
+              setIsModalOpen(true);
+            }}
+            leftIcon={<Icons.Plus className="w-4 h-4" />}
+          >
+            Register Customer on Behalf
+          </Button>
+        </div>
       }
     >
       <div className="space-y-6">
