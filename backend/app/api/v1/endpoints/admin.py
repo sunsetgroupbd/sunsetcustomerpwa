@@ -569,6 +569,31 @@ async def review_edit_request(
         )
         db.commit()
 
+        # In-app notification to requester & customer
+        try:
+            from app.services.in_app_notification_service import InAppNotificationService
+            InAppNotificationService.notify(
+                db=db,
+                user_id=req.requested_by_id,
+                title="Edit Request Approved",
+                message=f"Admin approved your edit request for application #{app.application_number}. Application is now unlocked for updates.",
+                type="approval",
+                link_url=f"/customer/apply?application_id={app.id}",
+                application_id=app.id,
+            )
+            if req.requested_by_id != app.customer_id:
+                InAppNotificationService.notify(
+                    db=db,
+                    user_id=app.customer_id,
+                    title="Application Unlocked for Editing",
+                    message=f"Application #{app.application_number} has been unlocked for corrections by Admin.",
+                    type="approval",
+                    link_url=f"/customer/apply?application_id={app.id}",
+                    application_id=app.id,
+                )
+        except Exception as exc:
+            logger.warning("Failed to dispatch in-app notification on edit approval: %s", exc)
+
         return success_response(
             data={"status": "approved", "application_id": app.id},
             message="Edit request approved. Application is now unlocked for updates.",
@@ -589,6 +614,21 @@ async def review_edit_request(
             metadata={"request_id": req.id, "notes": payload.admin_notes},
         )
         db.commit()
+
+        # In-app notification to requester
+        try:
+            from app.services.in_app_notification_service import InAppNotificationService
+            InAppNotificationService.notify(
+                db=db,
+                user_id=req.requested_by_id,
+                title="Edit Request Rejected",
+                message=f"Admin rejected your edit request for application #{app.application_number}. {payload.admin_notes or ''}".strip(),
+                type="rejection",
+                link_url=f"/customer/dashboard",
+                application_id=app.id,
+            )
+        except Exception as exc:
+            logger.warning("Failed to dispatch in-app notification on edit rejection: %s", exc)
 
         return success_response(
             data={"status": "rejected", "application_id": app.id},

@@ -21,6 +21,7 @@ from app.models.application import (  # noqa: F401
 from app.models.pricing import PricingConfiguration  # noqa: F401
 from app.models.terms import TermsAndConditions  # noqa: F401
 from app.models.audit import AuditLog  # noqa: F401
+from app.models.notification import Notification  # noqa: F401
 
 __all__ = [
     "User",
@@ -46,4 +47,5 @@ __all__ = [
     "PricingConfiguration",
     "TermsAndConditions",
     "AuditLog",
+    "Notification",
 ]

@@ -286,3 +286,23 @@ export interface ApplicationEditRequest {
   reviewed_at?: string;
 }
 
+export interface InAppNotification {
+  id: number;
+  user_id?: number | null;
+  role?: string | null;
+  title: string;
+  message: string;
+  type: string;
+  link_url?: string | null;
+  application_id?: number | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationListResponse {
+  items: InAppNotification[];
+  total: number;
+  unread_count: number;
+}
+
+

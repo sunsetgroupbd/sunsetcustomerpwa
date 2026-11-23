@@ -173,6 +173,15 @@ def create_app() -> FastAPI:
     # -----------------------------------------------------------------------
     _register_routers(app)
 
+    # Ensure database tables exist
+    try:
+        from app.db.base import Base
+        from app.db.session import engine
+        import app.models  # noqa: F401
+        Base.metadata.create_all(bind=engine)
+    except Exception as exc:
+        logger.warning("Could not auto-create tables on startup: %s", exc)
+
     from pathlib import Path
     from fastapi.staticfiles import StaticFiles
 

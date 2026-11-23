@@ -38,6 +38,12 @@ export const Icons = {
     </svg>
   ),
 
+  Bell: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+      <path fillRule="evenodd" d="M12 2a6 6 0 0 0-6 6v3.586l-.707.707A1 1 0 0 0 5 13v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1a1 1 0 0 0-.293-.707L18 11.586V8a6 6 0 0 0-6-6zm-3.5 15a3.5 3.5 0 0 0 7 0h-7z" clipRule="evenodd" />
+    </svg>
+  ),
+
   Building: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
       <path fillRule="evenodd" d="M3 3a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v13h2a1 1 0 1 1 0 2H1a1 1 0 1 1 0-2h2V3zm4 3a1 1 0 1 0 0 2h2a1 1 0 1 0 0-2H7zm0 5a1 1 0 1 0 0 2h2a1 1 0 1 0 0-2H7zm0 5a1 1 0 1 0 0 2h2a1 1 0 1 0 0-2H7zm10-7h-2v2h2v-2zm0 4h-2v2h2v-2zm0 4h-2v2h2v-2z" clipRule="evenodd" />

@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Icons } from '@/components/ui/Icons';
+import { ApplicationReceiptModal } from '@/components/application-form/ApplicationReceiptModal';
 
 // Colorful Floating Balloon Celebration Component
 interface BalloonProps {
@@ -53,6 +54,23 @@ export default function CustomerDashboardPage() {
   const [profileData, setProfileData] = useState<CustomerProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showBirthdayModal, setShowBirthdayModal] = useState(false);
+  const [receiptApp, setReceiptApp] = useState<Application | null>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [isLoadingReceiptId, setIsLoadingReceiptId] = useState<string | null>(null);
+
+  const handleOpenReceipt = async (appSummary: Application) => {
+    setIsLoadingReceiptId(appSummary.id);
+    try {
+      const fullApp = await api.applications.get(appSummary.id);
+      setReceiptApp(fullApp || appSummary);
+      setIsReceiptModalOpen(true);
+    } catch {
+      setReceiptApp(appSummary);
+      setIsReceiptModalOpen(true);
+    } finally {
+      setIsLoadingReceiptId(null);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -316,12 +334,8 @@ export default function CustomerDashboardPage() {
               {/* Mobile Card List */}
               <div className="md:hidden divide-y divide-slate-100">
                 {submittedApps.map((app) => (
-                  <Link
-                    key={app.id}
-                    href={`/customer/applications/${app.id}`}
-                    className="py-3.5 block hover:bg-slate-50 active:bg-slate-100 transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
+                  <div key={app.id} className="py-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
                       <span className="font-mono font-bold text-xs text-slate-900">
                         {app.reference_number}
                       </span>
@@ -330,7 +344,7 @@ export default function CustomerDashboardPage() {
                     <h4 className="text-sm font-semibold text-slate-800">
                       {app.business?.name || 'Sunset Division'}
                     </h4>
-                    <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
+                    <div className="flex items-center justify-between text-xs text-slate-500">
                       <span>
                         {app.ownership_detail?.package_type || 'Ownership'} ({app.ownership_detail?.number_of_ownership || 1} share)
                       </span>
@@ -338,7 +352,24 @@ export default function CustomerDashboardPage() {
                         {app.submission_date ? new Date(app.submission_date).toLocaleDateString() : '-'}
                       </span>
                     </div>
-                  </Link>
+                    <div className="flex items-center gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenReceipt(app)}
+                        isLoading={isLoadingReceiptId === app.id}
+                        leftIcon={<Icons.Printer className="w-3.5 h-3.5 text-[#008751]" />}
+                        className="flex-1 font-bold text-xs text-slate-700 hover:text-slate-900 border-slate-200"
+                      >
+                        Receipt / PDF
+                      </Button>
+                      <Link href={`/customer/applications/${app.id}`} className="flex-1">
+                        <Button variant="ghost" size="sm" className="w-full text-xs text-[#008751] font-semibold border border-slate-200 hover:bg-slate-50">
+                          View Details
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
                 ))}
               </div>
 
@@ -352,7 +383,7 @@ export default function CustomerDashboardPage() {
                       <th className="py-3 px-4">Package</th>
                       <th className="py-3 px-4">Submission Date</th>
                       <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Action</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -373,7 +404,17 @@ export default function CustomerDashboardPage() {
                         <td className="py-3 px-4">
                           <Badge status={app.status} />
                         </td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenReceipt(app)}
+                            isLoading={isLoadingReceiptId === app.id}
+                            leftIcon={<Icons.Printer className="w-3.5 h-3.5 text-[#008751]" />}
+                            className="mr-2 font-bold text-slate-700 hover:text-slate-900 border-slate-200"
+                          >
+                            Receipt
+                          </Button>
                           <Link href={`/customer/applications/${app.id}`}>
                             <Button variant="ghost" size="sm" className="text-[#008751] hover:text-[#007043] font-semibold">
                               View Details
@@ -496,6 +537,68 @@ export default function CustomerDashboardPage() {
           animation: floatBalloon linear infinite;
         }
       `}</style>
+
+      {/* Official Receipt Modal */}
+      {receiptApp && (
+        <ApplicationReceiptModal
+          isOpen={isReceiptModalOpen}
+          onClose={() => setIsReceiptModalOpen(false)}
+          data={{
+            referenceNumber: receiptApp.reference_number || receiptApp.application_number || 'SKH-2026-00001',
+            submissionDate: receiptApp.submission_date || receiptApp.submitted_at || receiptApp.created_at,
+            status: receiptApp.status,
+            businessName: receiptApp.business?.name || receiptApp.business_name || 'Sunset Bay Limited',
+            businessCode: receiptApp.business?.code || receiptApp.business_code || 'SKH',
+            applicantInfo: {
+              full_name_en: receiptApp.applicant_info?.full_name_en,
+              full_name_bn: receiptApp.applicant_info?.full_name_bn,
+              father_name: receiptApp.applicant_info?.father_name,
+              mother_name: receiptApp.applicant_info?.mother_name,
+              spouse_name: receiptApp.applicant_info?.spouse_name,
+              mobile_number: receiptApp.applicant_info?.mobile_number,
+              phone_number: receiptApp.applicant_info?.phone_number,
+              personal_email: receiptApp.applicant_info?.personal_email,
+              nid_or_passport: receiptApp.applicant_info?.nid_or_passport || (receiptApp.applicant_info as any)?.nid_number,
+              date_of_birth: receiptApp.applicant_info?.date_of_birth,
+              nationality: receiptApp.applicant_info?.nationality,
+              religion: receiptApp.applicant_info?.religion,
+              present_address: receiptApp.applicant_info?.present_address,
+              permanent_address: receiptApp.applicant_info?.permanent_address,
+              company_name: receiptApp.applicant_info?.company_name,
+              designation: receiptApp.applicant_info?.designation,
+              office_address: receiptApp.applicant_info?.office_address,
+            },
+            ownershipDetail: {
+              package: receiptApp.ownership_detail?.package_type || (receiptApp.ownership_detail as any)?.package,
+              package_type: receiptApp.ownership_detail?.package_type || (receiptApp.ownership_detail as any)?.package,
+              number_of_ownership: Number(receiptApp.ownership_detail?.number_of_ownership) || 1,
+              price_per_ownership: Number(receiptApp.ownership_detail?.price_per_ownership) || 0,
+              discount: Number(receiptApp.ownership_detail?.discount_amount || (receiptApp.ownership_detail as any)?.discount) || 0,
+              discount_amount: Number(receiptApp.ownership_detail?.discount_amount || (receiptApp.ownership_detail as any)?.discount) || 0,
+              total_price: Number(receiptApp.ownership_detail?.total_price) || 0,
+              amount_in_words: receiptApp.ownership_detail?.amount_in_words,
+            },
+            paymentDetail: {
+              token_money: Number(receiptApp.payment_detail?.token_money) || 0,
+              booking_money: Number(receiptApp.payment_detail?.booking_money) || 0,
+              booking_date: receiptApp.payment_detail?.booking_date || (receiptApp.payment_detail as any)?.booking_money_date,
+              installment_type: receiptApp.payment_detail?.installment_type,
+              number_of_installments: Number(receiptApp.payment_detail?.number_of_installments) || 0,
+              installment_amount: Number(receiptApp.payment_detail?.installment_amount) || 0,
+              installment_start_date: receiptApp.payment_detail?.installment_start_date || (receiptApp.payment_detail as any)?.installment_starting_date,
+              dues_amount: Number(receiptApp.payment_detail?.dues_amount) || 0,
+            },
+            bankDetail: {
+              account_name: receiptApp.bank_detail?.account_name,
+              account_number: receiptApp.bank_detail?.account_number,
+              bank_name: receiptApp.bank_detail?.bank_name,
+              branch_name: receiptApp.bank_detail?.branch_name || (receiptApp.bank_detail as any)?.branch,
+            },
+            nominees: receiptApp.nominees as any,
+            declarationAccepted: Boolean(receiptApp.declaration_accepted),
+          }}
+        />
+      )}
     </DashboardShell>
   );
 }

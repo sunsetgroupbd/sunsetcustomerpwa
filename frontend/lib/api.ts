@@ -7,6 +7,8 @@ import {
   Business,
   CustomerProfileData,
   DashboardStats,
+  InAppNotification,
+  NotificationListResponse,
   PackagePricing,
   TermsAndConditions,
   User,
@@ -459,6 +461,25 @@ export const api = {
       const query = q.toString() ? `?${q.toString()}` : '';
       return request<Blob>(`/exports/applications/excel${query}`);
     },
+  },
+
+  // In-App Notifications
+  notifications: {
+    list: (unreadOnly = false, limit = 50, offset = 0) => {
+      const q = new URLSearchParams();
+      if (unreadOnly) q.set('unread_only', 'true');
+      q.set('limit', limit.toString());
+      q.set('offset', offset.toString());
+      return request<NotificationListResponse>(`/notifications?${q.toString()}`);
+    },
+    markRead: (id: number) =>
+      request<InAppNotification>(`/notifications/${id}/read`, {
+        method: 'PATCH',
+      }),
+    markAllRead: () =>
+      request<{ updated_count: number }>(`/notifications/read-all`, {
+        method: 'POST',
+      }),
   },
 };
 

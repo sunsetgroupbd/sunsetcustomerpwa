@@ -41,6 +41,7 @@ from app.schemas.application import (
     parse_optional_date,
 )
 from app.services.audit_service import AuditService
+from app.services.in_app_notification_service import InAppNotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -696,6 +697,39 @@ class ApplicationService:
 
         self.db.commit()
         self.db.refresh(app)
+
+        # In-app notifications
+        try:
+            InAppNotificationService.notify(
+                db=self.db,
+                role="cr",
+                title="New Application Submitted",
+                message=f"Application #{app.application_number} has been submitted and is ready for review.",
+                type="submission",
+                link_url=f"/cr/applications/{app.id}",
+                application_id=app.id,
+            )
+            InAppNotificationService.notify(
+                db=self.db,
+                role="admin",
+                title="Application Submitted",
+                message=f"Application #{app.application_number} submitted by {user.full_name} ({role_label.upper()}).",
+                type="submission",
+                link_url=f"/admin/applications/{app.id}",
+                application_id=app.id,
+            )
+            InAppNotificationService.notify(
+                db=self.db,
+                user_id=app.customer_id,
+                title="Application Submitted Successfully",
+                message=f"Your application #{app.application_number} has been submitted for review.",
+                type="submission",
+                link_url="/customer/dashboard",
+                application_id=app.id,
+            )
+        except Exception as exc:
+            logger.warning("Failed to dispatch in-app notification on submit: %s", exc)
+
         return app
 
     # -------------------------------------------------------------------------
@@ -734,6 +768,30 @@ class ApplicationService:
         self.db.add(req)
         self.db.commit()
         self.db.refresh(req)
+
+        # In-app notification to Admin and CR
+        try:
+            InAppNotificationService.notify(
+                db=self.db,
+                role="admin",
+                title="Edit Permission Requested",
+                message=f"{user.full_name} ({role_str.upper()}) requested permission to edit application #{app.application_number}: {reason}",
+                type="edit_request",
+                link_url=f"/admin/applications/{app.id}",
+                application_id=app.id,
+            )
+            InAppNotificationService.notify(
+                db=self.db,
+                role="cr",
+                title="Edit Permission Requested",
+                message=f"Application #{app.application_number} edit permission requested by {user.full_name}: {reason}",
+                type="edit_request",
+                link_url=f"/cr/applications/{app.id}",
+                application_id=app.id,
+            )
+        except Exception as exc:
+            logger.warning("Failed to dispatch in-app notification for edit request: %s", exc)
+
         return req
 
 
@@ -818,6 +876,117 @@ class ApplicationService:
 
         self.db.commit()
         self.db.refresh(app)
+
+        # In-app notifications for status transition
+        try:
+            if new_status_enum == ApplicationStatus.APPROVED:
+                cust_num_info = f" Customer ID: {customer.customer_id_number}." if (customer and getattr(customer, "customer_id_number", None)) else ""
+                InAppNotificationService.notify(
+                    db=self.db,
+                    user_id=app.customer_id,
+                    title="Application Approved!",
+                    message=f"Congratulations! Your application #{app.application_number} has been approved.{cust_num_info}",
+                    type="approval",
+                    link_url="/customer/dashboard",
+                    application_id=app.id,
+                )
+                if app.sales_agent_id:
+                    InAppNotificationService.notify(
+                        db=self.db,
+                        user_id=app.sales_agent_id,
+                        title="Client Application Approved",
+                        message=f"Application #{app.application_number} has been approved by Admin.",
+                        type="approval",
+                        link_url="/sales/dashboard",
+                        application_id=app.id,
+                    )
+                InAppNotificationService.notify(
+                    db=self.db,
+                    role="cr",
+                    title="Application Approved",
+                    message=f"Application #{app.application_number} was approved by Admin.",
+                    type="approval",
+                    link_url=f"/cr/applications/{app.id}",
+                    application_id=app.id,
+                )
+
+            elif new_status_enum == ApplicationStatus.CORRECTION_REQUIRED:
+                msg = f"Application #{app.application_number} requires correction: {data.reason or 'Please review remarks and update details.'}"
+                InAppNotificationService.notify(
+                    db=self.db,
+                    user_id=app.customer_id,
+                    title="Correction Required",
+                    message=msg,
+                    type="correction_required",
+                    link_url=f"/customer/apply?application_id={app.id}",
+                    application_id=app.id,
+                )
+                if app.sales_agent_id:
+                    InAppNotificationService.notify(
+                        db=self.db,
+                        user_id=app.sales_agent_id,
+                        title="Application Correction Required",
+                        message=msg,
+                        type="correction_required",
+                        link_url="/sales/dashboard",
+                        application_id=app.id,
+                    )
+                if app.assigned_cr_id:
+                    InAppNotificationService.notify(
+                        db=self.db,
+                        user_id=app.assigned_cr_id,
+                        title="Correction Requested",
+                        message=msg,
+                        type="correction_required",
+                        link_url=f"/cr/applications/{app.id}",
+                        application_id=app.id,
+                    )
+
+            elif new_status_enum == ApplicationStatus.DOCUMENTS_REQUIRED:
+                InAppNotificationService.notify(
+                    db=self.db,
+                    user_id=app.customer_id,
+                    title="Documents Required",
+                    message=f"Additional documents required for application #{app.application_number}: {data.reason or 'Please review requested documents.'}",
+                    type="documents_required",
+                    link_url=f"/customer/apply?application_id={app.id}",
+                    application_id=app.id,
+                )
+
+            elif new_status_enum == ApplicationStatus.REJECTED:
+                InAppNotificationService.notify(
+                    db=self.db,
+                    user_id=app.customer_id,
+                    title="Application Rejected",
+                    message=f"Application #{app.application_number} has been rejected: {data.reason or 'Contact support for details.'}",
+                    type="rejection",
+                    link_url="/customer/dashboard",
+                    application_id=app.id,
+                )
+                if app.sales_agent_id:
+                    InAppNotificationService.notify(
+                        db=self.db,
+                        user_id=app.sales_agent_id,
+                        title="Client Application Rejected",
+                        message=f"Application #{app.application_number} was rejected: {data.reason or ''}",
+                        type="rejection",
+                        link_url="/sales/dashboard",
+                        application_id=app.id,
+                    )
+
+            elif new_status_enum == ApplicationStatus.UNDER_REVIEW:
+                InAppNotificationService.notify(
+                    db=self.db,
+                    user_id=app.customer_id,
+                    title="Application Under Review",
+                    message=f"Your application #{app.application_number} is currently under CR review.",
+                    type="status_change",
+                    link_url="/customer/dashboard",
+                    application_id=app.id,
+                )
+        except Exception as exc:
+            logger.warning("Failed to dispatch in-app notification on status change: %s", exc)
+
         return app
 
     # -------------------------------------------------------------------------
@@ -868,6 +1037,21 @@ class ApplicationService:
 
         self.db.commit()
         self.db.refresh(app)
+
+        # In-app notification to assigned CR
+        try:
+            InAppNotificationService.notify(
+                db=self.db,
+                user_id=cr_user_id,
+                title="Application Assigned to You",
+                message=f"Application #{app.application_number} was assigned to you for verification by Admin.",
+                type="assignment",
+                link_url=f"/cr/applications/{app.id}",
+                application_id=app.id,
+            )
+        except Exception as exc:
+            logger.warning("Failed to send assignment notification: %s", exc)
+
         return app
 
     # -------------------------------------------------------------------------

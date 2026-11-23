@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Icons } from '@/components/ui/Icons';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { NotificationBell } from './NotificationBell';
 
 export const Header: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -78,6 +79,8 @@ export const Header: React.FC = () => {
 
               {/* User profile / badge */}
               <div className="flex items-center gap-2 sm:gap-3">
+                <NotificationBell />
+
                 {user.role === 'customer' ? (
                   <Link href="/customer/profile" className="text-right hover:opacity-80 transition-opacity" title="View Profile">
                     <div className="text-xs font-semibold text-slate-900 leading-tight hidden sm:block">
