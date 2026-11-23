@@ -1466,12 +1466,13 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+          <div className="pt-3 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-2.5">
             <Button
               variant="outline"
               size="sm"
               disabled={isSubmitting}
               onClick={() => setIsReviewModalOpen(false)}
+              className="w-full sm:w-auto justify-center"
             >
               Back to Edit
             </Button>
@@ -1485,6 +1486,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 await handleSubmit();
               }}
               leftIcon={<Icons.Check className="w-4 h-4" />}
+              className="w-full sm:w-auto justify-center font-bold bg-[#006B3E] hover:bg-[#005230]"
             >
               Confirm &amp; Final Submit
             </Button>
@@ -2559,55 +2561,117 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
 
         {/* Navigation Buttons */}
         {currentStep < 9 && (
-          <div className="sticky bottom-16 md:static z-20 bg-white/95 md:bg-transparent backdrop-blur-md border-t border-slate-200 md:border-t md:border-slate-100 -mx-5 -mb-5 p-4 md:p-0 md:m-0 md:pt-5 md:mt-6 flex items-center justify-between shadow-md md:shadow-none">
-            <div>
-              {currentStep > 1 && (
+          <div className="sticky bottom-14 md:static z-20 bg-white/95 md:bg-transparent backdrop-blur-md border-t border-slate-200 md:border-t md:border-slate-100 -mx-5 -mb-5 p-3.5 sm:p-4 md:p-0 md:m-0 md:pt-5 md:mt-6 shadow-md md:shadow-none">
+            {/* Mobile Layout (< sm): App-like full width primary button & balanced secondary controls */}
+            <div className="sm:hidden flex flex-col gap-2.5 w-full">
+              {/* Primary Action Button */}
+              <div>
+                {currentStep < 8 ? (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={handleNext}
+                    rightIcon={<Icons.ArrowRight className="w-4 h-4" />}
+                    className="w-full justify-center text-sm font-bold shadow-md bg-[#006B3E] hover:bg-[#005230]"
+                  >
+                    Next Step
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => {
+                      if (validateAllBeforeSubmit()) {
+                        setIsReviewModalOpen(true);
+                      }
+                    }}
+                    isLoading={isSubmitting}
+                    leftIcon={<Icons.Check className="w-4 h-4" />}
+                    className="w-full justify-center text-sm font-bold shadow-md bg-[#006B3E] hover:bg-[#005230]"
+                  >
+                    Review &amp; Submit Application
+                  </Button>
+                )}
+              </div>
+
+              {/* Secondary Controls: Previous and Save Draft */}
+              <div className="flex items-center gap-2">
+                {currentStep > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrev}
+                    leftIcon={<Icons.ArrowLeft className="w-3.5 h-3.5" />}
+                    className="flex-1 justify-center text-xs text-slate-700 border-slate-200"
+                  >
+                    Previous
+                  </Button>
+                )}
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={handlePrev}
-                  leftIcon={<Icons.ArrowLeft className="w-4 h-4" />}
+                  onClick={() => handleSaveDraft(false)}
+                  isLoading={isSavingDraft}
+                  leftIcon={<Icons.FileText className="w-3.5 h-3.5" />}
+                  className="flex-1 justify-center text-xs text-slate-600 hover:text-slate-900 border border-slate-200/80 bg-slate-50/50"
                 >
-                  Previous
+                  Save Draft
                 </Button>
-              )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleSaveDraft(false)}
-                isLoading={isSavingDraft}
-                leftIcon={<Icons.FileText className="w-4 h-4" />}
-              >
-                Save Draft
-              </Button>
+            {/* Desktop Layout (>= sm): Horizontal flex */}
+            <div className="hidden sm:flex items-center justify-between gap-3 w-full">
+              <div>
+                {currentStep > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrev}
+                    leftIcon={<Icons.ArrowLeft className="w-4 h-4" />}
+                  >
+                    Previous
+                  </Button>
+                )}
+              </div>
 
-              {currentStep < 8 ? (
+              <div className="flex items-center gap-3">
                 <Button
-                  variant="primary"
+                  variant="ghost"
                   size="sm"
-                  onClick={handleNext}
-                  rightIcon={<Icons.ArrowRight className="w-4 h-4" />}
+                  onClick={() => handleSaveDraft(false)}
+                  isLoading={isSavingDraft}
+                  leftIcon={<Icons.FileText className="w-4 h-4" />}
                 >
-                  Next Step
+                  Save Draft
                 </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => {
-                    if (validateAllBeforeSubmit()) {
-                      setIsReviewModalOpen(true);
-                    }
-                  }}
-                  isLoading={isSubmitting}
-                  leftIcon={<Icons.Check className="w-4 h-4" />}
-                >
-                  Review &amp; Submit Application
-                </Button>
-              )}
+
+                {currentStep < 8 ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleNext}
+                    rightIcon={<Icons.ArrowRight className="w-4 h-4" />}
+                  >
+                    Next Step
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => {
+                      if (validateAllBeforeSubmit()) {
+                        setIsReviewModalOpen(true);
+                      }
+                    }}
+                    isLoading={isSubmitting}
+                    leftIcon={<Icons.Check className="w-4 h-4" />}
+                    className="font-bold bg-[#006B3E] hover:bg-[#005230]"
+                  >
+                    Review &amp; Submit Application
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}
