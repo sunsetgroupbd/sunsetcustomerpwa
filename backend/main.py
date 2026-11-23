@@ -177,7 +177,7 @@ def create_app() -> FastAPI:
     try:
         from app.db.base import Base
         from app.db.session import engine
-        import app.models  # noqa: F401
+        from app import models as _app_models  # noqa: F401
         Base.metadata.create_all(bind=engine)
     except Exception as exc:
         logger.warning("Could not auto-create tables on startup: %s", exc)
