@@ -13,20 +13,48 @@ import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Icons } from '@/components/ui/Icons';
+import { Modal } from '@/components/ui/Modal';
+
+export const getDivisionLogo = (code?: string): string => {
+  const c = (code || '').toUpperCase().trim();
+  if (c === 'SCH') return '/suncarelogo.png';
+  if (c === 'DFI') return '/dfilogo.png';
+  if (c === 'SPC') return '/sunsetcombologo.png';
+  if (c === 'SKH') return '/sunsetlogo.png';
+  return '/sunsetlogo.png';
+};
 
 interface WizardProps {
   business: Business;
+  availableBusinesses?: Business[];
+  onBusinessChange?: (newBusiness: Business) => void;
   existingApplication?: Application | null;
   onSuccess?: (application: Application) => void;
 }
 
 export const ApplicationWizard: React.FC<WizardProps> = ({
   business,
+  availableBusinesses,
+  onBusinessChange,
   existingApplication,
   onSuccess,
 }) => {
   const router = useRouter();
+  const [currentBusiness, setCurrentBusiness] = useState<Business>(business);
+  const [bizList, setBizList] = useState<Business[]>(availableBusinesses || []);
+  const [isChangeBizModalOpen, setIsChangeBizModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [pendingBusiness, setPendingBusiness] = useState<Business | null>(null);
+  const [isSwitchingBiz, setIsSwitchingBiz] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(existingApplication?.current_step || 1);
+  const [visitedSteps, setVisitedSteps] = useState<Set<number>>(() => {
+    const initial = new Set<number>();
+    const initialStep = existingApplication?.current_step || 1;
+    for (let i = 1; i <= initialStep; i++) {
+      initial.add(i);
+    }
+    return initial;
+  });
   const [applicationId, setApplicationId] = useState<string | null>(existingApplication?.id || null);
   const [referenceNumber, setReferenceNumber] = useState<string>(existingApplication?.reference_number || '');
   const [packages, setPackages] = useState<PackagePricing[]>([]);
@@ -85,51 +113,82 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     branch_name: existingApplication?.bank_detail?.branch_name || '',
 
     // Step 5: Ownership & Pricing
-    package_type: existingApplication?.ownership_detail?.package_type || 'Silver',
+    package_type: existingApplication?.ownership_detail?.package_type || '',
     number_of_ownership: existingApplication?.ownership_detail?.number_of_ownership || 1,
-    price_per_ownership: existingApplication?.ownership_detail?.price_per_ownership || 500000,
+    price_per_ownership: existingApplication?.ownership_detail?.price_per_ownership || 0,
     discount_amount: existingApplication?.ownership_detail?.discount_amount || 0,
-    total_price: existingApplication?.ownership_detail?.total_price || 500000,
-    amount_in_words: existingApplication?.ownership_detail?.amount_in_words || 'Five Lakh Taka Only',
+    total_price: existingApplication?.ownership_detail?.total_price || 0,
+    amount_in_words: existingApplication?.ownership_detail?.amount_in_words || '',
 
     // Step 6: Payment Information
-    token_money: existingApplication?.payment_detail?.token_money || 50000,
-    booking_money: existingApplication?.payment_detail?.booking_money || 150000,
-    booking_date: existingApplication?.payment_detail?.booking_date || new Date().toISOString().split('T')[0],
-    installment_type: existingApplication?.payment_detail?.installment_type || 'monthly',
-    number_of_installments: existingApplication?.payment_detail?.number_of_installments || 12,
-    installment_amount: existingApplication?.payment_detail?.installment_amount || 25000,
+    token_money: existingApplication?.payment_detail?.token_money || 0,
+    booking_money: existingApplication?.payment_detail?.booking_money || 0,
+    booking_date: existingApplication?.payment_detail?.booking_date || '',
+    installment_type: existingApplication?.payment_detail?.installment_type || '',
+    number_of_installments: existingApplication?.payment_detail?.number_of_installments || 0,
+    installment_amount: existingApplication?.payment_detail?.installment_amount || 0,
     installment_start_date: existingApplication?.payment_detail?.installment_start_date || '',
-    dues_amount: existingApplication?.payment_detail?.dues_amount || 300000,
+    dues_amount: existingApplication?.payment_detail?.dues_amount || 0,
 
     // Step 8: Declaration
     declaration_accepted: false,
   });
 
-  // Uploaded documents state
-  const [uploadedDocs, setUploadedDocs] = useState<Record<string, { id: string; name: string }>>({});
+  // Uploaded documents state (initialized with existing documents if any)
+  const [uploadedDocs, setUploadedDocs] = useState<Record<string, { id: string; name: string }>>(() => {
+    const map: Record<string, { id: string; name: string }> = {};
+    if (existingApplication?.documents && Array.isArray(existingApplication.documents)) {
+      existingApplication.documents.forEach((d: any) => {
+        if (d.doc_type) {
+          map[d.doc_type] = { id: d.id, name: d.file_name || 'Uploaded document' };
+        }
+      });
+    }
+    return map;
+  });
   const [uploadingDocType, setUploadingDocType] = useState<string | null>(null);
+
+  // Sync currentBusiness if prop changes
+  useEffect(() => {
+    if (business && business.id !== currentBusiness.id) {
+      setCurrentBusiness(business);
+    }
+  }, [business]);
+
+  // Load available divisions if not passed via props
+  useEffect(() => {
+    if (!availableBusinesses || availableBusinesses.length === 0) {
+      api.businesses
+        .list()
+        .then((data) => {
+          const list = Array.isArray(data) ? data : ((data as any)?.items || (data as any)?.data || []);
+          if (list.length > 0) {
+            setBizList(list);
+          }
+        })
+        .catch(() => {
+          setBizList([
+            { id: '1', code: 'SKH', name: 'Sunset Kuakata Hotel & Resort', slug: 'sunset-kuakata', description: 'Luxury seaside hospitality suites & beachfront ownership at Kuakata Beach.', logo_url: null, is_active: true },
+            { id: '2', code: 'DFI', name: 'Dhaka Fantasy Island', slug: 'dhaka-fantasy-island', description: 'Premier amusement theme park & family entertainment resort in Dhaka.', logo_url: null, is_active: true },
+            { id: '3', code: 'SCH', name: 'Sun Care Hospital & Diagnostic Centre', slug: 'sun-care-hospital', description: 'State-of-the-art multi-specialty healthcare, pathology, and diagnostic services.', logo_url: null, is_active: true },
+            { id: '4', code: 'SPC', name: 'Super Combo', slug: 'super-combo', description: 'Integrated multi-division commercial privileges and shared ownership bundle.', logo_url: null, is_active: true },
+          ]);
+        });
+    } else {
+      setBizList(availableBusinesses);
+    }
+  }, [availableBusinesses]);
 
   // Fetch package pricing and terms for this business
   useEffect(() => {
     async function loadConfig() {
       try {
         const [pkgData, termsData] = await Promise.all([
-          api.businesses.getPackages(business.id).catch(() => []),
-          api.businesses.getTerms(business.id).catch(() => null),
+          api.businesses.getPackages(currentBusiness.id).catch(() => []),
+          api.businesses.getTerms(currentBusiness.id).catch(() => null),
         ]);
         if (pkgData && pkgData.length > 0) {
           setPackages(pkgData);
-          if (!existingApplication) {
-            const firstPkg = pkgData[0];
-            setFormData((prev) => ({
-              ...prev,
-              package_type: firstPkg.package_type,
-              price_per_ownership: firstPkg.base_price,
-              total_price: firstPkg.base_price * prev.number_of_ownership - prev.discount_amount,
-              amount_in_words: numberToWords(firstPkg.base_price * prev.number_of_ownership - prev.discount_amount),
-            }));
-          }
         }
         if (termsData) {
           setTerms(termsData);
@@ -139,7 +198,144 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       }
     }
     loadConfig();
-  }, [business.id, existingApplication]);
+  }, [currentBusiness.id, existingApplication]);
+
+  // Handler to switch division from any step/page of the form
+  const handleSwitchDivision = async (newBiz: Business, preserveInfo: boolean = true) => {
+    if (newBiz.id === currentBusiness.id) {
+      setIsChangeBizModalOpen(false);
+      setPendingBusiness(null);
+      return;
+    }
+
+    setIsSwitchingBiz(true);
+    try {
+      const [pkgData, termsData] = await Promise.all([
+        api.businesses.getPackages(newBiz.id).catch(() => []),
+        api.businesses.getTerms(newBiz.id).catch(() => null),
+      ]);
+
+      const validPackages = Array.isArray(pkgData) ? pkgData : [];
+      setPackages(validPackages);
+      setTerms(termsData || null);
+
+      const firstPkg = validPackages[0];
+      const newPricePerUnit = firstPkg ? firstPkg.base_price : 500000;
+      const newPkgType = firstPkg ? firstPkg.package_type : 'Standard';
+
+      if (preserveInfo) {
+        // Keep all entered personal information, addresses, occupation, nominees, bank details
+        const qty = formData.number_of_ownership || 1;
+        const discount = formData.discount_amount || 0;
+        const total = Math.max(0, qty * newPricePerUnit - discount);
+        const words = numberToWords(total);
+        const dues = Math.max(0, total - (formData.token_money + formData.booking_money));
+        const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
+
+        setFormData((prev) => ({
+          ...prev,
+          package_type: newPkgType,
+          price_per_ownership: newPricePerUnit,
+          total_price: total,
+          amount_in_words: words,
+          dues_amount: dues,
+          installment_amount: instAmt,
+          declaration_accepted: false,
+        }));
+      } else {
+        // Full reset to fresh blank form
+        setFormData({
+          ownership_id: '',
+          application_date: new Date().toISOString().split('T')[0],
+          full_name_en: '',
+          full_name_bn: '',
+          father_name: '',
+          mother_name: '',
+          spouse_name: '',
+          present_address: '',
+          permanent_address: '',
+          mobile_number: '',
+          phone_number: '',
+          date_of_birth: '',
+          nationality: 'Bangladeshi',
+          religion: '',
+          nid_or_passport: '',
+          tin_number: '',
+          personal_email: '',
+          company_name: '',
+          office_address: '',
+          designation: '',
+          office_phone: '',
+          nominees: [
+            {
+              nominee_order: 1,
+              full_name: '',
+              relation: '',
+              father_or_husband_name: '',
+              nid_or_passport: '',
+              cell_number: '',
+              date_of_birth: '',
+            },
+          ],
+          account_name: '',
+          account_number: '',
+          bank_name: '',
+          branch_name: '',
+          package_type: '',
+          number_of_ownership: 1,
+          price_per_ownership: 0,
+          discount_amount: 0,
+          total_price: 0,
+          amount_in_words: '',
+          token_money: 0,
+          booking_money: 0,
+          booking_date: '',
+          installment_type: '',
+          number_of_installments: 0,
+          installment_amount: 0,
+          installment_start_date: '',
+          dues_amount: 0,
+          declaration_accepted: false,
+        });
+      }
+
+      setCurrentBusiness(newBiz);
+      if (onBusinessChange) {
+        onBusinessChange(newBiz);
+      }
+
+      if (applicationId) {
+        api.applications
+          .updateDraft(applicationId, {
+            business_id: Number(newBiz.id),
+          } as any)
+          .catch((err) => console.warn('Could not update backend business_id immediately', err));
+      }
+
+      // Return to Step 1 (Start No. 1 Step) as requested
+      setCurrentStep(1);
+      setVisitedSteps(new Set([1]));
+      setErrors({});
+      setStatusMessage({
+        type: 'success',
+        text: `Division switched to ${newBiz.name}. ${
+          preserveInfo
+            ? 'Applicant personal information has been preserved! Please review starting from Step 1.'
+            : 'Form reset to Step 1 for the new division.'
+        }`,
+      });
+      setIsChangeBizModalOpen(false);
+      setPendingBusiness(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err: any) {
+      setStatusMessage({
+        type: 'error',
+        text: err.message || 'Failed to switch division packages.',
+      });
+    } finally {
+      setIsSwitchingBiz(false);
+    }
+  };
 
   // Recalculate Total Price and Words whenever package/qty/discount changes
   const updatePricing = (pkgType: string, qty: number, discount: number, pricePerUnit: number) => {
@@ -174,6 +370,76 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     { number: 9, title: 'Confirmation', icon: Icons.CheckCircle },
   ];
 
+  // Check if a specific step has all required information filled
+  const isStepComplete = (stepNum: number): boolean => {
+    if (stepNum === 1) {
+      return Boolean(
+        formData.full_name_en?.trim() &&
+        formData.full_name_bn?.trim() &&
+        formData.father_name?.trim() &&
+        formData.mother_name?.trim() &&
+        formData.mobile_number?.trim() &&
+        formData.date_of_birth &&
+        formData.religion?.trim() &&
+        formData.nid_or_passport?.trim() &&
+        formData.present_address?.trim() &&
+        formData.permanent_address?.trim()
+      );
+    }
+    if (stepNum === 2) {
+      return Boolean(formData.designation?.trim());
+    }
+    if (stepNum === 3) {
+      const nom1 = formData.nominees?.[0];
+      return Boolean(
+        nom1 &&
+        nom1.full_name?.trim() &&
+        nom1.relation?.trim() &&
+        nom1.cell_number?.trim() &&
+        nom1.nid_or_passport?.trim()
+      );
+    }
+    if (stepNum === 4) {
+      return Boolean(
+        formData.account_name?.trim() &&
+        formData.account_number?.trim() &&
+        formData.bank_name?.trim() &&
+        formData.branch_name?.trim()
+      );
+    }
+    if (stepNum === 5) {
+      return Boolean(
+        formData.package_type &&
+        formData.package_type.trim() !== '' &&
+        Number(formData.total_price) > 0
+      );
+    }
+    if (stepNum === 6) {
+      return Boolean(
+        formData.installment_type &&
+        formData.installment_type.trim() !== '' &&
+        formData.booking_date &&
+        formData.booking_date.trim() !== '' &&
+        Number(formData.number_of_installments) > 0
+      );
+    }
+    if (stepNum === 7) {
+      // Must have uploaded at least one document
+      return Boolean(Object.keys(uploadedDocs).length > 0);
+    }
+    if (stepNum === 8) {
+      return Boolean(formData.declaration_accepted);
+    }
+    if (stepNum === 9) {
+      // Confirmation is only complete if application was actually submitted
+      return Boolean(
+        (currentStep === 9 && referenceNumber) ||
+        (existingApplication && existingApplication.status !== 'draft')
+      );
+    }
+    return false;
+  };
+
   // Validation
   const validateStep = (step: number): boolean => {
     const errs: Record<string, string> = {};
@@ -202,6 +468,24 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       if (!formData.account_number.trim()) errs.account_number = 'Account number is required';
       if (!formData.bank_name.trim()) errs.bank_name = 'Bank name is required';
       if (!formData.branch_name.trim()) errs.branch_name = 'Branch name is required';
+    } else if (step === 5) {
+      if (!formData.package_type || !formData.package_type.trim() || formData.total_price <= 0) {
+        errs.package_type = 'Please select an ownership package.';
+      }
+    } else if (step === 6) {
+      if (!formData.installment_type || !formData.installment_type.trim()) {
+        errs.installment_type = 'Please select an installment frequency.';
+      }
+      if (!formData.booking_date) {
+        errs.booking_date = 'Booking money date is required.';
+      }
+      if (!formData.number_of_installments || formData.number_of_installments <= 0) {
+        errs.number_of_installments = 'Number of installments must be at least 1.';
+      }
+    } else if (step === 7) {
+      if (Object.keys(uploadedDocs).length === 0) {
+        errs.documents = 'Please upload at least one required document.';
+      }
     } else if (step === 8) {
       if (!formData.declaration_accepted) {
         errs.declaration = 'You must accept the terms and conditions and declaration to submit.';
@@ -328,9 +612,21 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     }
 
     // Step 5: Ownership
-    if (!formData.package_type) {
-      missing.push('Package Type');
+    if (!formData.package_type || !formData.package_type.trim() || formData.total_price <= 0) {
+      missing.push('Ownership Package');
       if (!firstMissingStep) firstMissingStep = 5;
+    }
+
+    // Step 6: Payment Plan
+    if (!formData.installment_type || !formData.installment_type.trim() || !formData.booking_date || formData.number_of_installments <= 0) {
+      missing.push('Payment Plan & Installments');
+      if (!firstMissingStep) firstMissingStep = 6;
+    }
+
+    // Step 7: Documents
+    if (Object.keys(uploadedDocs).length === 0) {
+      missing.push('At least one uploaded document');
+      if (!firstMissingStep) firstMissingStep = 7;
     }
 
     // Step 8: Declaration
@@ -362,7 +658,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     if (!silent) setStatusMessage(null);
     try {
       const payload = {
-        business_id: business.id,
+        business_id: Number(currentBusiness.id),
         current_step: currentStep,
         applicant_info: {
           ownership_id: formData.ownership_id,
@@ -444,6 +740,14 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     // Auto-save draft in the background silently
     handleSaveDraft(true).catch(() => {});
 
+    setVisitedSteps((prev) => {
+      const next = new Set(prev);
+      for (let i = 1; i <= currentStep + 1; i++) {
+        next.add(i);
+      }
+      return next;
+    });
+
     setCurrentStep((prev) => Math.min(prev + 1, 9));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -460,6 +764,17 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     setErrors({});
     setStatusMessage(null);
     handleSaveDraft(true).catch(() => {});
+
+    // Mark steps up to current and target step as visited so incomplete steps are flagged
+    setVisitedSteps((prev) => {
+      const next = new Set(prev);
+      const maxStep = Math.max(currentStep, stepNumber);
+      for (let i = 1; i <= maxStep; i++) {
+        next.add(i);
+      }
+      return next;
+    });
+
     setCurrentStep(stepNumber);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -516,24 +831,463 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner with Business Division */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <span className="text-[10px] font-bold tracking-wider uppercase text-[#006B3E] bg-[#006B3E]/10 px-2 py-0.5 rounded">
-            Division ID: {business.code}
-          </span>
-          <h2 className="text-lg font-bold text-slate-900 mt-1">{business.name}</h2>
-          <p className="text-xs text-slate-500">Official Customer Ownership Registration Form</p>
+      {/* Top Banner - App-like PWA Header with Direct Logo (no cardview border) */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-2xs">
+        <div className="flex items-center gap-3 sm:gap-4">
+          {/* Direct Brand Logo - No border, no card container */}
+          <img
+            src={getDivisionLogo(currentBusiness.code)}
+            alt={currentBusiness.name}
+            className="h-11 sm:h-13 w-auto max-w-[85px] sm:max-w-[110px] object-contain shrink-0 select-none"
+          />
+
+          {/* Division Details & Change Action */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold tracking-wider uppercase text-[#006B3E] bg-[#006B3E]/10 px-2 py-0.5 rounded-full shrink-0">
+                Division: {currentBusiness.code}
+              </span>
+
+              {/* Change Division App Action Pill Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingBusiness(null);
+                  setIsChangeBizModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#006B3E] hover:text-[#005632] bg-emerald-50 hover:bg-emerald-100/90 active:scale-95 px-2.5 py-1 rounded-full border border-emerald-200/90 shadow-2xs transition-all cursor-pointer shrink-0"
+                title="Change project division"
+              >
+                <Icons.Refresh className="w-3 h-3 text-[#006B3E]" />
+                <span>Change</span>
+              </button>
+            </div>
+
+            <h2 className="text-xs sm:text-base font-bold text-slate-900 truncate mt-1 leading-tight">
+              {currentBusiness.name}
+            </h2>
+            <p className="text-[11px] text-slate-500 font-medium truncate sm:whitespace-normal">
+              Official Customer Ownership Registration Form
+            </p>
+          </div>
         </div>
+
         {referenceNumber && (
-          <div className="text-right">
-            <span className="text-xs text-slate-500 block">Application Reference</span>
-            <span className="text-sm font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 inline-block">
+          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-slate-400 font-medium">Application Ref:</span>
+            <span className="font-mono font-bold text-slate-800 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/70 text-[11px]">
               {referenceNumber}
             </span>
           </div>
         )}
       </div>
+
+      {/* Change Division Modal */}
+      <Modal
+        isOpen={isChangeBizModalOpen}
+        onClose={() => {
+          if (!isSwitchingBiz) {
+            setIsChangeBizModalOpen(false);
+            setPendingBusiness(null);
+          }
+        }}
+        title="Switch Division"
+        description="Select a Sunset Group business division for this application."
+        maxWidth="md"
+      >
+        <div className="space-y-3 pt-1">
+          {!pendingBusiness ? (
+            <div className="space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {bizList.map((biz) => {
+                  const isCurrent = biz.id === currentBusiness.id;
+                  const logoSrc = getDivisionLogo(biz.code);
+
+                  return (
+                    <div
+                      key={biz.id}
+                      onClick={() => {
+                        if (!isCurrent) setPendingBusiness(biz);
+                      }}
+                      className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all ${
+                        isCurrent
+                          ? 'border-[#006B3E] bg-emerald-50/50 ring-1 ring-[#006B3E]/20 cursor-default'
+                          : 'border-slate-200/80 hover:border-[#006B3E]/60 hover:bg-slate-50 cursor-pointer shadow-2xs'
+                      }`}
+                    >
+                      {/* Direct Logo - No border, no cardview */}
+                      <img
+                        src={logoSrc}
+                        alt={biz.name}
+                        className="h-10 w-10 object-contain shrink-0 select-none"
+                      />
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#006B3E] bg-[#006B3E]/10 px-1.5 py-0.5 rounded">
+                            {biz.code}
+                          </span>
+                          {isCurrent && (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 truncate mt-1">{biz.name}</h4>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            /* Confirmation step when another business is clicked - sleek app style with minimal text */
+            <div className="space-y-3">
+              <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
+                {/* Direct Logo - No border */}
+                <img
+                  src={getDivisionLogo(pendingBusiness.code)}
+                  alt={pendingBusiness.name}
+                  className="h-11 w-11 object-contain shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] font-bold uppercase text-[#006B3E] bg-[#006B3E]/10 px-1.5 py-0.5 rounded">
+                    Switch to {pendingBusiness.code}
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate mt-0.5">
+                    {pendingBusiness.name}
+                  </h4>
+                  <p className="text-[11px] text-slate-500">How would you like to handle your form info?</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                {/* Option 1: Keep Info */}
+                <button
+                  type="button"
+                  disabled={isSwitchingBiz}
+                  onClick={() => handleSwitchDivision(pendingBusiness, true)}
+                  className="w-full p-3 rounded-xl border border-emerald-300 bg-emerald-50/80 hover:bg-emerald-100/90 active:scale-[0.99] text-left transition-all flex items-center justify-between group cursor-pointer"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-[#006B3E] text-white flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[#006B3E]">
+                        Keep Info &amp; Switch (Recommended)
+                      </div>
+                      <div className="text-[11px] text-slate-600 mt-0.5">
+                        Retains your personal info, addresses &amp; updates division pricing.
+                      </div>
+                    </div>
+                  </div>
+                  <Icons.ArrowRight className="w-4 h-4 text-[#006B3E] opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+                </button>
+
+                {/* Option 2: Start Fresh */}
+                <button
+                  type="button"
+                  disabled={isSwitchingBiz}
+                  onClick={() => handleSwitchDivision(pendingBusiness, false)}
+                  className="w-full p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:scale-[0.99] text-left transition-all flex items-center justify-between group cursor-pointer"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">
+                      ↺
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-800">
+                        Start Blank Form
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        Clears all fields and starts clean from Step 1.
+                      </div>
+                    </div>
+                  </div>
+                  <Icons.ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+                </button>
+              </div>
+
+              <div className="pt-1 flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isSwitchingBiz}
+                  onClick={() => setPendingBusiness(null)}
+                >
+                  Back
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Final Review & Confirmation Modal */}
+      <Modal
+        isOpen={isReviewModalOpen}
+        onClose={() => !isSubmitting && setIsReviewModalOpen(false)}
+        title="Review & Confirm Application"
+        description="Verify all details and uploaded documents before final submission."
+        maxWidth="xl"
+      >
+        <div className="space-y-4 pt-1">
+          {/* Active Division Summary */}
+          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img
+                src={getDivisionLogo(currentBusiness.code)}
+                alt={currentBusiness.name}
+                className="h-10 w-auto max-w-[70px] object-contain shrink-0"
+              />
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#006B3E] bg-[#006B3E]/10 px-2 py-0.5 rounded-full">
+                  Division: {currentBusiness.code}
+                </span>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">{currentBusiness.name}</h4>
+              </div>
+            </div>
+            {referenceNumber && (
+              <span className="text-[11px] font-mono font-bold text-slate-700 bg-white px-2 py-1 rounded border border-slate-200">
+                Ref: {referenceNumber}
+              </span>
+            )}
+          </div>
+
+          {/* Section 1: Applicant Information */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+            <div className="bg-slate-50/80 px-3.5 py-2 font-bold text-slate-800 flex items-center gap-2 border-b border-slate-200">
+              <Icons.User className="w-3.5 h-3.5 text-[#006B3E]" />
+              <span>Applicant Personal Details</span>
+            </div>
+            <div className="p-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div>
+                <span className="text-[11px] text-slate-400 block">Name (English)</span>
+                <span className="font-semibold text-slate-900">{formData.full_name_en || '—'}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Name (Bangla)</span>
+                <span className="font-semibold text-slate-900">{formData.full_name_bn || '—'}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Father's Name</span>
+                <span className="font-semibold text-slate-900">{formData.father_name || '—'}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Mother's Name</span>
+                <span className="font-semibold text-slate-900">{formData.mother_name || '—'}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Mobile Number</span>
+                <span className="font-semibold text-slate-900">{formData.mobile_number || '—'}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Date of Birth</span>
+                <span className="font-semibold text-slate-900">{formData.date_of_birth || '—'}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">NID / Passport</span>
+                <span className="font-semibold text-slate-900">{formData.nid_or_passport || '—'}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Religion</span>
+                <span className="font-semibold text-slate-900">{formData.religion || '—'}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-[11px] text-slate-400 block">Present Address</span>
+                <span className="font-semibold text-slate-900">{formData.present_address || '—'}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-[11px] text-slate-400 block">Permanent Address</span>
+                <span className="font-semibold text-slate-900">{formData.permanent_address || '—'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Profession, Nominee, Bank */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Profession */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+              <div className="bg-slate-50/80 px-3 py-1.5 font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-200">
+                <Icons.Briefcase className="w-3.5 h-3.5 text-[#006B3E]" />
+                <span>Profession</span>
+              </div>
+              <div className="p-3 space-y-1.5">
+                <div>
+                  <span className="text-[11px] text-slate-400 block">Designation:</span>
+                  <span className="font-semibold text-slate-900">{formData.designation || '—'}</span>
+                </div>
+                {formData.company_name && (
+                  <div>
+                    <span className="text-[11px] text-slate-400 block">Company:</span>
+                    <span className="font-semibold text-slate-900">{formData.company_name}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Nominee */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+              <div className="bg-slate-50/80 px-3 py-1.5 font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-200">
+                <Icons.Users className="w-3.5 h-3.5 text-[#006B3E]" />
+                <span>Primary Nominee</span>
+              </div>
+              <div className="p-3 space-y-1.5">
+                <div>
+                  <span className="text-[11px] text-slate-400 block">Name:</span>
+                  <span className="font-semibold text-slate-900">{formData.nominees?.[0]?.full_name || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-400 block">Relation / Phone:</span>
+                  <span className="font-semibold text-slate-900">
+                    {formData.nominees?.[0]?.relation || '—'} • {formData.nominees?.[0]?.cell_number || '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bank Details */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+              <div className="bg-slate-50/80 px-3 py-1.5 font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-200">
+                <Icons.CreditCard className="w-3.5 h-3.5 text-[#006B3E]" />
+                <span>Bank Details</span>
+              </div>
+              <div className="p-3 space-y-1.5">
+                <div>
+                  <span className="text-[11px] text-slate-400 block">Bank &amp; Branch:</span>
+                  <span className="font-semibold text-slate-900">{formData.bank_name || '—'} ({formData.branch_name || '—'})</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-400 block">Account:</span>
+                  <span className="font-semibold text-slate-900">{formData.account_name || '—'} • {formData.account_number || '—'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Ownership & Payment Schedule */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+            <div className="bg-slate-50/80 px-3.5 py-2 font-bold text-slate-800 flex items-center gap-2 border-b border-slate-200">
+              <Icons.Building className="w-3.5 h-3.5 text-[#006B3E]" />
+              <span>Ownership &amp; Payment Schedule</span>
+            </div>
+            <div className="p-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div>
+                <span className="text-[11px] text-slate-400 block">Package Type</span>
+                <span className="font-semibold text-slate-900">{formData.package_type} ({formData.number_of_ownership} share)</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Total Price</span>
+                <span className="font-bold text-[#006B3E]">৳ {formData.total_price.toLocaleString('en-IN')}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Booking Money</span>
+                <span className="font-semibold text-slate-900">৳ {formData.booking_money.toLocaleString('en-IN')}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Remaining Dues</span>
+                <span className="font-semibold text-slate-900">৳ {formData.dues_amount.toLocaleString('en-IN')}</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Installments</span>
+                <span className="font-semibold text-slate-900">
+                  {formData.number_of_installments} x ৳ {formData.installment_amount.toLocaleString('en-IN')} ({formData.installment_type})
+                </span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 block">Booking Date</span>
+                <span className="font-semibold text-slate-900">{formData.booking_date || '—'}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-[11px] text-slate-400 block">Amount in Words</span>
+                <span className="font-semibold text-slate-800">{formData.amount_in_words}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Uploaded Documents Verification */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+            <div className="bg-slate-50/80 px-3.5 py-2 font-bold text-slate-800 flex items-center justify-between border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Icons.Upload className="w-3.5 h-3.5 text-[#006B3E]" />
+                <span>Uploaded Documents Verification</span>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500">
+                {Object.keys(uploadedDocs).length} Document(s) Attached
+              </span>
+            </div>
+            <div className="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {[
+                { type: 'applicant_photo', label: 'Applicant Photograph', required: true },
+                { type: 'nid_front', label: 'NID Front / Passport Page', required: true },
+                { type: 'nid_back', label: 'NID Back Side', required: false },
+                { type: 'nominee_photo', label: 'Nominee Photograph', required: true },
+                { type: 'nominee_nid', label: 'Nominee NID / Passport', required: true },
+                { type: 'tin_certificate', label: 'e-TIN Certificate', required: false },
+              ].map((doc) => {
+                const uploaded = uploadedDocs[doc.type];
+                return (
+                  <div
+                    key={doc.type}
+                    className={`flex items-center justify-between p-2.5 rounded-lg border text-xs transition-colors ${
+                      uploaded
+                        ? 'border-emerald-200 bg-emerald-50/40 text-emerald-900'
+                        : doc.required
+                        ? 'border-amber-200 bg-amber-50/30 text-amber-900'
+                        : 'border-slate-200/60 bg-slate-50/50 text-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icons.FileText className={`w-4 h-4 shrink-0 ${uploaded ? 'text-[#006B3E]' : 'text-slate-400'}`} />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">{doc.label}</p>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {uploaded ? uploaded.name : doc.required ? 'Not attached (Required)' : 'Optional'}
+                        </p>
+                      </div>
+                    </div>
+                    {uploaded ? (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">
+                        ✓ Uploaded
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-slate-400 shrink-0">
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isSubmitting}
+              onClick={() => setIsReviewModalOpen(false)}
+            >
+              Back to Edit
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              disabled={isSubmitting}
+              isLoading={isSubmitting}
+              onClick={async () => {
+                setIsReviewModalOpen(false);
+                await handleSubmit();
+              }}
+              leftIcon={<Icons.Check className="w-4 h-4" />}
+            >
+              Confirm &amp; Final Submit
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Mobile App Stepper */}
       <div className="md:hidden bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs space-y-2.5">
@@ -551,23 +1305,36 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
         </div>
         {/* Quick Step Buttons for Mobile */}
         <div className="flex items-center justify-between gap-1 overflow-x-auto pt-0.5 pb-1">
-          {steps.slice(0, 8).map((s) => (
-            <button
-              key={s.number}
-              type="button"
-              onClick={() => goToStep(s.number)}
-              className={`w-7 h-7 rounded-full text-xs font-bold shrink-0 transition-colors ${
-                currentStep === s.number
-                  ? 'bg-[#006B3E] text-white shadow-xs'
-                  : currentStep > s.number
-                  ? 'bg-emerald-100 text-[#006B3E]'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-              title={s.title}
-            >
-              {s.number}
-            </button>
-          ))}
+          {steps.slice(0, 8).map((s) => {
+            const isComplete = (visitedSteps.has(s.number) || Boolean(existingApplication)) && isStepComplete(s.number);
+            const isCurrent = currentStep === s.number;
+            const isVisited = visitedSteps.has(s.number) || s.number < currentStep;
+            const isIncomplete = isVisited && !isComplete && !isCurrent;
+
+            return (
+              <button
+                key={s.number}
+                type="button"
+                onClick={() => goToStep(s.number)}
+                className={`w-7 h-7 rounded-full text-xs font-bold shrink-0 transition-colors flex items-center justify-center ${
+                  isCurrent
+                    ? 'border-2 border-[#006B3E] text-[#006B3E] bg-white ring-2 ring-[#006B3E]/20 shadow-xs'
+                    : isComplete
+                    ? 'bg-[#006B3E] text-white border-2 border-[#006B3E]'
+                    : isIncomplete
+                    ? 'border-2 border-red-500 text-red-600 bg-red-50 ring-1 ring-red-200'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+                title={
+                  isIncomplete
+                    ? `${s.title} (Incomplete - Missing required info)`
+                    : s.title
+                }
+              >
+                {isComplete ? <Icons.Check className="w-3.5 h-3.5 text-white" /> : s.number}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -575,30 +1342,45 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       <div className="hidden md:block bg-white border border-slate-200 rounded-xl p-4 overflow-x-auto">
         <div className="flex items-center justify-between min-w-[720px]">
           {steps.map((s, idx) => {
-            const isCompleted = currentStep > s.number;
+            const isComplete = (visitedSteps.has(s.number) || Boolean(existingApplication)) && isStepComplete(s.number);
             const isCurrent = currentStep === s.number;
+            const isVisited = visitedSteps.has(s.number) || s.number < currentStep;
+            const isIncomplete = isVisited && !isComplete && !isCurrent;
+
             return (
               <React.Fragment key={s.number}>
                 <button
                   type="button"
                   onClick={() => s.number <= 8 && goToStep(s.number)}
                   className="flex flex-col items-center text-center group cursor-pointer focus:outline-none"
-                  title={`Jump to ${s.title}`}
+                  title={
+                    isIncomplete
+                      ? `Step ${s.number}: ${s.title} (Incomplete - missing required info)`
+                      : `Jump to ${s.title}`
+                  }
                 >
                   <div
                     className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
-                      isCompleted
-                        ? 'bg-[#006B3E] text-white group-hover:scale-105'
-                        : isCurrent
-                        ? 'border-2 border-[#006B3E] text-[#006B3E] bg-white ring-4 ring-[#006B3E]/10 group-hover:scale-105'
-                        : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
+                      isCurrent
+                        ? 'border-2 border-[#006B3E] text-[#006B3E] bg-white ring-4 ring-[#006B3E]/15 group-hover:scale-105'
+                        : isComplete
+                        ? 'bg-[#006B3E] text-white border-2 border-[#006B3E] group-hover:scale-105'
+                        : isIncomplete
+                        ? 'border-2 border-red-500 text-red-600 bg-red-50 ring-2 ring-red-100 shadow-2xs group-hover:bg-red-100/70 group-hover:scale-105'
+                        : 'bg-slate-100 text-slate-400 border border-slate-200 group-hover:bg-slate-200'
                     }`}
                   >
-                    {isCompleted ? <Icons.Check className="w-4 h-4 text-white" /> : s.number}
+                    {isComplete ? <Icons.Check className="w-4 h-4 text-white" /> : s.number}
                   </div>
                   <span
                     className={`text-[11px] font-medium mt-1.5 whitespace-nowrap transition-colors ${
-                      isCurrent ? 'text-slate-900 font-bold' : 'text-slate-500 group-hover:text-slate-800'
+                      isCurrent
+                        ? 'text-slate-900 font-bold'
+                        : isIncomplete
+                        ? 'text-red-600 font-semibold'
+                        : isComplete
+                        ? 'text-[#006B3E] font-medium'
+                        : 'text-slate-500 group-hover:text-slate-800'
                     }`}
                   >
                     {s.title}
@@ -607,7 +1389,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 {idx < steps.length - 1 && (
                   <div
                     className={`flex-1 h-0.5 mx-2 ${
-                      currentStep > idx + 1 ? 'bg-[#006B3E]' : 'bg-slate-200'
+                      isComplete ? 'bg-[#006B3E]' : 'bg-slate-200'
                     }`}
                   />
                 )}
@@ -994,13 +1776,13 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
             <div className="border-b border-slate-100 pb-3">
               <h3 className="text-base font-semibold text-slate-900">Step 5: Ownership Package &amp; Pricing</h3>
               <p className="text-xs text-slate-500">
-                Select your desired ownership package for {business.name}.
+                Select your desired ownership package for {currentBusiness.name}.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {['Bronze', 'Silver', 'Gold', 'Platinum'].map((pkg) => {
-                const isSelected = formData.package_type.toLowerCase() === pkg.toLowerCase();
+                const isSelected = Boolean(formData.package_type && formData.package_type.toLowerCase() === pkg.toLowerCase());
                 const matchedPkg = packages.find((p) => p.package_type.toLowerCase() === pkg.toLowerCase());
                 const price = matchedPkg ? matchedPkg.base_price : pkg === 'Bronze' ? 300000 : pkg === 'Silver' ? 500000 : pkg === 'Gold' ? 800000 : 1200000;
 
@@ -1067,7 +1849,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
               </div>
               <div className="text-right sm:max-w-md">
                 <span className="text-xs text-slate-500 block">Amount in Words</span>
-                <span className="text-xs font-semibold text-slate-800">{formData.amount_in_words}</span>
+                <span className="text-xs font-semibold text-slate-800">{formData.amount_in_words || 'Please select an ownership package'}</span>
               </div>
             </div>
           </div>
@@ -1085,7 +1867,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
               <Input
                 label="Token Money (BDT)"
                 type="number"
-                value={formData.token_money}
+                value={formData.token_money || ''}
                 onChange={(e) => {
                   const tm = parseFloat(e.target.value) || 0;
                   const dues = Math.max(0, formData.total_price - (tm + formData.booking_money));
@@ -1096,7 +1878,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
               <Input
                 label="Booking Money (BDT)"
                 type="number"
-                value={formData.booking_money}
+                value={formData.booking_money || ''}
                 onChange={(e) => {
                   const bm = parseFloat(e.target.value) || 0;
                   const dues = Math.max(0, formData.total_price - (formData.token_money + bm));
@@ -1118,6 +1900,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 value={formData.installment_type}
                 onChange={(e) => setFormData({ ...formData, installment_type: e.target.value as any })}
                 options={[
+                  { value: '', label: 'Select installment frequency...' },
                   { value: 'monthly', label: 'Monthly' },
                   { value: 'quarterly', label: 'Quarterly' },
                   { value: 'half_yearly', label: 'Half-Yearly' },
@@ -1129,9 +1912,9 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 type="number"
                 min={1}
                 max={60}
-                value={formData.number_of_installments}
+                value={formData.number_of_installments || ''}
                 onChange={(e) => {
-                  const n = parseInt(e.target.value) || 1;
+                  const n = parseInt(e.target.value) || 0;
                   const instAmt = n > 0 ? Math.round(formData.dues_amount / n) : 0;
                   setFormData({ ...formData, number_of_installments: n, installment_amount: instAmt });
                 }}
@@ -1139,7 +1922,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
               <Input
                 label="Calculated Installment (BDT)"
                 type="number"
-                value={formData.installment_amount}
+                value={formData.installment_amount || ''}
                 onChange={(e) => setFormData({ ...formData, installment_amount: parseFloat(e.target.value) || 0 })}
               />
               <Input
@@ -1240,7 +2023,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
             {/* Terms Viewer */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 max-h-56 overflow-y-auto text-xs text-slate-700 space-y-2">
               <h4 className="font-bold text-slate-900">
-                Terms and Conditions — {business.name} (Version {terms?.version || '1.0'})
+                Terms and Conditions — {currentBusiness.name} (Version {terms?.version || '1.0'})
               </h4>
               <p>
                 {terms?.content ||
@@ -1258,7 +2041,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#006B3E] focus:ring-[#006B3E]"
                 />
                 <span className="text-xs text-slate-800 leading-relaxed">
-                  I solemnly declare that the particulars furnished above are true and correct to the best of my knowledge and belief. I agree to abide by the rules and regulations of Sunset Group and {business.name}.
+                  I solemnly declare that the particulars furnished above are true and correct to the best of my knowledge and belief. I agree to abide by the rules and regulations of Sunset Group and {currentBusiness.name}.
                 </span>
               </label>
               {errors.declaration && (
@@ -1268,7 +2051,10 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
 
             {/* Structured Summary Review */}
             <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
-              <div className="p-3 bg-slate-50 font-bold text-slate-800">Summary Review</div>
+              <div className="p-3 bg-slate-50 font-bold text-slate-800 flex items-center justify-between">
+                <span>Application Overview &amp; Verification</span>
+                <span className="text-[11px] text-slate-500 font-normal">Click review below to confirm submission</span>
+              </div>
               <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <span className="text-slate-500">Applicant:</span>
                 <span className="font-semibold text-slate-900">{formData.full_name_en}</span>
@@ -1288,6 +2074,42 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 <span className="font-semibold text-slate-900">৳ {formData.booking_money.toLocaleString('en-IN')}</span>
                 <span className="text-slate-500">Remaining Dues:</span>
                 <span className="font-semibold text-slate-900">৳ {formData.dues_amount.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <span className="text-slate-500">Primary Nominee:</span>
+                <span className="font-semibold text-slate-900">{formData.nominees?.[0]?.full_name || '—'}</span>
+                <span className="text-slate-500">Relation:</span>
+                <span className="font-semibold text-slate-900">{formData.nominees?.[0]?.relation || '—'}</span>
+                <span className="text-slate-500">Bank Account:</span>
+                <span className="font-semibold text-slate-900">{formData.bank_name || '—'}</span>
+                <span className="text-slate-500">Branch:</span>
+                <span className="font-semibold text-slate-900">{formData.branch_name || '—'}</span>
+              </div>
+              {/* Uploaded Documents List in Step 8 */}
+              <div className="p-3">
+                <span className="text-slate-500 font-semibold block mb-2">Uploaded Attachments:</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    { type: 'applicant_photo', label: 'Applicant Photo' },
+                    { type: 'nid_front', label: 'NID Front' },
+                    { type: 'nid_back', label: 'NID Back' },
+                    { type: 'nominee_photo', label: 'Nominee Photo' },
+                    { type: 'nominee_nid', label: 'Nominee NID' },
+                    { type: 'tin_certificate', label: 'e-TIN' },
+                  ].map((doc) => {
+                    const uploaded = uploadedDocs[doc.type];
+                    return (
+                      <div key={doc.type} className="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
+                        <span className="text-slate-700 truncate">{doc.label}:</span>
+                        {uploaded ? (
+                          <span className="text-emerald-700 font-semibold truncate ml-2">✓ {uploaded.name}</span>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">Not uploaded</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -1377,11 +2199,15 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={handleSubmit}
+                  onClick={() => {
+                    if (validateAllBeforeSubmit()) {
+                      setIsReviewModalOpen(true);
+                    }
+                  }}
                   isLoading={isSubmitting}
                   leftIcon={<Icons.Check className="w-4 h-4" />}
                 >
-                  Submit Application
+                  Review &amp; Submit Application
                 </Button>
               )}
             </div>

@@ -114,31 +114,45 @@ function ApplyContent() {
         subtitle="Step 1: Choose the Sunset Group business division you wish to apply for."
       >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {businesses.map((biz) => (
-            <Card
-              key={biz.id}
-              className="hover:border-[#006B3E] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
-            >
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#006B3E] bg-[#006B3E]/10 px-2 py-0.5 rounded">
-                  {biz.code}
-                </span>
-                <h3 className="text-base font-bold text-slate-900 mt-3 mb-2">{biz.name}</h3>
-                <p className="text-xs text-slate-500 mb-6">
-                  {biz.description || 'Shared ownership with quarterly dividend distribution.'}
-                </p>
-              </div>
+          {businesses.map((biz) => {
+            const logoSrc =
+              biz.code === 'SCH'
+                ? '/suncarelogo.png'
+                : biz.code === 'DFI'
+                ? '/dfilogo.png'
+                : biz.code === 'SPC'
+                ? '/sunsetcombologo.png'
+                : '/sunsetlogo.png';
 
-              <Button
-                variant="primary"
-                size="sm"
-                className="w-full"
-                onClick={() => setSelectedBusiness(biz)}
+            return (
+              <Card
+                key={biz.id}
+                className="hover:border-[#006B3E] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between p-5"
               >
-                Select &amp; Continue
-              </Button>
-            </Card>
-          ))}
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#006B3E] bg-[#006B3E]/10 px-2 py-0.5 rounded">
+                      {biz.code}
+                    </span>
+                    <img src={logoSrc} alt={biz.name} className="h-10 w-auto max-w-[80px] object-contain shrink-0" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 mb-2">{biz.name}</h3>
+                  <p className="text-xs text-slate-500 mb-6">
+                    {biz.description || 'Shared ownership with quarterly dividend distribution.'}
+                  </p>
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setSelectedBusiness(biz)}
+                >
+                  Select &amp; Continue
+                </Button>
+              </Card>
+            );
+          })}
         </div>
       </DashboardShell>
     );
@@ -148,19 +162,11 @@ function ApplyContent() {
     <DashboardShell
       title="Customer Ownership Application Form"
       subtitle={`Registering for ${selectedBusiness.name}`}
-      actions={
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setSelectedBusiness(null)}
-          leftIcon={<Icons.ArrowLeft className="w-4 h-4" />}
-        >
-          Change Division
-        </Button>
-      }
     >
       <ApplicationWizard
         business={selectedBusiness}
+        availableBusinesses={businesses}
+        onBusinessChange={(newBiz) => setSelectedBusiness(newBiz)}
         existingApplication={existingApp}
         onSuccess={() => {
           // Success handled in step 9 of wizard

@@ -165,6 +165,7 @@ class ApplicationCreate(BaseModel):
 
 
 class ApplicationUpdate(BaseModel):
+    business_id: int | None = None
     applicant_info: ApplicantInfoUpdate | None = None
     bank_detail: BankDetailCreate | None = None
     ownership_detail: OwnershipDetailCreate | None = None

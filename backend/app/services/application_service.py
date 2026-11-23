@@ -434,6 +434,12 @@ class ApplicationService:
         if data.declaration_accepted is not None:
             app.declaration_accepted = data.declaration_accepted
 
+        # Update business division if changed
+        if data.business_id is not None and data.business_id != app.business_id:
+            new_biz = self.db.query(Business).filter(Business.id == data.business_id).first()
+            if new_biz:
+                app.business_id = new_biz.id
+
         # Update ApplicantInfo
         if data.applicant_info:
             info = self.db.query(ApplicantInfo).filter(ApplicantInfo.application_id == app.id).first()

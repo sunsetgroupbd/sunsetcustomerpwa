@@ -327,16 +327,20 @@ export default function HomePage() {
                     <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${badgeColor}`}>
                       {biz.code}
                     </span>
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shadow-sm">
-                      {isSKH ? (
-                        <Icons.Hotel className="w-4 h-4 text-[#008751]" size={16} />
-                      ) : isDFI ? (
-                        <Icons.ThemePark className="w-4 h-4 text-blue-600" size={16} />
-                      ) : isSCH ? (
-                        <Icons.Hospital className="w-4 h-4 text-teal-600" size={16} />
-                      ) : (
-                        <Icons.Layers className="w-4 h-4 text-amber-600" size={16} />
-                      )}
+                    <div className="w-10 h-10 rounded-lg bg-white border border-slate-200/80 p-1 flex items-center justify-center shadow-2xs">
+                      <img
+                        src={
+                          biz.code === 'SCH'
+                            ? '/suncarelogo.png'
+                            : biz.code === 'DFI'
+                            ? '/dfilogo.png'
+                            : biz.code === 'SPC'
+                            ? '/sunsetcombologo.png'
+                            : '/sunsetlogo.png'
+                        }
+                        alt={biz.name}
+                        className="max-h-full max-w-full object-contain"
+                      />
                     </div>
                   </div>
 
