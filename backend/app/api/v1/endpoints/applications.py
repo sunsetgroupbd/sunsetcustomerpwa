@@ -26,6 +26,7 @@ from app.core.deps import get_current_active_user, get_db, require_roles
 from app.core.responses import paginated_response, success_response
 from app.schemas.application import (
     ApplicationCreate,
+    ApplicationDetail,
     ApplicationOnBehalfCreate,
     ApplicationSubmitRequest,
     ApplicationUpdate,
@@ -76,8 +77,9 @@ async def create_application(
             business_id=payload.business_id,
             data=payload,
         )
+        app = await service.get_application(result.id, current_user)
         return success_response(
-            data=result,
+            data=ApplicationDetail.model_validate(app),
             message="Application created successfully.",
             status_code=status.HTTP_201_CREATED,
         )
@@ -187,7 +189,7 @@ async def get_application(
     try:
         service = ApplicationService(db)
         app = await service.get_application(application_id, current_user)
-        return success_response(data=app, message="Application retrieved successfully.")
+        return success_response(data=ApplicationDetail.model_validate(app), message="Application retrieved successfully.")
     except HTTPException:
         raise
     except Exception as exc:
@@ -224,8 +226,9 @@ async def update_application(
     """Update application fields."""
     try:
         service = ApplicationService(db)
-        result = await service.update_application(application_id, payload, current_user)
-        return success_response(data=result, message="Application updated successfully.")
+        await service.update_application(application_id, payload, current_user)
+        app = await service.get_application(application_id, current_user)
+        return success_response(data=ApplicationDetail.model_validate(app), message="Application updated successfully.")
     except HTTPException:
         raise
     except Exception as exc:

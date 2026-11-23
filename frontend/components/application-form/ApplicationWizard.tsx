@@ -278,6 +278,131 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     }
   }, [applicationId]);
 
+  // Re-sync full form state whenever existingApplication is loaded or refreshed
+  useEffect(() => {
+    if (existingApplication) {
+      if (existingApplication.id) {
+        setApplicationId(String(existingApplication.id));
+      }
+      if (existingApplication.reference_number) {
+        setReferenceNumber(existingApplication.reference_number);
+      }
+      if (existingApplication.current_step && existingApplication.current_step > 0) {
+        setCurrentStep(existingApplication.current_step);
+      }
+
+      setVisitedSteps((prev) => {
+        const next = new Set(prev);
+        const maxStep = Math.max(existingApplication.current_step || 1, 8);
+        for (let i = 1; i <= maxStep; i++) {
+          next.add(i);
+        }
+        return next;
+      });
+
+      const appInfo: any = existingApplication.applicant_info || {};
+      const bankInfo: any = existingApplication.bank_detail || {};
+      const ownInfo: any = existingApplication.ownership_detail || {};
+      const payInfo: any = existingApplication.payment_detail || {};
+
+      setFormData((prev) => ({
+        ...prev,
+        // Step 1: Personal Details
+        ownership_id: appInfo.ownership_id || prev.ownership_id || '',
+        application_date: appInfo.application_date || prev.application_date || new Date().toISOString().split('T')[0],
+        full_name_en: appInfo.full_name_en || prev.full_name_en || '',
+        full_name_bn: appInfo.full_name_bn || prev.full_name_bn || '',
+        father_name: appInfo.father_name || prev.father_name || '',
+        mother_name: appInfo.mother_name || prev.mother_name || '',
+        spouse_name: appInfo.spouse_name || prev.spouse_name || '',
+        present_address: appInfo.present_address || prev.present_address || '',
+        permanent_address: appInfo.permanent_address || prev.permanent_address || '',
+        mobile_number: appInfo.mobile_number || prev.mobile_number || '',
+        phone_number: appInfo.phone_number || prev.phone_number || '',
+        date_of_birth: appInfo.date_of_birth || prev.date_of_birth || '',
+        nationality: appInfo.nationality || prev.nationality || 'Bangladeshi',
+        religion: appInfo.religion || prev.religion || '',
+        nid_or_passport: appInfo.nid_or_passport || (appInfo as any).nid_number || prev.nid_or_passport || '',
+        tin_number: appInfo.tin_number || prev.tin_number || '',
+        personal_email: appInfo.personal_email || prev.personal_email || '',
+
+        // Step 2: Profession
+        company_name: appInfo.company_name || prev.company_name || '',
+        office_address: appInfo.office_address || prev.office_address || '',
+        designation: appInfo.designation || prev.designation || '',
+        office_phone: appInfo.office_phone || prev.office_phone || '',
+
+        // Step 3: Nominees
+        nominees: existingApplication.nominees && existingApplication.nominees.length > 0
+          ? existingApplication.nominees.map((n: any, idx: number) => ({
+              nominee_order: n.nominee_number || n.nominee_order || idx + 1,
+              full_name: n.full_name || n.name || '',
+              relation: n.relation || n.relationship || '',
+              father_or_husband_name: n.father_or_husband_name || '',
+              nid_or_passport: n.nid_or_passport || n.nid_number || '',
+              cell_number: n.cell_number || n.mobile_number || '',
+              date_of_birth: n.date_of_birth || '',
+            }))
+          : prev.nominees,
+
+        // Step 4: Bank Details
+        account_name: bankInfo.account_name || prev.account_name || '',
+        account_number: bankInfo.account_number || prev.account_number || '',
+        bank_name: bankInfo.bank_name || prev.bank_name || '',
+        branch_name: bankInfo.branch_name || (bankInfo as any).branch || prev.branch_name || '',
+
+        // Step 5: Ownership
+        package_type: ownInfo.package_type || (ownInfo as any).package || prev.package_type || '',
+        number_of_ownership: ownInfo.number_of_ownership ?? prev.number_of_ownership ?? 1,
+        price_per_ownership: ownInfo.price_per_ownership ?? prev.price_per_ownership ?? 0,
+        discount_amount: ownInfo.discount_amount ?? (ownInfo as any).discount ?? prev.discount_amount ?? 0,
+        total_price: ownInfo.total_price ?? prev.total_price ?? 0,
+        amount_in_words: ownInfo.amount_in_words || prev.amount_in_words || '',
+
+        // Step 6: Payment Info
+        token_money: payInfo.token_money ?? prev.token_money ?? 0,
+        booking_money: payInfo.booking_money ?? prev.booking_money ?? 0,
+        booking_date: payInfo.booking_date || (payInfo as any).booking_money_date || prev.booking_date || '',
+        installment_type: payInfo.installment_type || prev.installment_type || '',
+        number_of_installments: payInfo.number_of_installments ?? prev.number_of_installments ?? 0,
+        installment_amount: payInfo.installment_amount ?? prev.installment_amount ?? 0,
+        installment_start_date: payInfo.installment_start_date || (payInfo as any).installment_starting_date || prev.installment_start_date || '',
+        dues_amount: payInfo.dues_amount ?? prev.dues_amount ?? 0,
+
+        // Step 8: Declaration
+        declaration_accepted: Boolean(existingApplication.declaration_accepted),
+      }));
+
+      // Initialize documents if attached to existing application
+      if (existingApplication.documents && Array.isArray(existingApplication.documents)) {
+        setUploadedDocs((prev) => {
+          const next = { ...prev };
+          existingApplication.documents.forEach((d: any) => {
+            const typeKey = d.document_type || d.doc_type;
+            if (typeKey) {
+              const rawUrl =
+                d.download_url ||
+                d.file_path ||
+                d.file_url ||
+                (d.file_key ? `/api/v1/uploads/${d.file_key}` : '');
+              next[typeKey] = {
+                id: String(d.id),
+                name: d.original_filename || d.file_name || 'Uploaded document',
+                url: resolveDocUrl(rawUrl) || prev[typeKey]?.url || '',
+                mimeType:
+                  d.mime_type ||
+                  prev[typeKey]?.mimeType ||
+                  (rawUrl.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+                size: d.file_size || prev[typeKey]?.size,
+              };
+            }
+          });
+          return next;
+        });
+      }
+    }
+  }, [existingApplication]);
+
   // Sync currentBusiness if prop changes
   useEffect(() => {
     if (business && business.id !== currentBusiness.id) {

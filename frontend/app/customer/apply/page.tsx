@@ -50,11 +50,19 @@ function ApplyContent() {
           const app = await api.applications.get(appIdParam);
           if (app) {
             setExistingApp(app);
-            const matchedBiz = bizList.find((b) => b.id === app.business_id);
-            if (matchedBiz) setSelectedBusiness(matchedBiz);
+            const matchedBiz = bizList.find(
+              (b) => String(b.id) === String(app.business_id) || (app.business_code && b.code === app.business_code)
+            );
+            if (matchedBiz) {
+              setSelectedBusiness(matchedBiz);
+            } else if (bizList.length > 0) {
+              setSelectedBusiness(bizList[0]);
+            }
           }
         } else if (businessIdParam) {
-          const matchedBiz = bizList.find((b) => b.id === businessIdParam || b.code === businessIdParam);
+          const matchedBiz = bizList.find(
+            (b) => String(b.id) === String(businessIdParam) || b.code === businessIdParam
+          );
           if (matchedBiz) setSelectedBusiness(matchedBiz);
         }
       } catch (err) {
