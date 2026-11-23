@@ -146,7 +146,26 @@ class DocumentService:
             application_id,
             user.id,
         )
-        return doc
+
+        # Generate signed or local URL for instant client preview
+        signed_url = None
+        try:
+            signed_url = await self._storage.generate_signed_url(doc.file_key)
+        except Exception as e:
+            logger.warning("Could not generate signed URL for uploaded doc %d: %s", doc.id, e)
+
+        return DocumentResponse(
+            id=doc.id,
+            application_id=doc.application_id,
+            document_type=doc.document_type.value,
+            original_filename=doc.original_filename,
+            mime_type=doc.mime_type,
+            file_size=doc.file_size,
+            uploaded_by_id=doc.uploaded_by_id,
+            verification_status=doc.verification_status.value,
+            created_at=doc.created_at,
+            download_url=signed_url,
+        )
 
     async def list_documents(
         self, application_id: int, user: User

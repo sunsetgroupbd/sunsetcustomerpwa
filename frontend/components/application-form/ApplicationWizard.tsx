@@ -24,6 +24,51 @@ export const getDivisionLogo = (code?: string): string => {
   return '/sunsetlogo.png';
 };
 
+export interface UploadedDocItem {
+  id: string;
+  name: string;
+  url: string;
+  mimeType?: string;
+  size?: number;
+}
+
+export const resolveDocUrl = (rawUrl?: string): string => {
+  if (!rawUrl) return '';
+  if (
+    rawUrl.startsWith('http://') ||
+    rawUrl.startsWith('https://') ||
+    rawUrl.startsWith('blob:') ||
+    rawUrl.startsWith('data:')
+  ) {
+    return rawUrl;
+  }
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+  const serverBase = apiBase.replace(/\/api\/v1\/?$/, '');
+  const cleanPath = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+  return `${serverBase}${cleanPath}`;
+};
+
+export const isImageDoc = (doc?: { mimeType?: string; name?: string; url?: string } | null): boolean => {
+  if (!doc) return false;
+  if (doc.mimeType && doc.mimeType.startsWith('image/')) return true;
+  const target = (doc.name || doc.url || '').toLowerCase();
+  return /\.(jpg|jpeg|png|webp|gif|bmp|svg)($|\?)/i.test(target);
+};
+
+export const isPdfDoc = (doc?: { mimeType?: string; name?: string; url?: string } | null): boolean => {
+  if (!doc) return false;
+  if (doc.mimeType && doc.mimeType.includes('pdf')) return true;
+  const target = (doc.name || doc.url || '').toLowerCase();
+  return /\.pdf($|\?)/i.test(target);
+};
+
+export const formatFileSize = (bytes?: number): string => {
+  if (!bytes || bytes <= 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 interface WizardProps {
   business: Business;
   availableBusinesses?: Business[];
@@ -135,18 +180,65 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
   });
 
   // Uploaded documents state (initialized with existing documents if any)
-  const [uploadedDocs, setUploadedDocs] = useState<Record<string, { id: string; name: string }>>(() => {
-    const map: Record<string, { id: string; name: string }> = {};
+  const [uploadedDocs, setUploadedDocs] = useState<Record<string, UploadedDocItem>>(() => {
+    const map: Record<string, UploadedDocItem> = {};
     if (existingApplication?.documents && Array.isArray(existingApplication.documents)) {
       existingApplication.documents.forEach((d: any) => {
-        if (d.doc_type) {
-          map[d.doc_type] = { id: d.id, name: d.file_name || 'Uploaded document' };
+        const typeKey = d.document_type || d.doc_type;
+        if (typeKey) {
+          const rawUrl = d.download_url || d.file_path || d.file_url || '';
+          map[typeKey] = {
+            id: String(d.id),
+            name: d.original_filename || d.file_name || 'Uploaded document',
+            url: resolveDocUrl(rawUrl),
+            mimeType: d.mime_type || (rawUrl.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+            size: d.file_size,
+          };
         }
       });
     }
     return map;
   });
   const [uploadingDocType, setUploadingDocType] = useState<string | null>(null);
+  const [previewModalDoc, setPreviewModalDoc] = useState<{
+    title: string;
+    name: string;
+    url: string;
+    mimeType?: string;
+  } | null>(null);
+
+  // Sync / refresh documents with signed download URLs from server if applicationId exists
+  useEffect(() => {
+    if (applicationId) {
+      api.applications
+        .getDocuments(applicationId)
+        .then((docs) => {
+          if (Array.isArray(docs) && docs.length > 0) {
+            setUploadedDocs((prev) => {
+              const next = { ...prev };
+              docs.forEach((d: any) => {
+                const typeKey = d.document_type || d.doc_type;
+                if (typeKey) {
+                  const rawUrl = d.download_url || d.file_path || d.file_url || '';
+                  next[typeKey] = {
+                    id: String(d.id),
+                    name: d.original_filename || d.file_name || 'Uploaded document',
+                    url: resolveDocUrl(rawUrl) || prev[typeKey]?.url || '',
+                    mimeType:
+                      d.mime_type ||
+                      prev[typeKey]?.mimeType ||
+                      (rawUrl.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+                    size: d.file_size || prev[typeKey]?.size,
+                  };
+                }
+              });
+              return next;
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [applicationId]);
 
   // Sync currentBusiness if prop changes
   useEffect(() => {
@@ -806,6 +898,22 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Create immediate local object URL for instant visual preview
+    const localBlobUrl = URL.createObjectURL(file);
+    const mimeType = file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+
+    // Optimistically update uploadedDocs so applicant immediately sees preview & filename
+    setUploadedDocs((prev) => ({
+      ...prev,
+      [docType]: {
+        id: prev[docType]?.id || 'uploading',
+        name: file.name,
+        url: localBlobUrl,
+        mimeType: mimeType,
+        size: file.size,
+      },
+    }));
+
     // Ensure application exists
     let targetAppId = applicationId;
     if (!targetAppId) {
@@ -817,9 +925,22 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     setUploadingDocType(docType);
     try {
       const res = await api.applications.uploadDocument(targetAppId!, docType, file);
+      const rawUrl =
+        res?.download_url ||
+        res?.file_path ||
+        (res as any)?.data?.download_url ||
+        (res as any)?.data?.file_path;
+      const finalUrl = rawUrl ? resolveDocUrl(rawUrl) : localBlobUrl;
+
       setUploadedDocs((prev) => ({
         ...prev,
-        [docType]: { id: String(res?.id || 'doc'), name: file.name },
+        [docType]: {
+          id: String(res?.id || (res as any)?.data?.id || 'doc'),
+          name: file.name,
+          url: finalUrl,
+          mimeType: res?.mime_type || mimeType,
+          size: res?.file_size || file.size,
+        },
       }));
       setStatusMessage({ type: 'success', text: `Uploaded ${file.name} successfully.` });
     } catch (err: any) {
@@ -1218,7 +1339,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 {Object.keys(uploadedDocs).length} Document(s) Attached
               </span>
             </div>
-            <div className="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {[
                 { type: 'applicant_photo', label: 'Applicant Photograph', required: true },
                 { type: 'nid_front', label: 'NID Front / Passport Page', required: true },
@@ -1228,35 +1349,116 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 { type: 'tin_certificate', label: 'e-TIN Certificate', required: false },
               ].map((doc) => {
                 const uploaded = uploadedDocs[doc.type];
+                const isImage = isImageDoc(uploaded);
+                const isPdf = isPdfDoc(uploaded);
+
                 return (
                   <div
                     key={doc.type}
-                    className={`flex items-center justify-between p-2.5 rounded-lg border text-xs transition-colors ${
+                    className={`flex items-center justify-between p-2.5 rounded-xl border text-xs transition-colors ${
                       uploaded
-                        ? 'border-emerald-200 bg-emerald-50/40 text-emerald-900'
+                        ? 'border-emerald-200 bg-emerald-50/30 text-emerald-950'
                         : doc.required
-                        ? 'border-amber-200 bg-amber-50/30 text-amber-900'
+                        ? 'border-amber-200 bg-amber-50/30 text-amber-950'
                         : 'border-slate-200/60 bg-slate-50/50 text-slate-500'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Icons.FileText className={`w-4 h-4 shrink-0 ${uploaded ? 'text-[#006B3E]' : 'text-slate-400'}`} />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {/* Document Visual Thumbnail */}
+                      {uploaded ? (
+                        isImage && uploaded.url ? (
+                          <div
+                            onClick={() =>
+                              setPreviewModalDoc({
+                                title: doc.label,
+                                name: uploaded.name,
+                                url: uploaded.url,
+                                mimeType: uploaded.mimeType,
+                              })
+                            }
+                            className="relative w-11 h-11 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-100 cursor-pointer shadow-2xs hover:scale-105 transition-transform"
+                            title="Click to preview full image"
+                          >
+                            <img
+                              src={uploaded.url}
+                              alt={doc.label}
+                              className="w-full h-full object-cover object-center"
+                            />
+                          </div>
+                        ) : isPdf ? (
+                          <div
+                            onClick={() =>
+                              setPreviewModalDoc({
+                                title: doc.label,
+                                name: uploaded.name,
+                                url: uploaded.url,
+                                mimeType: uploaded.mimeType,
+                              })
+                            }
+                            className="w-11 h-11 rounded-lg bg-rose-50 border border-rose-200 flex flex-col items-center justify-center shrink-0 cursor-pointer text-rose-600 hover:bg-rose-100 transition-colors shadow-2xs"
+                            title="Click to preview PDF"
+                          >
+                            <Icons.FileText className="w-4 h-4" />
+                            <span className="text-[9px] font-bold">PDF</span>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() =>
+                              setPreviewModalDoc({
+                                title: doc.label,
+                                name: uploaded.name,
+                                url: uploaded.url,
+                                mimeType: uploaded.mimeType,
+                              })
+                            }
+                            className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 cursor-pointer text-slate-500 shadow-2xs"
+                          >
+                            <Icons.FileText className="w-4 h-4" />
+                          </div>
+                        )
+                      ) : (
+                        <div className="w-11 h-11 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center shrink-0 text-slate-400">
+                          <Icons.Upload className="w-4 h-4" />
+                        </div>
+                      )}
+
                       <div className="min-w-0">
                         <p className="font-semibold text-slate-800 truncate">{doc.label}</p>
-                        <p className="text-[11px] text-slate-500 truncate">
+                        <p className="text-[11px] text-slate-500 truncate" title={uploaded?.name}>
                           {uploaded ? uploaded.name : doc.required ? 'Not attached (Required)' : 'Optional'}
                         </p>
                       </div>
                     </div>
-                    {uploaded ? (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">
-                        ✓ Uploaded
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium text-slate-400 shrink-0">
-                        Pending
-                      </span>
-                    )}
+
+                    {/* Right side: Preview Button & Status */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {uploaded ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewModalDoc({
+                                title: doc.label,
+                                name: uploaded.name,
+                                url: uploaded.url,
+                                mimeType: uploaded.mimeType,
+                              })
+                            }
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#006B3E] hover:text-[#005230] bg-[#006B3E]/10 hover:bg-[#006B3E]/20 px-2 py-1 rounded-md transition-colors"
+                          >
+                            <Icons.Eye className="w-3 h-3" />
+                            <span>Preview</span>
+                          </button>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                            ✓ Ready
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[10px] font-medium text-slate-400">
+                          Pending
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -1285,6 +1487,61 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
               leftIcon={<Icons.Check className="w-4 h-4" />}
             >
               Confirm &amp; Final Submit
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Document Preview Lightbox Modal */}
+      <Modal
+        isOpen={!!previewModalDoc}
+        onClose={() => setPreviewModalDoc(null)}
+        title={previewModalDoc?.title || 'Document Preview'}
+        description={previewModalDoc?.name}
+        maxWidth="xl"
+      >
+        <div className="space-y-4 pt-1">
+          <div className="bg-slate-900/5 rounded-xl border border-slate-200/80 p-2 sm:p-3 flex items-center justify-center min-h-[220px] max-h-[70vh] overflow-auto">
+            {previewModalDoc && isImageDoc(previewModalDoc) ? (
+              <img
+                src={previewModalDoc.url}
+                alt={previewModalDoc.title}
+                className="max-h-[62vh] w-auto max-w-full rounded-lg object-contain shadow-sm mx-auto"
+              />
+            ) : previewModalDoc && isPdfDoc(previewModalDoc) ? (
+              <iframe
+                src={previewModalDoc.url}
+                title={previewModalDoc.title}
+                className="w-full h-[62vh] rounded-lg border border-slate-200 bg-white"
+              />
+            ) : (
+              <div className="text-center py-8">
+                <Icons.FileText className="w-12 h-12 text-slate-400 mx-auto mb-2" />
+                <p className="text-xs text-slate-700 font-semibold">{previewModalDoc?.name}</p>
+                <p className="text-[11px] text-slate-400 mt-1">Preview not directly supported for this format.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Modal Actions */}
+          <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100">
+            {previewModalDoc?.url && (
+              <a
+                href={previewModalDoc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#006B3E] hover:text-[#005230] px-3 py-1.5 rounded-lg border border-[#006B3E]/20 hover:bg-[#006B3E]/5 transition-colors"
+              >
+                <Icons.ExternalLink className="w-3.5 h-3.5" />
+                <span>Open in New Window</span>
+              </a>
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPreviewModalDoc(null)}
+            >
+              Close
             </Button>
           </div>
         </div>
@@ -1952,48 +2209,188 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
             <div className="border-b border-slate-100 pb-3">
               <h3 className="text-base font-semibold text-slate-900">Step 7: Document Uploads &amp; Attachments</h3>
               <p className="text-xs text-slate-500">
-                Upload clear scanned copies or photographs (JPG, PNG, PDF up to 10MB).
+                Upload clear scanned copies or photographs (JPG, PNG, PDF up to 10MB). Uploaded items can be previewed immediately.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
-                { type: 'applicant_photo', label: 'Applicant Photograph', required: true },
-                { type: 'nid_front', label: 'NID Front / Passport Page', required: true },
-                { type: 'nid_back', label: 'NID Back Side', required: false },
-                { type: 'nominee_photo', label: 'Nominee Photograph', required: true },
-                { type: 'nominee_nid', label: 'Nominee NID / Passport', required: true },
-                { type: 'tin_certificate', label: 'e-TIN Certificate (Optional)', required: false },
+                { type: 'applicant_photo', label: 'Applicant Photograph', required: true, hint: 'Passport size clear photo' },
+                { type: 'nid_front', label: 'NID Front / Passport Page', required: true, hint: 'Clear photo or scan' },
+                { type: 'nid_back', label: 'NID Back Side', required: false, hint: 'Back side of NID card' },
+                { type: 'nominee_photo', label: 'Nominee Photograph', required: true, hint: 'Nominee passport size photo' },
+                { type: 'nominee_nid', label: 'Nominee NID / Passport', required: true, hint: 'Nominee identity document' },
+                { type: 'tin_certificate', label: 'e-TIN Certificate (Optional)', required: false, hint: 'Official TIN certificate copy' },
               ].map((doc) => {
                 const uploaded = uploadedDocs[doc.type];
                 const isCurrentUploading = uploadingDocType === doc.type;
+                const isImage = isImageDoc(uploaded);
+                const isPdf = isPdfDoc(uploaded);
 
                 return (
                   <div
                     key={doc.type}
-                    className="p-4 border border-slate-200 rounded-xl bg-white flex flex-col justify-between"
+                    className={`p-3.5 sm:p-4 border rounded-2xl bg-white flex flex-col justify-between transition-all duration-200 ${
+                      uploaded
+                        ? 'border-emerald-200 shadow-2xs ring-1 ring-emerald-500/10'
+                        : doc.required
+                        ? 'border-slate-200 hover:border-slate-300 shadow-2xs'
+                        : 'border-slate-200/80 bg-slate-50/30'
+                    }`}
                   >
                     <div>
+                      {/* Card Header */}
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-800">
+                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
                           {doc.label} {doc.required && <span className="text-rose-500">*</span>}
                         </span>
-                        {uploaded && <Badge status="verified">Uploaded</Badge>}
+                        {uploaded ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            <Icons.Check className="w-2.5 h-2.5 text-emerald-600" />
+                            Uploaded
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-medium text-slate-400">
+                            {doc.required ? 'Required' : 'Optional'}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-[11px] text-slate-500 mb-4">
-                        {uploaded ? uploaded.name : 'No file selected yet.'}
-                      </p>
+
+                      {/* Document Preview Box (When Uploaded) */}
+                      {uploaded ? (
+                        <div className="mb-3 space-y-2">
+                          {isImage && uploaded.url ? (
+                            /* Image Preview Thumbnail with quick action overlay */
+                            <div className="relative h-36 w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 group">
+                              <img
+                                src={uploaded.url}
+                                alt={doc.label}
+                                className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                              />
+                              <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 sm:transition-opacity flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreviewModalDoc({
+                                      title: doc.label,
+                                      name: uploaded.name,
+                                      url: uploaded.url,
+                                      mimeType: uploaded.mimeType,
+                                    })
+                                  }
+                                  className="px-2.5 py-1.5 bg-white/95 text-slate-800 rounded-lg text-xs font-semibold shadow-md flex items-center gap-1 hover:bg-white transition-colors"
+                                >
+                                  <Icons.Eye className="w-3.5 h-3.5 text-[#006B3E]" />
+                                  <span>Preview</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : isPdf ? (
+                            /* PDF Preview Card */
+                            <div
+                              onClick={() =>
+                                setPreviewModalDoc({
+                                  title: doc.label,
+                                  name: uploaded.name,
+                                  url: uploaded.url,
+                                  mimeType: uploaded.mimeType,
+                                })
+                              }
+                              className="h-36 w-full rounded-xl border border-rose-200 bg-rose-50/40 p-3 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-rose-50 transition-colors group"
+                            >
+                              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                                <Icons.FileText className="w-5 h-5" />
+                              </div>
+                              <span className="text-[11px] font-bold text-rose-800 uppercase tracking-wide">
+                                PDF Document
+                              </span>
+                              <span className="text-[10px] text-slate-600 line-clamp-1 max-w-[90%] mt-0.5 font-medium">
+                                {uploaded.name}
+                              </span>
+                              <span className="mt-2 text-[10px] font-bold text-rose-700 bg-white px-2 py-0.5 rounded border border-rose-200 inline-flex items-center gap-1">
+                                <Icons.Eye className="w-3 h-3" /> Click to Preview
+                              </span>
+                            </div>
+                          ) : (
+                            /* Other Format */
+                            <div
+                              onClick={() =>
+                                setPreviewModalDoc({
+                                  title: doc.label,
+                                  name: uploaded.name,
+                                  url: uploaded.url,
+                                  mimeType: uploaded.mimeType,
+                                })
+                              }
+                              className="h-36 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-100 transition-colors"
+                            >
+                              <Icons.FileText className="w-8 h-8 text-slate-400 mb-1" />
+                              <span className="text-[11px] font-semibold text-slate-700 line-clamp-1">
+                                {uploaded.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 mt-1">Tap to preview</span>
+                            </div>
+                          )}
+
+                          {/* File Details Strip */}
+                          <div className="flex items-center justify-between text-[11px] text-slate-500 px-0.5">
+                            <span className="truncate max-w-[170px] font-medium text-slate-700" title={uploaded.name}>
+                              {uploaded.name}
+                            </span>
+                            {uploaded.size ? (
+                              <span className="shrink-0 text-slate-400 text-[10px]">
+                                {formatFileSize(uploaded.size)}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : (
+                        /* Empty State Upload Dropzone */
+                        <div className="mb-3 border-2 border-dashed border-slate-200 rounded-xl p-4 text-center bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                          <Icons.Upload className="w-6 h-6 text-slate-400 mx-auto mb-1.5" />
+                          <p className="text-[11px] font-semibold text-slate-700">Tap to upload file</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, PDF up to 10MB</p>
+                        </div>
+                      )}
                     </div>
 
-                    <div>
-                      <label className="cursor-pointer inline-flex items-center justify-center w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 transition-colors">
+                    {/* Card Actions */}
+                    <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                      {uploaded && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewModalDoc({
+                              title: doc.label,
+                              name: uploaded.name,
+                              url: uploaded.url,
+                              mimeType: uploaded.mimeType,
+                            })
+                          }
+                          className="flex-1 py-1.5 px-2 border border-slate-200 hover:border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center justify-center gap-1.5"
+                        >
+                          <Icons.Eye className="w-3.5 h-3.5 text-[#006B3E]" />
+                          <span>Preview</span>
+                        </button>
+                      )}
+
+                      <label
+                        className={`cursor-pointer inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          uploaded
+                            ? 'flex-1 border border-slate-300 text-slate-700 bg-white hover:bg-slate-50'
+                            : 'w-full bg-[#006B3E] hover:bg-[#005230] text-white shadow-2xs'
+                        }`}
+                      >
                         {isCurrentUploading ? (
-                          <Icons.Spinner className="w-4 h-4 text-[#006B3E]" />
+                          <span className="inline-flex items-center gap-1.5">
+                            <Icons.Spinner className="w-3.5 h-3.5 text-current animate-spin" />
+                            <span>Uploading...</span>
+                          </span>
                         ) : (
-                          <>
-                            <Icons.Upload className="w-3.5 h-3.5 mr-1.5" />
-                            {uploaded ? 'Replace Document' : 'Upload File'}
-                          </>
+                          <span className="inline-flex items-center gap-1.5">
+                            <Icons.Upload className="w-3.5 h-3.5" />
+                            <span>{uploaded ? 'Replace' : 'Upload File'}</span>
+                          </span>
                         )}
                         <input
                           type="file"

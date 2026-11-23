@@ -242,11 +242,33 @@ export const api = {
       const formData = new FormData();
       formData.append('document_type', documentType);
       formData.append('file', file);
-      return request<{ id: string; file_path: string; document_type: string }>(`/applications/${id}/documents`, {
+      return request<{
+        id: string;
+        file_path?: string;
+        download_url?: string;
+        document_type: string;
+        original_filename?: string;
+        mime_type?: string;
+        file_size?: number;
+      }>(`/applications/${id}/documents`, {
         method: 'POST',
         body: formData,
       });
     },
+
+    getDocuments: (id: string) =>
+      request<
+        Array<{
+          id: string | number;
+          application_id?: number;
+          document_type: string;
+          original_filename: string;
+          mime_type: string;
+          file_size?: number;
+          download_url?: string;
+          verification_status?: string;
+        }>
+      >(`/applications/${id}/documents`),
 
     verifyDocument: (id: string, documentId: string, status: 'verified' | 'rejected', notes?: string) =>
       request<{ success: boolean; message: string }>(`/applications/${id}/documents/${documentId}/verify`, {
