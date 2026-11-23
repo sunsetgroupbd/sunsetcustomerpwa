@@ -38,6 +38,7 @@ from app.schemas.application import (
     ApplicationOnBehalfCreate,
     ApplicationUpdate,
     StatusUpdateRequest,
+    parse_optional_date,
 )
 from app.services.audit_service import AuditService
 
@@ -67,6 +68,46 @@ TRANSITION_PERMISSIONS: dict[str, list[str]] = {
     "approved": ["admin"],
     "rejected": ["admin", "cr"],
 }
+
+
+def _filter_columns(model_cls: Any, data_dict: dict) -> dict:
+    """Filter dictionary to only include columns that exist in the SQLAlchemy model table."""
+    valid_cols = {c.name for c in model_cls.__table__.columns}
+    return {k: v for k, v in data_dict.items() if k in valid_cols}
+
+
+def _sanitize_applicant_info(data: Any) -> dict:
+    d = data.model_dump(exclude_unset=True) if hasattr(data, "model_dump") else dict(data or {})
+    if d.get("nid_or_passport") and not d.get("nid_number"):
+        d["nid_number"] = d["nid_or_passport"]
+    if d.get("mobile_number") and not d.get("cell_number"):
+        d["cell_number"] = d["mobile_number"]
+    return _filter_columns(ApplicantInfo, d)
+
+
+def _sanitize_bank_detail(data: Any) -> dict:
+    d = data.model_dump(exclude_unset=True) if hasattr(data, "model_dump") else dict(data or {})
+    if d.get("branch_name") and not d.get("branch"):
+        d["branch"] = d["branch_name"]
+    return _filter_columns(BankDetail, d)
+
+
+def _sanitize_ownership_detail(data: Any) -> dict:
+    d = data.model_dump(exclude_unset=True) if hasattr(data, "model_dump") else dict(data or {})
+    if d.get("package_type") and not d.get("package"):
+        d["package"] = d["package_type"]
+    if d.get("discount_amount") is not None and not d.get("discount"):
+        d["discount"] = d["discount_amount"]
+    return _filter_columns(OwnershipDetail, d)
+
+
+def _sanitize_payment_detail(data: Any) -> dict:
+    d = data.model_dump(exclude_unset=True) if hasattr(data, "model_dump") else dict(data or {})
+    if d.get("booking_date") and not d.get("booking_money_date"):
+        d["booking_money_date"] = d["booking_date"]
+    if d.get("installment_start_date") and not d.get("installment_starting_date"):
+        d["installment_starting_date"] = d["installment_start_date"]
+    return _filter_columns(PaymentDetail, d)
 
 
 class ApplicationService:
@@ -104,7 +145,7 @@ class ApplicationService:
             application_date=datetime.now(timezone.utc).date(),
             application_status=ApplicationStatus.DRAFT,
             payment_status=PaymentStatus.PENDING,
-            declaration_accepted=False,
+            declaration_accepted=bool(getattr(data, "declaration_accepted", False)),
         )
         self.db.add(application)
         self.db.flush()
@@ -113,30 +154,51 @@ class ApplicationService:
         if data.applicant_info:
             info = ApplicantInfo(
                 application_id=application.id,
-                **data.applicant_info.model_dump(exclude_unset=True),
+                **_sanitize_applicant_info(data.applicant_info),
             )
             self.db.add(info)
 
         if data.bank_detail:
             bd = BankDetail(
                 application_id=application.id,
-                **data.bank_detail.model_dump(exclude_unset=True),
+                **_sanitize_bank_detail(data.bank_detail),
             )
             self.db.add(bd)
 
         if data.ownership_detail:
             od = OwnershipDetail(
                 application_id=application.id,
-                **data.ownership_detail.model_dump(exclude_unset=True),
+                **_sanitize_ownership_detail(data.ownership_detail),
             )
             self.db.add(od)
 
         if data.payment_detail:
             pd = PaymentDetail(
                 application_id=application.id,
-                **data.payment_detail.model_dump(exclude_unset=True),
+                **_sanitize_payment_detail(data.payment_detail),
             )
             self.db.add(pd)
+
+        if getattr(data, "nominees", None):
+            for idx, nom in enumerate(data.nominees, 1):
+                nom_dict = nom if isinstance(nom, dict) else (nom.model_dump() if hasattr(nom, "model_dump") else getattr(nom, "__dict__", {}))
+                name_val = nom_dict.get("name") or nom_dict.get("full_name") or ""
+                rel_val = nom_dict.get("relationship") or nom_dict.get("relation") or ""
+                nid_val = nom_dict.get("nid_or_passport") or nom_dict.get("nid_number") or None
+                cell_val = nom_dict.get("cell_number") or nom_dict.get("mobile_number") or None
+                dob_val = parse_optional_date(nom_dict.get("date_of_birth"))
+                if name_val or rel_val:
+                    new_nom = Nominee(
+                        application_id=application.id,
+                        nominee_number=idx,
+                        name=name_val,
+                        relationship=rel_val,
+                        father_or_husband_name=nom_dict.get("father_or_husband_name"),
+                        nid_or_passport=nid_val,
+                        cell_number=cell_val,
+                        date_of_birth=dob_val,
+                    )
+                    self.db.add(new_nom)
 
         # 5. Record initial status history
         self._record_history(
@@ -446,7 +508,7 @@ class ApplicationService:
             if not info:
                 info = ApplicantInfo(application_id=app.id)
                 self.db.add(info)
-            for k, v in data.applicant_info.model_dump(exclude_unset=True).items():
+            for k, v in _sanitize_applicant_info(data.applicant_info).items():
                 setattr(info, k, v)
 
         # Update BankDetail
@@ -455,7 +517,7 @@ class ApplicationService:
             if not bank:
                 bank = BankDetail(application_id=app.id)
                 self.db.add(bank)
-            for k, v in data.bank_detail.model_dump(exclude_unset=True).items():
+            for k, v in _sanitize_bank_detail(data.bank_detail).items():
                 setattr(bank, k, v)
 
         # Update OwnershipDetail
@@ -464,7 +526,7 @@ class ApplicationService:
             if not own:
                 own = OwnershipDetail(application_id=app.id)
                 self.db.add(own)
-            for k, v in data.ownership_detail.model_dump(exclude_unset=True).items():
+            for k, v in _sanitize_ownership_detail(data.ownership_detail).items():
                 setattr(own, k, v)
 
         # Update PaymentDetail
@@ -473,17 +535,19 @@ class ApplicationService:
             if not pay:
                 pay = PaymentDetail(application_id=app.id)
                 self.db.add(pay)
-            for k, v in data.payment_detail.model_dump(exclude_unset=True).items():
+            for k, v in _sanitize_payment_detail(data.payment_detail).items():
                 setattr(pay, k, v)
 
         # Update Nominees
-        if data.nominees:
-            from app.models.application import Nominee
+        if data.nominees is not None:
             self.db.query(Nominee).filter(Nominee.application_id == app.id).delete()
             for idx, nom in enumerate(data.nominees, 1):
-                nom_dict = nom if isinstance(nom, dict) else (nom.model_dump() if hasattr(nom, "model_dump") else nom.__dict__)
+                nom_dict = nom if isinstance(nom, dict) else (nom.model_dump() if hasattr(nom, "model_dump") else getattr(nom, "__dict__", {}))
                 name_val = nom_dict.get("name") or nom_dict.get("full_name") or ""
                 rel_val = nom_dict.get("relationship") or nom_dict.get("relation") or ""
+                nid_val = nom_dict.get("nid_or_passport") or nom_dict.get("nid_number") or None
+                cell_val = nom_dict.get("cell_number") or nom_dict.get("mobile_number") or None
+                dob_val = parse_optional_date(nom_dict.get("date_of_birth"))
                 if name_val or rel_val:
                     new_nom = Nominee(
                         application_id=app.id,
@@ -491,8 +555,9 @@ class ApplicationService:
                         name=name_val,
                         relationship=rel_val,
                         father_or_husband_name=nom_dict.get("father_or_husband_name"),
-                        nid_number=nom_dict.get("nid_or_passport") or nom_dict.get("nid_number"),
-                        mobile_number=nom_dict.get("cell_number") or nom_dict.get("mobile_number"),
+                        nid_or_passport=nid_val,
+                        cell_number=cell_val,
+                        date_of_birth=dob_val,
                     )
                     self.db.add(new_nom)
 

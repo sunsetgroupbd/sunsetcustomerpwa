@@ -8,7 +8,21 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, computed_field
+
+
+def parse_optional_date(v: Any) -> date | None:
+    """Parse empty strings or ISO date strings safely to date or None."""
+    if v is None or v == "" or (isinstance(v, str) and not v.strip()):
+        return None
+    if isinstance(v, date):
+        return v
+    if isinstance(v, str):
+        try:
+            return date.fromisoformat(v.strip().split("T")[0])
+        except Exception:
+            return None
+    return v
 
 
 # ---------------------------------------------------------------------------
@@ -30,6 +44,7 @@ class ApplicantInfoCreate(BaseModel):
     nationality: str = "Bangladeshi"
     religion: str | None = None
     nid_number: str | None = None
+    nid_or_passport: str | None = None
     passport_number: str | None = None
     tin_number: str | None = None
     personal_email: str | None = None
@@ -37,7 +52,17 @@ class ApplicantInfoCreate(BaseModel):
     office_address: str | None = None
     designation: str | None = None
     cell_number: str | None = None
+    office_phone: str | None = None
+    ownership_id: str | None = None
+    application_date: str | None = None
     photograph_file_id: int | None = None
+
+    model_config = ConfigDict(extra="ignore")
+
+    @field_validator("date_of_birth", mode="before")
+    @classmethod
+    def clean_date_of_birth(cls, v: Any) -> date | None:
+        return parse_optional_date(v)
 
 
 class ApplicantInfoUpdate(ApplicantInfoCreate):
@@ -50,7 +75,7 @@ class ApplicantInfoResponse(ApplicantInfoCreate):
     customer_id_number: str | None = None
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 
 # ---------------------------------------------------------------------------
@@ -59,21 +84,32 @@ class ApplicantInfoResponse(ApplicantInfoCreate):
 
 
 class NomineeCreate(BaseModel):
-    nominee_number: int  # 1 or 2
+    nominee_number: int = 1  # 1 or 2
     name: str | None = None
+    full_name: str | None = None
     father_or_husband_name: str | None = None
     nid_or_passport: str | None = None
     cell_number: str | None = None
     relationship: str | None = None
+    relation: str | None = None
     date_of_birth: date | None = None
     photograph_file_id: int | None = None
 
-    @field_validator("nominee_number")
+    model_config = ConfigDict(extra="ignore")
+
+    @field_validator("nominee_number", mode="before")
     @classmethod
-    def validate_nominee_number(cls, v: int) -> int:
-        if v not in (1, 2):
-            raise ValueError("nominee_number must be 1 or 2.")
-        return v
+    def validate_nominee_number(cls, v: Any) -> int:
+        try:
+            val = int(v)
+            return val if val in (1, 2) else 1
+        except Exception:
+            return 1
+
+    @field_validator("date_of_birth", mode="before")
+    @classmethod
+    def clean_nominee_dob(cls, v: Any) -> date | None:
+        return parse_optional_date(v)
 
 
 class NomineeUpdate(NomineeCreate):
@@ -85,7 +121,7 @@ class NomineeResponse(NomineeCreate):
     application_id: int
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 
 # ---------------------------------------------------------------------------
@@ -98,13 +134,16 @@ class BankDetailCreate(BaseModel):
     account_number: str | None = None
     bank_name: str | None = None
     branch: str | None = None
+    branch_name: str | None = None
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class BankDetailResponse(BankDetailCreate):
     id: int
     application_id: int
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 
 # ---------------------------------------------------------------------------
@@ -114,18 +153,29 @@ class BankDetailResponse(BankDetailCreate):
 
 class OwnershipDetailCreate(BaseModel):
     package: str | None = None
+    package_type: str | None = None
     number_of_ownership: int | None = None
     price_per_ownership: Decimal | None = None
     discount: Decimal = Decimal("0")
+    discount_amount: Decimal | None = None
     total_price: Decimal | None = None
     amount_in_words: str | None = None
+
+    model_config = ConfigDict(extra="ignore")
+
+    @field_validator("price_per_ownership", "discount", "discount_amount", "total_price", mode="before")
+    @classmethod
+    def clean_decimal(cls, v: Any) -> Any:
+        if v is None or v == "":
+            return Decimal("0")
+        return v
 
 
 class OwnershipDetailResponse(OwnershipDetailCreate):
     id: int
     application_id: int
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 
 # ---------------------------------------------------------------------------
@@ -137,18 +187,34 @@ class PaymentDetailCreate(BaseModel):
     token_money: Decimal | None = None
     booking_money: Decimal | None = None
     booking_money_date: date | None = None
+    booking_date: date | None = None
     installment_type: str | None = None
     number_of_installments: int | None = None
     installment_amount: Decimal | None = None
     installment_starting_date: date | None = None
+    installment_start_date: date | None = None
     dues_amount: Decimal | None = None
+
+    model_config = ConfigDict(extra="ignore")
+
+    @field_validator("booking_money_date", "booking_date", "installment_starting_date", "installment_start_date", mode="before")
+    @classmethod
+    def clean_payment_date(cls, v: Any) -> date | None:
+        return parse_optional_date(v)
+
+    @field_validator("token_money", "booking_money", "installment_amount", "dues_amount", mode="before")
+    @classmethod
+    def clean_payment_decimal(cls, v: Any) -> Any:
+        if v is None or v == "":
+            return Decimal("0")
+        return v
 
 
 class PaymentDetailResponse(PaymentDetailCreate):
     id: int
     application_id: int
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 
 # ---------------------------------------------------------------------------
@@ -162,6 +228,11 @@ class ApplicationCreate(BaseModel):
     bank_detail: BankDetailCreate | None = None
     ownership_detail: OwnershipDetailCreate | None = None
     payment_detail: PaymentDetailCreate | None = None
+    nominees: list[Any] | None = None
+    declaration_accepted: bool | None = False
+    current_step: int | None = 1
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class ApplicationUpdate(BaseModel):
@@ -180,6 +251,8 @@ class ApplicationUpdate(BaseModel):
 class ApplicationListItem(BaseModel):
     id: int
     application_number: str
+    reference_number: str | None = None
+    status: str | None = None
     customer_id: int
     business_id: int
     application_status: str
@@ -199,8 +272,9 @@ class ApplicationListItem(BaseModel):
     declaration_accepted: bool
     submitted_at: datetime | None = None
     created_at: datetime
+    current_step: int = 1
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 
 class ApplicationDetail(ApplicationListItem):

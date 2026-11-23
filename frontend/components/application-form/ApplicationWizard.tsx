@@ -126,7 +126,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     date_of_birth: existingApplication?.applicant_info?.date_of_birth || '',
     nationality: existingApplication?.applicant_info?.nationality || 'Bangladeshi',
     religion: existingApplication?.applicant_info?.religion || '',
-    nid_or_passport: existingApplication?.applicant_info?.nid_or_passport || '',
+    nid_or_passport: existingApplication?.applicant_info?.nid_or_passport || (existingApplication?.applicant_info as any)?.nid_number || '',
     tin_number: existingApplication?.applicant_info?.tin_number || '',
     personal_email: existingApplication?.applicant_info?.personal_email || '',
 
@@ -138,7 +138,15 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
 
     // Step 3: Nominees
     nominees: existingApplication?.nominees?.length
-      ? existingApplication.nominees
+      ? existingApplication.nominees.map((n: any, idx: number) => ({
+          nominee_order: n.nominee_number || n.nominee_order || idx + 1,
+          full_name: n.full_name || n.name || '',
+          relation: n.relation || n.relationship || '',
+          father_or_husband_name: n.father_or_husband_name || '',
+          nid_or_passport: n.nid_or_passport || n.nid_number || '',
+          cell_number: n.cell_number || n.mobile_number || '',
+          date_of_birth: n.date_of_birth || '',
+        }))
       : [
           {
             nominee_order: 1,
@@ -155,28 +163,28 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     account_name: existingApplication?.bank_detail?.account_name || '',
     account_number: existingApplication?.bank_detail?.account_number || '',
     bank_name: existingApplication?.bank_detail?.bank_name || '',
-    branch_name: existingApplication?.bank_detail?.branch_name || '',
+    branch_name: existingApplication?.bank_detail?.branch_name || (existingApplication?.bank_detail as any)?.branch || '',
 
     // Step 5: Ownership & Pricing
-    package_type: existingApplication?.ownership_detail?.package_type || '',
+    package_type: existingApplication?.ownership_detail?.package_type || (existingApplication?.ownership_detail as any)?.package || '',
     number_of_ownership: existingApplication?.ownership_detail?.number_of_ownership || 1,
     price_per_ownership: existingApplication?.ownership_detail?.price_per_ownership || 0,
-    discount_amount: existingApplication?.ownership_detail?.discount_amount || 0,
+    discount_amount: existingApplication?.ownership_detail?.discount_amount || (existingApplication?.ownership_detail as any)?.discount || 0,
     total_price: existingApplication?.ownership_detail?.total_price || 0,
     amount_in_words: existingApplication?.ownership_detail?.amount_in_words || '',
 
     // Step 6: Payment Information
     token_money: existingApplication?.payment_detail?.token_money || 0,
     booking_money: existingApplication?.payment_detail?.booking_money || 0,
-    booking_date: existingApplication?.payment_detail?.booking_date || '',
+    booking_date: existingApplication?.payment_detail?.booking_date || (existingApplication?.payment_detail as any)?.booking_money_date || '',
     installment_type: existingApplication?.payment_detail?.installment_type || '',
     number_of_installments: existingApplication?.payment_detail?.number_of_installments || 0,
     installment_amount: existingApplication?.payment_detail?.installment_amount || 0,
-    installment_start_date: existingApplication?.payment_detail?.installment_start_date || '',
+    installment_start_date: existingApplication?.payment_detail?.installment_start_date || (existingApplication?.payment_detail as any)?.installment_starting_date || '',
     dues_amount: existingApplication?.payment_detail?.dues_amount || 0,
 
     // Step 8: Declaration
-    declaration_accepted: false,
+    declaration_accepted: Boolean(existingApplication?.declaration_accepted),
   });
 
   // Uploaded documents state (initialized with existing documents if any)
@@ -777,56 +785,76 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     setIsSavingDraft(true);
     if (!silent) setStatusMessage(null);
     try {
+      const cleanDate = (val?: string | null) => (val && val.trim() ? val.trim() : null);
+
       const payload = {
-        business_id: Number(currentBusiness.id),
+        business_id: Number(currentBusiness?.id) || 1,
         current_step: currentStep,
         applicant_info: {
-          ownership_id: formData.ownership_id,
-          application_date: formData.application_date,
-          full_name_en: formData.full_name_en,
-          full_name_bn: formData.full_name_bn,
-          father_name: formData.father_name,
-          mother_name: formData.mother_name,
-          spouse_name: formData.spouse_name,
-          present_address: formData.present_address,
-          permanent_address: formData.permanent_address,
-          mobile_number: formData.mobile_number,
-          phone_number: formData.phone_number,
-          date_of_birth: formData.date_of_birth,
-          nationality: formData.nationality,
-          religion: formData.religion,
-          nid_or_passport: formData.nid_or_passport,
-          tin_number: formData.tin_number,
-          personal_email: formData.personal_email,
-          company_name: formData.company_name,
-          office_address: formData.office_address,
-          designation: formData.designation,
-          office_phone: formData.office_phone,
+          ownership_id: formData.ownership_id || null,
+          application_date: formData.application_date || null,
+          full_name_en: formData.full_name_en || null,
+          full_name_bn: formData.full_name_bn || null,
+          father_name: formData.father_name || null,
+          mother_name: formData.mother_name || null,
+          spouse_name: formData.spouse_name || null,
+          present_address: formData.present_address || null,
+          permanent_address: formData.permanent_address || null,
+          mobile_number: formData.mobile_number || null,
+          phone_number: formData.phone_number || null,
+          date_of_birth: cleanDate(formData.date_of_birth),
+          nationality: formData.nationality || 'Bangladeshi',
+          religion: formData.religion || null,
+          nid_or_passport: formData.nid_or_passport || null,
+          nid_number: formData.nid_or_passport || null,
+          tin_number: formData.tin_number || null,
+          personal_email: formData.personal_email || null,
+          company_name: formData.company_name || null,
+          office_address: formData.office_address || null,
+          designation: formData.designation || null,
+          cell_number: formData.mobile_number || null,
+          office_phone: formData.office_phone || null,
         },
-        nominees: formData.nominees,
+        nominees: (formData.nominees || []).map((nom: any, idx: number) => ({
+          nominee_number: idx + 1,
+          nominee_order: idx + 1,
+          name: nom.full_name || nom.name || '',
+          full_name: nom.full_name || nom.name || '',
+          relationship: nom.relation || nom.relationship || '',
+          relation: nom.relation || nom.relationship || '',
+          father_or_husband_name: nom.father_or_husband_name || '',
+          nid_or_passport: nom.nid_or_passport || '',
+          cell_number: nom.cell_number || '',
+          date_of_birth: cleanDate(nom.date_of_birth),
+        })),
         bank_detail: {
-          account_name: formData.account_name,
-          account_number: formData.account_number,
-          bank_name: formData.bank_name,
-          branch_name: formData.branch_name,
+          account_name: formData.account_name || null,
+          account_number: formData.account_number || null,
+          bank_name: formData.bank_name || null,
+          branch: formData.branch_name || null,
+          branch_name: formData.branch_name || null,
         },
         ownership_detail: {
-          package_type: formData.package_type,
-          number_of_ownership: Number(formData.number_of_ownership),
-          price_per_ownership: Number(formData.price_per_ownership),
-          discount_amount: Number(formData.discount_amount),
-          total_price: Number(formData.total_price),
-          amount_in_words: formData.amount_in_words,
+          package: formData.package_type || null,
+          package_type: formData.package_type || null,
+          number_of_ownership: Number(formData.number_of_ownership) || 1,
+          price_per_ownership: Number(formData.price_per_ownership) || 0,
+          discount: Number(formData.discount_amount) || 0,
+          discount_amount: Number(formData.discount_amount) || 0,
+          total_price: Number(formData.total_price) || 0,
+          amount_in_words: formData.amount_in_words || null,
         },
         payment_detail: {
-          token_money: Number(formData.token_money),
-          booking_money: Number(formData.booking_money),
-          booking_date: formData.booking_date,
-          installment_type: formData.installment_type,
-          number_of_installments: Number(formData.number_of_installments),
-          installment_amount: Number(formData.installment_amount),
-          installment_start_date: formData.installment_start_date,
-          dues_amount: Number(formData.dues_amount),
+          token_money: Number(formData.token_money) || 0,
+          booking_money: Number(formData.booking_money) || 0,
+          booking_date: cleanDate(formData.booking_date),
+          booking_money_date: cleanDate(formData.booking_date),
+          installment_type: formData.installment_type || null,
+          number_of_installments: Number(formData.number_of_installments) || 0,
+          installment_amount: Number(formData.installment_amount) || 0,
+          installment_start_date: cleanDate(formData.installment_start_date),
+          installment_starting_date: cleanDate(formData.installment_start_date),
+          dues_amount: Number(formData.dues_amount) || 0,
         },
         declaration_accepted: Boolean(formData.declaration_accepted),
       };
@@ -836,11 +864,16 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
         result = await api.applications.updateDraft(applicationId, payload as any);
       } else {
         result = await api.applications.createDraft(payload as any);
-        setApplicationId(result.id);
-        setReferenceNumber(result.reference_number);
+        if (result && result.id) {
+          setApplicationId(String(result.id));
+        }
+      }
+      const refNum = result?.reference_number || (result as any)?.application_number || '';
+      if (refNum) {
+        setReferenceNumber(refNum);
       }
       if (!silent) {
-        setStatusMessage({ type: 'success', text: `Draft saved successfully (Ref: ${result.reference_number})` });
+        setStatusMessage({ type: 'success', text: `Draft saved successfully (Ref: ${refNum || result?.id || 'Saved'})` });
       }
       return result;
     } catch (err: any) {

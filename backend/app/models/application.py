@@ -1,5 +1,6 @@
 import enum
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -139,6 +140,18 @@ class Application(Base):
     @property
     def business_name(self) -> str | None:
         return self.business.name if self.business else None
+
+    @property
+    def reference_number(self) -> str:
+        return self.application_number
+
+    @property
+    def status(self) -> str:
+        return self.application_status.value if hasattr(self.application_status, "value") else str(self.application_status)
+
+    @property
+    def is_submitted(self) -> bool:
+        return self.application_status != ApplicationStatus.DRAFT
     bank_detail: Mapped["BankDetail | None"] = sa_relationship(
         "BankDetail", back_populates="application", uselist=False
     )
@@ -216,6 +229,10 @@ class ApplicantInfo(Base):
     def customer_id_number(self) -> str | None:
         return self.application.customer.customer_id_number if self.application and self.application.customer else None
 
+    @property
+    def nid_or_passport(self) -> str | None:
+        return self.nid_number or self.passport_number
+
 
 class Nominee(Base):
     __tablename__ = "nominees"
@@ -250,6 +267,14 @@ class Nominee(Base):
         "Document", foreign_keys=[photograph_file_id]
     )
 
+    @property
+    def full_name(self) -> str:
+        return self.name
+
+    @property
+    def relation(self) -> str | None:
+        return self.relationship
+
 
 class BankDetail(Base):
     __tablename__ = "bank_details"
@@ -270,6 +295,10 @@ class BankDetail(Base):
     )
 
     application: Mapped[Application] = sa_relationship("Application", back_populates="bank_detail")
+
+    @property
+    def branch_name(self) -> str | None:
+        return self.branch
 
 
 class OwnershipDetail(Base):
@@ -298,6 +327,14 @@ class OwnershipDetail(Base):
         "Application", back_populates="ownership_detail"
     )
 
+    @property
+    def package_type(self) -> str | None:
+        return self.package
+
+    @property
+    def discount_amount(self) -> Any:
+        return self.discount
+
 
 class PaymentDetail(Base):
     __tablename__ = "payment_details"
@@ -324,6 +361,14 @@ class PaymentDetail(Base):
     application: Mapped[Application] = sa_relationship(
         "Application", back_populates="payment_detail"
     )
+
+    @property
+    def booking_date(self) -> date | None:
+        return self.booking_money_date
+
+    @property
+    def installment_start_date(self) -> date | None:
+        return self.installment_starting_date
 
 
 class ApplicationRemark(Base):

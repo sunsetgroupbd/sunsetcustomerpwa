@@ -182,6 +182,8 @@ export interface Application {
   current_step: number;
   is_submitted: boolean;
   is_edit_unlocked?: boolean;
+  declaration_accepted?: boolean;
+  application_number?: string;
   sales_agent_id?: string | null;
   sales_agent_name?: string | null;
   sales_agent_employee_id?: string | null;
