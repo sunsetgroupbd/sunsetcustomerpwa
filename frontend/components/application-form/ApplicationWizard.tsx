@@ -828,6 +828,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
           installment_start_date: formData.installment_start_date,
           dues_amount: Number(formData.dues_amount),
         },
+        declaration_accepted: Boolean(formData.declaration_accepted),
       };
 
       let result: Application;
@@ -910,7 +911,12 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     setIsSubmitting(true);
     setStatusMessage(null);
     try {
-      const submitted = await api.applications.submit(applicationId, true);
+      // First, ensure all current form state and declaration acceptance are saved to draft
+      await handleSaveDraft(true);
+      const submitted = await api.applications.submit(
+        applicationId,
+        Boolean(formData.declaration_accepted)
+      );
       setReferenceNumber(submitted.reference_number);
       setCurrentStep(9);
       if (onSuccess) onSuccess(submitted);

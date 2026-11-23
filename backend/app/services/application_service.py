@@ -512,9 +512,17 @@ class ApplicationService:
     # -------------------------------------------------------------------------
     # Submit Application
     # -------------------------------------------------------------------------
-    async def submit_application(self, application_id: int, user: User) -> Application:
+    async def submit_application(
+        self, application_id: int, user: User, declaration_accepted: Optional[bool] = None
+    ) -> Application:
         """Submit completed application for review with strict completeness checks."""
         app = await self.get_application(application_id, user)
+
+        # Update declaration_accepted on the application if passed in submit request
+        if declaration_accepted is not None:
+            app.declaration_accepted = declaration_accepted
+            self.db.commit()
+            self.db.refresh(app)
 
         role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
         status_val = (

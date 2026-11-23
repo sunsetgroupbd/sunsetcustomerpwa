@@ -27,6 +27,7 @@ from app.core.responses import paginated_response, success_response
 from app.schemas.application import (
     ApplicationCreate,
     ApplicationOnBehalfCreate,
+    ApplicationSubmitRequest,
     ApplicationUpdate,
     AssignCRRequest,
     EditRequestCreate,
@@ -239,13 +240,17 @@ async def update_application(
 )
 async def submit_application(
     application_id: int,
+    body: Optional[ApplicationSubmitRequest] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
     """Transition an application from DRAFT to SUBMITTED."""
     try:
         service = ApplicationService(db)
-        result = await service.submit_application(application_id, current_user)
+        declaration = body.declaration_accepted if body is not None else True
+        result = await service.submit_application(
+            application_id, current_user, declaration_accepted=declaration
+        )
         return success_response(data=result, message="Application submitted successfully.")
     except HTTPException:
         raise
