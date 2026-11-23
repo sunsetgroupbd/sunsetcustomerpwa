@@ -54,12 +54,32 @@ class DocumentService:
         if user.role == "customer" and app.customer_id != user.id:
             raise AuthorizationError("You do not have permission to upload documents for this application")
 
-        # 2. Validate document_type enum
+        # 2. Validate and normalize document_type enum
+        doc_type_str = str(document_type).lower().strip()
+        alias_map = {
+            "applicant_photo": "applicant_photo",
+            "photograph": "photograph",
+            "photo": "photograph",
+            "profile_photo": "profile_photo",
+            "nominee_nid": "nominee_nid",
+            "nominee_photo": "nominee_photo",
+            "nid_front": "nid_front",
+            "nid_back": "nid_back",
+            "passport": "passport",
+            "tin_certificate": "tin_certificate",
+        }
+        normalized_doc_type = alias_map.get(doc_type_str, doc_type_str)
         try:
-            doc_type_enum = DocumentType(document_type)
+            doc_type_enum = DocumentType(normalized_doc_type)
         except ValueError:
-            valid_types = [e.value for e in DocumentType]
-            raise ValidationError(f"Invalid document type '{document_type}'. Valid: {valid_types}")
+            # Fallback alias matching
+            if normalized_doc_type in ("applicant_photo", "photo"):
+                doc_type_enum = DocumentType.PHOTOGRAPH
+            elif normalized_doc_type == "nominee_nid":
+                doc_type_enum = DocumentType.NID_FRONT
+            else:
+                valid_types = [e.value for e in DocumentType]
+                raise ValidationError(f"Invalid document type '{document_type}'. Valid: {valid_types}")
 
         # 3. Read and validate content size
         content = await file.read()

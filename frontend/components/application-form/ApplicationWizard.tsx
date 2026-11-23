@@ -819,13 +819,14 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       const res = await api.applications.uploadDocument(targetAppId!, docType, file);
       setUploadedDocs((prev) => ({
         ...prev,
-        [docType]: { id: res.id, name: file.name },
+        [docType]: { id: String(res?.id || 'doc'), name: file.name },
       }));
       setStatusMessage({ type: 'success', text: `Uploaded ${file.name} successfully.` });
     } catch (err: any) {
       setStatusMessage({ type: 'error', text: err.message || 'File upload failed' });
     } finally {
       setUploadingDocType(null);
+      e.target.value = '';
     }
   };
 

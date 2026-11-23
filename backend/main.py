@@ -169,9 +169,16 @@ def create_app() -> FastAPI:
         }
 
     # -----------------------------------------------------------------------
-    # API routers
+    # API routers & Static Uploads
     # -----------------------------------------------------------------------
     _register_routers(app)
+
+    from pathlib import Path
+    from fastapi.staticfiles import StaticFiles
+
+    uploads_dir = Path("uploads")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/api/v1/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
     return app
 

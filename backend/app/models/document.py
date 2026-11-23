@@ -12,13 +12,15 @@ class DocumentType(str, enum.Enum):
     NID_BACK = "nid_back"
     PASSPORT = "passport"
     PHOTOGRAPH = "photograph"
+    APPLICANT_PHOTO = "applicant_photo"
+    NOMINEE_PHOTO = "nominee_photo"
+    NOMINEE_NID = "nominee_nid"
     SIGNATURE = "signature"
     TIN_CERTIFICATE = "tin_certificate"
     UTILITY_BILL = "utility_bill"
     BANK_STATEMENT = "bank_statement"
     OTHER = "other"
     PROFILE_PHOTO = "profile_photo"
-    NOMINEE_PHOTO = "nominee_photo"
 
 
 class VerificationStatus(str, enum.Enum):
