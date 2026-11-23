@@ -176,7 +176,7 @@ def create_app() -> FastAPI:
     from pathlib import Path
     from fastapi.staticfiles import StaticFiles
 
-    uploads_dir = Path("uploads")
+    uploads_dir = Path(__file__).resolve().parent / "uploads"
     uploads_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/api/v1/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 

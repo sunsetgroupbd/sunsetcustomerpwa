@@ -16,7 +16,7 @@ from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-LOCAL_UPLOADS_DIR = Path("uploads")
+LOCAL_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads"
 
 
 class FileStorageService:

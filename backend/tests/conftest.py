@@ -1,3 +1,4 @@
+from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -6,8 +7,19 @@ from app.db.base import Base
 from app.db.session import get_db
 from main import app
 
-# Use file-based SQLite for tests (some versions need file for multi-fixture sharing)
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+# Place test.db inside backend/tests and clean up automatically
+TEST_DB_PATH = Path(__file__).resolve().parent / "test.db"
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{TEST_DB_PATH.as_posix()}"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_db():
+    yield
+    if TEST_DB_PATH.exists():
+        try:
+            TEST_DB_PATH.unlink()
+        except Exception:
+            pass
 
 
 @pytest.fixture(scope="function")
