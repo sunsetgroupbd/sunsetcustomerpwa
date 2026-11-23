@@ -130,11 +130,6 @@ export default function CrDashboardPage() {
     <DashboardShell
       title="Customer Relations Desk"
       subtitle="Find customer accounts registered by Sales Executives, complete application forms, and verify submitted applications."
-      actions={
-        <div className="flex items-center gap-2">
-          <NotificationBell />
-        </div>
-      }
     >
       <div className="space-y-6">
         {/* Metric / Tab Quick-Switcher */}

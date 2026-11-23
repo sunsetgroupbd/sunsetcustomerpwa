@@ -429,7 +429,6 @@ function AdminDashboardContent() {
       }
       actions={
         <div className="flex items-center gap-2">
-          <NotificationBell />
           {isApplicationsTab || isEditRequestsTab ? (
             <Link href="/admin/dashboard">
               <Button variant="outline" size="sm" className="flex items-center gap-1.5">

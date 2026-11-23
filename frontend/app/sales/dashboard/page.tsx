@@ -188,7 +188,6 @@ Investor Portal: ${window.location.origin}/login`;
       subtitle="Register prospective investors on behalf, track ownership applications, and monitor onboarding pipeline."
       actions={
         <div className="flex items-center gap-2">
-          <NotificationBell />
           <Button
             variant="primary"
             onClick={() => {

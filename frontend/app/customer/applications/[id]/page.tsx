@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, use } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { Application, ApplicationEditRequest } from '@/lib/types';
@@ -10,11 +10,20 @@ import { DashboardShell } from '@/components/layout/DashboardShell';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Icons } from '@/components/ui/Icons';
 import { Alert } from '@/components/ui/Alert';
 import { Modal } from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Textarea';
-import { Icons } from '@/components/ui/Icons';
 import { ApplicationReceiptModal } from '@/components/application-form/ApplicationReceiptModal';
+
+interface PreviewDocState {
+  id: string | number;
+  title: string;
+  url: string;
+  mimeType?: string;
+  fileName?: string;
+  verificationStatus?: string;
+}
 
 export default function CustomerApplicationDetailPage({
   params,
@@ -26,6 +35,7 @@ export default function CustomerApplicationDetailPage({
   const { user, isLoading: authLoading } = useAuth();
 
   const [application, setApplication] = useState<Application | null>(null);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
@@ -38,10 +48,44 @@ export default function CustomerApplicationDetailPage({
   const [editReason, setEditReason] = useState('');
   const [isSubmittingEditReq, setIsSubmittingEditReq] = useState(false);
 
-  const deduplicatedCustomerDocs = React.useMemo(() => {
-    if (!application?.documents || !Array.isArray(application.documents)) return [];
+  // Document preview lightbox modal
+  const [previewDoc, setPreviewDoc] = useState<PreviewDocState | null>(null);
+
+  const getDocumentUrl = (doc: any) => {
+    const rawUrl = doc?.download_url || doc?.file_path || doc?.url || '';
+    if (!rawUrl) return '';
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      return rawUrl;
+    }
+    const backendBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '');
+    return `${backendBase}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+  };
+
+  const isImageFile = (doc: any) => {
+    const mime = (doc?.mime_type || '').toLowerCase();
+    const name = (doc?.original_filename || doc?.file_name || '').toLowerCase();
+    return mime.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(name);
+  };
+
+  const isPdfFile = (doc: any) => {
+    const mime = (doc?.mime_type || '').toLowerCase();
+    const name = (doc?.original_filename || doc?.file_name || '').toLowerCase();
+    return mime.includes('pdf') || /\.pdf$/i.test(name);
+  };
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // Deduplicate documents by slot so re-uploaded items show only their latest version
+  const displayDocuments = React.useMemo(() => {
+    const source = documents.length > 0 ? documents : application?.documents || [];
+    if (!source || !Array.isArray(source)) return [];
     const map = new Map<string, any>();
-    const sorted = [...application.documents].sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+    const sorted = [...source].sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
     for (const doc of sorted) {
       const rawType = (doc.document_type || (doc as any).type || 'other').toLowerCase();
       let slot = rawType;
@@ -51,16 +95,19 @@ export default function CustomerApplicationDetailPage({
       map.set(slot, doc);
     }
     return Array.from(map.values());
-  }, [application?.documents]);
+  }, [documents, application?.documents]);
 
   const loadData = async () => {
     try {
-      const [app, reqs] = await Promise.all([
+      const [app, reqs, docsRes] = await Promise.all([
         api.applications.get(resolvedParams.id),
         api.applications.getEditRequests(resolvedParams.id).catch(() => []),
+        api.applications.getDocuments(resolvedParams.id).catch(() => []),
       ]);
       setApplication(app);
       setEditRequests(Array.isArray(reqs) ? reqs : (reqs as any)?.data || []);
+      const docList = Array.isArray(docsRes) ? docsRes : (docsRes as any)?.data || app.documents || [];
+      setDocuments(docList);
     } catch (err: any) {
       setError(err.message || 'Failed to find application.');
     } finally {
@@ -104,13 +151,12 @@ export default function CustomerApplicationDetailPage({
     if (!file || !application) return;
 
     setUploadingDocId(docType);
-    setStatusMsg(null);
     try {
-      await api.applications.uploadDocument(application.id, docType, file);
-      setStatusMsg({ type: 'success', text: `Revised document (${file.name}) uploaded for CR review.` });
-      await loadData();
+      await api.applications.uploadDocument(String(application.id), docType, file);
+      setStatusMsg({ type: 'success', text: 'Document re-uploaded successfully.' });
+      loadData();
     } catch (err: any) {
-      setStatusMsg({ type: 'error', text: err.message || 'Failed to upload revised document.' });
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to upload document.' });
     } finally {
       setUploadingDocId(null);
     }
@@ -118,10 +164,10 @@ export default function CustomerApplicationDetailPage({
 
   if (isLoading) {
     return (
-      <DashboardShell title="Application Overview" subtitle="Loading details...">
-        <div className="py-16 text-center text-xs text-slate-500">
-          <Icons.Spinner className="w-8 h-8 text-[#006B3E] mx-auto mb-3" />
-          Loading application record...
+      <DashboardShell title="Application Details" subtitle="Loading application record...">
+        <div className="py-20 flex flex-col items-center justify-center">
+          <Icons.Spinner className="w-8 h-8 text-[#006B3E] animate-spin mb-3" />
+          <p className="text-xs text-slate-500 font-medium">Loading application particulars &amp; documents...</p>
         </div>
       </DashboardShell>
     );
@@ -129,14 +175,14 @@ export default function CustomerApplicationDetailPage({
 
   if (error || !application) {
     return (
-      <DashboardShell title="Application Overview" subtitle="Not Found">
-        <Alert type="error" title="Application Not Found">
-          {error || 'Could not locate the requested application record.'}
-        </Alert>
-        <div className="mt-4">
+      <DashboardShell title="Application Not Found">
+        <div className="py-12 text-center max-w-md mx-auto">
+          <Icons.AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-900 mb-1">Application Record Unavailable</h3>
+          <p className="text-xs text-slate-500 mb-5">{error || 'This application could not be located.'}</p>
           <Link href="/customer/dashboard">
-            <Button variant="outline" size="sm" leftIcon={<Icons.ArrowLeft className="w-4 h-4" />}>
-              Back to Dashboard
+            <Button variant="primary" size="sm">
+              Return to Dashboard
             </Button>
           </Link>
         </div>
@@ -145,13 +191,13 @@ export default function CustomerApplicationDetailPage({
   }
 
   const isActionRequired = application.status === 'action_required';
-  const isEditable = application.status === 'draft' || application.is_edit_unlocked || isActionRequired;
   const pendingEditReq = editRequests.find((r) => r.status === 'pending');
+  const refNum = application.reference_number || (application as any).application_number || `SKH-2026-00003`;
 
   return (
     <DashboardShell
-      title={`Application ${application.reference_number}`}
-      subtitle={`${application.business?.name || 'Sunset Division'} • Submitted on ${
+      title={`Application: ${refNum}`}
+      subtitle={`${application.business?.name || 'Sunset Group Division'} • Registered on ${
         application.submission_date ? new Date(application.submission_date).toLocaleDateString() : 'Draft'
       }`}
       actions={
@@ -281,12 +327,20 @@ export default function CustomerApplicationDetailPage({
                   <span className="font-semibold text-slate-900">{application.applicant_info?.mother_name || '-'}</span>
                 </div>
                 <div>
+                  <span className="text-slate-500 block">Spouse&apos;s Name</span>
+                  <span className="font-semibold text-slate-900">{application.applicant_info?.spouse_name || '-'}</span>
+                </div>
+                <div>
                   <span className="text-slate-500 block">Mobile Number</span>
                   <span className="font-semibold text-slate-900">{application.applicant_info?.mobile_number || '-'}</span>
                 </div>
                 <div>
+                  <span className="text-slate-500 block">Personal Email</span>
+                  <span className="font-semibold text-slate-900">{application.applicant_info?.personal_email || '-'}</span>
+                </div>
+                <div>
                   <span className="text-slate-500 block">NID / Passport</span>
-                  <span className="font-semibold text-slate-900">{application.applicant_info?.nid_or_passport || '-'}</span>
+                  <span className="font-semibold text-slate-900 font-mono">{application.applicant_info?.nid_or_passport || '-'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Date of Birth</span>
@@ -315,6 +369,165 @@ export default function CustomerApplicationDetailPage({
               </div>
             </Card>
 
+            {/* Attached Documents & Visual Previews */}
+            <Card
+              title="Attached Documents &amp; Visual Scans"
+              subtitle="Inspect uploaded identity credentials, photos, and verification status."
+            >
+              {displayDocuments.length === 0 ? (
+                <div className="py-8 text-center text-slate-400">
+                  <Icons.FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-xs font-medium">No documents attached to this application yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {displayDocuments.map((doc) => {
+                    const docUrl = getDocumentUrl(doc);
+                    const isImg = isImageFile(doc);
+                    const isPdf = isPdfFile(doc);
+                    const formattedType = (doc.document_type || 'document').replace(/_/g, ' ').toUpperCase();
+
+                    return (
+                      <div
+                        key={doc.id}
+                        className="p-3 border border-slate-200 rounded-xl bg-slate-50/60 hover:bg-white hover:shadow-sm transition-all flex flex-col justify-between text-xs"
+                      >
+                        <div>
+                          {/* Card Header */}
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="font-bold text-slate-900 text-xs truncate" title={formattedType}>
+                              {formattedType}
+                            </span>
+                            <Badge status={doc.verification_status || 'pending'} />
+                          </div>
+
+                          {/* Visual Image / PDF Thumbnail */}
+                          <div className="relative w-full h-36 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center group mb-2">
+                            {isImg && docUrl ? (
+                              <>
+                                <img
+                                  src={docUrl}
+                                  alt={doc.original_filename || formattedType}
+                                  className="w-full h-full object-contain cursor-pointer transition-transform duration-200 group-hover:scale-105"
+                                  onClick={() =>
+                                    setPreviewDoc({
+                                      id: doc.id,
+                                      title: formattedType,
+                                      url: docUrl,
+                                      mimeType: doc.mime_type || 'image/jpeg',
+                                      verificationStatus: doc.verification_status || 'pending',
+                                      fileName: doc.original_filename || doc.file_name || 'document.jpg',
+                                    })
+                                  }
+                                />
+                                <div
+                                  onClick={() =>
+                                    setPreviewDoc({
+                                      id: doc.id,
+                                      title: formattedType,
+                                      url: docUrl,
+                                      mimeType: doc.mime_type || 'image/jpeg',
+                                      verificationStatus: doc.verification_status || 'pending',
+                                      fileName: doc.original_filename || doc.file_name || 'document.jpg',
+                                    })
+                                  }
+                                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer text-white font-semibold text-xs gap-1.5"
+                                >
+                                  <Icons.Eye className="w-4 h-4" />
+                                  <span>Preview Full Size</span>
+                                </div>
+                              </>
+                            ) : isPdf ? (
+                              <div
+                                className="text-center p-3 cursor-pointer"
+                                onClick={() =>
+                                  setPreviewDoc({
+                                    id: doc.id,
+                                    title: formattedType,
+                                    url: docUrl,
+                                    mimeType: 'application/pdf',
+                                    verificationStatus: doc.verification_status || 'pending',
+                                    fileName: doc.original_filename || 'document.pdf',
+                                  })
+                                }
+                              >
+                                <Icons.FileText className="w-10 h-10 text-rose-500 mx-auto mb-1" />
+                                <span className="text-[11px] font-bold text-slate-700 block truncate max-w-[180px]">
+                                  {doc.original_filename || doc.file_name || 'PDF Document'}
+                                </span>
+                                <span className="text-[10px] text-slate-400">Tap to Preview</span>
+                              </div>
+                            ) : (
+                              <div className="text-center p-3">
+                                <Icons.FileText className="w-8 h-8 text-slate-400 mx-auto mb-1" />
+                                <span className="text-[11px] font-medium text-slate-600 block truncate max-w-[180px]">
+                                  {doc.original_filename || doc.file_name || 'Document'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* File Details */}
+                          <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5">
+                            <span className="truncate max-w-[170px]" title={doc.original_filename || doc.file_name}>
+                              {doc.original_filename || doc.file_name || 'file'}
+                            </span>
+                            <span>{formatFileSize(doc.file_size)}</span>
+                          </div>
+
+                          {doc.rejection_reason && (
+                            <div className="p-2 mb-2 bg-rose-50 border border-rose-200 rounded text-[11px] text-rose-700 font-medium">
+                              Rejection: {doc.rejection_reason}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                          {docUrl && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewDoc({
+                                  id: doc.id,
+                                  title: formattedType,
+                                  url: docUrl,
+                                  mimeType: doc.mime_type || (isPdf ? 'application/pdf' : 'image/jpeg'),
+                                  verificationStatus: doc.verification_status || 'pending',
+                                  fileName: doc.original_filename || doc.file_name || 'document.jpg',
+                                })
+                              }
+                              className="text-xs font-semibold text-[#006B3E] hover:underline flex items-center gap-1"
+                            >
+                              <Icons.Eye className="w-3.5 h-3.5" />
+                              <span>View Full Size</span>
+                            </button>
+                          )}
+
+                          {/* Allow re-upload if rejected or action_required */}
+                          {(doc.verification_status === 'rejected' || isActionRequired) && (
+                            <label className="cursor-pointer inline-flex items-center px-2 py-1 border border-slate-300 rounded text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
+                              {uploadingDocId === doc.document_type ? (
+                                <Icons.Spinner className="w-3 h-3 animate-spin" />
+                              ) : (
+                                'Replace File'
+                              )}
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                className="hidden"
+                                onChange={(e) => handleDocumentReupload(doc.document_type, e)}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+
             {/* Nominees */}
             <Card title="Nominee Details">
               <div className="space-y-4">
@@ -334,63 +547,12 @@ export default function CustomerApplicationDetailPage({
                       </div>
                       <div>
                         <span className="text-slate-500 block">NID:</span>
-                        <span className="font-semibold text-slate-900">{nom.nid_or_passport}</span>
+                        <span className="font-semibold text-slate-900 font-mono">{nom.nid_or_passport}</span>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </Card>
-
-            {/* Documents & Verification Status */}
-            <Card
-              title="Attached Documents &amp; Verification"
-              subtitle="Verification status of submitted credentials."
-            >
-              {deduplicatedCustomerDocs.length === 0 ? (
-                <p className="text-xs text-slate-500">No documents attached.</p>
-              ) : (
-                <div className="divide-y divide-slate-100">
-                  {deduplicatedCustomerDocs.map((doc) => (
-                    <div key={doc.id} className="py-3 flex items-center justify-between gap-3 text-xs">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Icons.FileText className="w-4 h-4 text-slate-400" />
-                          <span className="font-semibold text-slate-900 uppercase">
-                            {doc.document_type.replace(/_/g, ' ')}
-                          </span>
-                          <Badge status={doc.verification_status} />
-                        </div>
-                        <span className="text-[11px] text-slate-500 mt-0.5 block">{doc.file_name}</span>
-                        {doc.rejection_reason && (
-                          <span className="text-rose-600 font-semibold block text-[11px] mt-1">
-                            Reason: {doc.rejection_reason}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Allow re-upload if rejected or action_required */}
-                      {(doc.verification_status === 'rejected' || isActionRequired) && (
-                        <div>
-                          <label className="cursor-pointer inline-flex items-center px-2.5 py-1.5 border border-slate-300 rounded text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                            {uploadingDocId === doc.document_type ? (
-                              <Icons.Spinner className="w-3.5 h-3.5" />
-                            ) : (
-                              'Replace File'
-                            )}
-                            <input
-                              type="file"
-                              accept="image/*,application/pdf"
-                              className="hidden"
-                              onChange={(e) => handleDocumentReupload(doc.document_type, e)}
-                            />
-                          </label>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </Card>
           </div>
 
@@ -408,23 +570,28 @@ export default function CustomerApplicationDetailPage({
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-100">
                   <span className="text-slate-500">Unit Price</span>
-                  <span className="font-semibold text-slate-900">৳ {application.ownership_detail?.price_per_ownership?.toLocaleString('en-IN')}</span>
+                  <span className="font-semibold text-slate-900 font-mono">৳ {application.ownership_detail?.price_per_ownership?.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-100">
                   <span className="text-slate-500">Discount</span>
-                  <span className="font-semibold text-slate-900">৳ {application.ownership_detail?.discount_amount?.toLocaleString('en-IN')}</span>
+                  <span className="font-semibold text-slate-900 font-mono">৳ {application.ownership_detail?.discount_amount?.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-slate-200">
                   <span className="font-bold text-slate-900">Total Price</span>
-                  <span className="font-bold text-[#006B3E]">৳ {application.ownership_detail?.total_price?.toLocaleString('en-IN')}</span>
+                  <span className="font-bold text-[#006B3E] font-mono">৳ {application.ownership_detail?.total_price?.toLocaleString('en-IN')}</span>
                 </div>
+                {application.ownership_detail?.amount_in_words && (
+                  <div className="text-[11px] text-slate-500 italic">
+                    In Words: Taka {application.ownership_detail.amount_in_words} Only
+                  </div>
+                )}
                 <div className="flex justify-between py-1 border-b border-slate-100">
                   <span className="text-slate-500">Booking Money Paid</span>
-                  <span className="font-semibold text-slate-900">৳ {application.payment_detail?.booking_money?.toLocaleString('en-IN')}</span>
+                  <span className="font-semibold text-[#006B3E] font-mono">৳ {application.payment_detail?.booking_money?.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-100">
                   <span className="text-slate-500">Remaining Balance</span>
-                  <span className="font-semibold text-slate-900">৳ {application.payment_detail?.dues_amount?.toLocaleString('en-IN')}</span>
+                  <span className="font-semibold text-rose-700 font-mono">৳ {application.payment_detail?.dues_amount?.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-slate-500">Installments</span>
@@ -451,7 +618,7 @@ export default function CustomerApplicationDetailPage({
                 </div>
                 <div>
                   <span className="text-slate-500 block">Account Number:</span>
-                  <span className="font-semibold text-slate-900">{application.bank_detail?.account_number || '-'}</span>
+                  <span className="font-semibold text-slate-900 font-mono">{application.bank_detail?.account_number || '-'}</span>
                 </div>
               </div>
             </Card>
@@ -459,12 +626,63 @@ export default function CustomerApplicationDetailPage({
         </div>
       </div>
 
-      {/* Modal: Customer Request Information Change */}
+      {/* Lightbox Modal: High-Res Document Preview */}
+      <Modal
+        isOpen={!!previewDoc}
+        onClose={() => setPreviewDoc(null)}
+        title={previewDoc?.title || 'Document Preview'}
+        description={previewDoc?.fileName || 'Attached application credential'}
+      >
+        {previewDoc && (
+          <div className="space-y-4">
+            <div className="w-full max-h-[70vh] bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center p-2">
+              {previewDoc.mimeType?.includes('pdf') || previewDoc.url.toLowerCase().endsWith('.pdf') ? (
+                <div className="text-center py-10 w-full">
+                  <Icons.FileText className="w-16 h-16 text-rose-500 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-800 mb-1">{previewDoc.fileName}</p>
+                  <p className="text-xs text-slate-500 mb-4">PDF document preview</p>
+                  <a
+                    href={previewDoc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#006B3E] text-white text-xs font-bold hover:bg-[#005230] transition-colors"
+                  >
+                    <Icons.Download className="w-4 h-4" />
+                    <span>Open / Download PDF</span>
+                  </a>
+                </div>
+              ) : (
+                <img
+                  src={previewDoc.url}
+                  alt={previewDoc.title}
+                  className="max-h-[65vh] w-auto max-w-full object-contain rounded"
+                />
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
+              <Badge status={previewDoc.verificationStatus || 'pending'} />
+              <a
+                href={previewDoc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="font-bold text-[#006B3E] hover:underline flex items-center gap-1"
+              >
+                <Icons.Download className="w-4 h-4" />
+                <span>Download Original File</span>
+              </a>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal: Request Edit */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        title="Request Information Change"
-        description="Submitted applications are locked for official record integrity. Explain what information you need to update, and Sunset Group administration will review and unlock your application."
+        title="Request Information Update"
+        description="Submit a revision request to Sunset Group Administration to unlock your application."
       >
         <form onSubmit={handleRequestEdit} className="space-y-4">
           <Textarea
@@ -497,7 +715,7 @@ export default function CustomerApplicationDetailPage({
           isOpen={isReceiptModalOpen}
           onClose={() => setIsReceiptModalOpen(false)}
           data={{
-            referenceNumber: application.reference_number || application.application_number || 'SKH-2026-00001',
+            referenceNumber: refNum,
             submissionDate: application.submission_date || application.submitted_at || application.created_at,
             status: application.status,
             businessName: application.business?.name || application.business_name || 'Sunset Bay Limited',
@@ -555,4 +773,3 @@ export default function CustomerApplicationDetailPage({
     </DashboardShell>
   );
 }
-
