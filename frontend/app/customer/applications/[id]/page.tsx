@@ -14,6 +14,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Modal } from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Textarea';
 import { Icons } from '@/components/ui/Icons';
+import { ApplicationReceiptModal } from '@/components/application-form/ApplicationReceiptModal';
 
 export default function CustomerApplicationDetailPage({
   params,
@@ -33,6 +34,7 @@ export default function CustomerApplicationDetailPage({
   // Edit / Info Change Request
   const [editRequests, setEditRequests] = useState<ApplicationEditRequest[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [editReason, setEditReason] = useState('');
   const [isSubmittingEditReq, setIsSubmittingEditReq] = useState(false);
 
@@ -159,8 +161,14 @@ export default function CustomerApplicationDetailPage({
             </Button>
           )}
 
-          <Button variant="outline" size="sm" onClick={() => window.print()} leftIcon={<Icons.Download className="w-4 h-4" />}>
-            Print Record
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsReceiptModalOpen(true)}
+            leftIcon={<Icons.Printer className="w-4 h-4 text-[#006B3E]" />}
+            className="font-bold text-slate-800"
+          >
+            Official Receipt
           </Button>
           <Link href="/customer/dashboard">
             <Button variant="ghost" size="sm" leftIcon={<Icons.ArrowLeft className="w-4 h-4" />}>
@@ -467,6 +475,68 @@ export default function CustomerApplicationDetailPage({
           </div>
         </form>
       </Modal>
+
+      {/* Official Printable Receipt Modal */}
+      {application && (
+        <ApplicationReceiptModal
+          isOpen={isReceiptModalOpen}
+          onClose={() => setIsReceiptModalOpen(false)}
+          data={{
+            referenceNumber: application.reference_number || application.application_number || 'SKH-2026-00001',
+            submissionDate: application.submission_date || application.submitted_at || application.created_at,
+            status: application.status,
+            businessName: application.business?.name || application.business_name || 'Sunset Bay Limited',
+            businessCode: application.business?.code || application.business_code || 'SKH',
+            applicantInfo: {
+              full_name_en: application.applicant_info?.full_name_en,
+              full_name_bn: application.applicant_info?.full_name_bn,
+              father_name: application.applicant_info?.father_name,
+              mother_name: application.applicant_info?.mother_name,
+              spouse_name: application.applicant_info?.spouse_name,
+              mobile_number: application.applicant_info?.mobile_number,
+              phone_number: application.applicant_info?.phone_number,
+              personal_email: application.applicant_info?.personal_email,
+              nid_or_passport: application.applicant_info?.nid_or_passport || (application.applicant_info as any)?.nid_number,
+              date_of_birth: application.applicant_info?.date_of_birth,
+              nationality: application.applicant_info?.nationality,
+              religion: application.applicant_info?.religion,
+              present_address: application.applicant_info?.present_address,
+              permanent_address: application.applicant_info?.permanent_address,
+              company_name: application.applicant_info?.company_name,
+              designation: application.applicant_info?.designation,
+              office_address: application.applicant_info?.office_address,
+            },
+            ownershipDetail: {
+              package: application.ownership_detail?.package_type || (application.ownership_detail as any)?.package,
+              package_type: application.ownership_detail?.package_type || (application.ownership_detail as any)?.package,
+              number_of_ownership: Number(application.ownership_detail?.number_of_ownership) || 1,
+              price_per_ownership: Number(application.ownership_detail?.price_per_ownership) || 0,
+              discount: Number(application.ownership_detail?.discount_amount || (application.ownership_detail as any)?.discount) || 0,
+              discount_amount: Number(application.ownership_detail?.discount_amount || (application.ownership_detail as any)?.discount) || 0,
+              total_price: Number(application.ownership_detail?.total_price) || 0,
+              amount_in_words: application.ownership_detail?.amount_in_words,
+            },
+            paymentDetail: {
+              token_money: Number(application.payment_detail?.token_money) || 0,
+              booking_money: Number(application.payment_detail?.booking_money) || 0,
+              booking_date: application.payment_detail?.booking_date || (application.payment_detail as any)?.booking_money_date,
+              installment_type: application.payment_detail?.installment_type,
+              number_of_installments: Number(application.payment_detail?.number_of_installments) || 0,
+              installment_amount: Number(application.payment_detail?.installment_amount) || 0,
+              installment_start_date: application.payment_detail?.installment_start_date || (application.payment_detail as any)?.installment_starting_date,
+              dues_amount: Number(application.payment_detail?.dues_amount) || 0,
+            },
+            bankDetail: {
+              account_name: application.bank_detail?.account_name,
+              account_number: application.bank_detail?.account_number,
+              bank_name: application.bank_detail?.bank_name,
+              branch_name: application.bank_detail?.branch_name || (application.bank_detail as any)?.branch,
+            },
+            nominees: application.nominees as any,
+            declarationAccepted: Boolean(application.declaration_accepted),
+          }}
+        />
+      )}
     </DashboardShell>
   );
 }

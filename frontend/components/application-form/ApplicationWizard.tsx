@@ -14,6 +14,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Icons } from '@/components/ui/Icons';
 import { Modal } from '@/components/ui/Modal';
+import { ApplicationReceiptModal } from './ApplicationReceiptModal';
 
 export const getDivisionLogo = (code?: string): string => {
   const c = (code || '').toUpperCase().trim();
@@ -106,6 +107,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
   const [terms, setTerms] = useState<TermsAndConditions | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -2670,9 +2672,9 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <Button
                 variant="outline"
-                className="flex-1"
-                onClick={() => window.print()}
-                leftIcon={<Icons.Download className="w-4 h-4" />}
+                className="flex-1 font-bold text-slate-800 border-slate-300 hover:bg-slate-50"
+                onClick={() => setIsReceiptModalOpen(true)}
+                leftIcon={<Icons.Printer className="w-4 h-4 text-[#006B3E]" />}
               >
                 Print / Save Receipt
               </Button>
@@ -2805,6 +2807,66 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
           </div>
         )}
       </Card>
+
+      {/* Official Receipt Modal */}
+      <ApplicationReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        data={{
+          referenceNumber: referenceNumber || existingApplication?.reference_number || 'SKH-2026-00001',
+          submissionDate: existingApplication?.submission_date || new Date().toISOString(),
+          status: 'submitted',
+          businessName: currentBusiness.name,
+          businessCode: currentBusiness.code,
+          applicantInfo: {
+            full_name_en: formData.full_name_en,
+            full_name_bn: formData.full_name_bn,
+            father_name: formData.father_name,
+            mother_name: formData.mother_name,
+            spouse_name: formData.spouse_name,
+            mobile_number: formData.mobile_number,
+            phone_number: formData.phone_number,
+            personal_email: formData.personal_email,
+            nid_or_passport: formData.nid_or_passport,
+            date_of_birth: formData.date_of_birth,
+            nationality: formData.nationality,
+            religion: formData.religion,
+            present_address: formData.present_address,
+            permanent_address: formData.permanent_address,
+            company_name: formData.company_name,
+            designation: formData.designation,
+            office_address: formData.office_address,
+          },
+          ownershipDetail: {
+            package: formData.package_type,
+            package_type: formData.package_type,
+            number_of_ownership: Number(formData.number_of_ownership),
+            price_per_ownership: Number(formData.price_per_ownership),
+            discount: Number(formData.discount_amount),
+            discount_amount: Number(formData.discount_amount),
+            total_price: Number(formData.total_price),
+            amount_in_words: formData.amount_in_words,
+          },
+          paymentDetail: {
+            token_money: Number(formData.token_money),
+            booking_money: Number(formData.booking_money),
+            booking_date: formData.booking_date,
+            installment_type: formData.installment_type,
+            number_of_installments: Number(formData.number_of_installments),
+            installment_amount: Number(formData.installment_amount),
+            installment_start_date: formData.installment_start_date,
+            dues_amount: Number(formData.dues_amount),
+          },
+          bankDetail: {
+            account_name: formData.account_name,
+            account_number: formData.account_number,
+            bank_name: formData.bank_name,
+            branch_name: formData.branch_name,
+          },
+          nominees: formData.nominees,
+          declarationAccepted: Boolean(formData.declaration_accepted),
+        }}
+      />
     </div>
   );
 };
