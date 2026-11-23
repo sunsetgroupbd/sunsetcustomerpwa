@@ -110,20 +110,26 @@ class DocumentService:
         # 6. Upload new file to storage
         await self._storage.upload_file(file_key, content, content_type)
 
-        # 7. Auto-delete any previously uploaded document for this slot to prevent storage leak
-        matching_types = [doc_type_enum]
-        if doc_type_enum in (DocumentType.APPLICANT_PHOTO, DocumentType.PHOTOGRAPH):
-            matching_types = [DocumentType.APPLICANT_PHOTO, DocumentType.PHOTOGRAPH]
+        # 7. Auto-delete any previously uploaded document for this slot to prevent storage leak & duplicate entries
+        slot_matching = [doc_type_enum]
+        if doc_type_enum in (DocumentType.APPLICANT_PHOTO, DocumentType.PHOTOGRAPH, DocumentType.PROFILE_PHOTO):
+            slot_matching = [DocumentType.APPLICANT_PHOTO, DocumentType.PHOTOGRAPH, DocumentType.PROFILE_PHOTO]
         elif doc_type_enum == DocumentType.NOMINEE_PHOTO:
-            matching_types = [DocumentType.NOMINEE_PHOTO]
-        elif doc_type_enum == DocumentType.NOMINEE_NID:
-            matching_types = [DocumentType.NOMINEE_NID]
+            slot_matching = [DocumentType.NOMINEE_PHOTO]
+        elif doc_type_enum in (DocumentType.NOMINEE_NID, DocumentType.PASSPORT):
+            slot_matching = [DocumentType.NOMINEE_NID] if doc_type_enum == DocumentType.NOMINEE_NID else [DocumentType.PASSPORT]
+        elif doc_type_enum == DocumentType.NID_FRONT:
+            slot_matching = [DocumentType.NID_FRONT]
+        elif doc_type_enum == DocumentType.NID_BACK:
+            slot_matching = [DocumentType.NID_BACK]
+        elif doc_type_enum == DocumentType.TIN_CERTIFICATE:
+            slot_matching = [DocumentType.TIN_CERTIFICATE]
 
         existing_docs = (
             self.db.query(Document)
             .filter(
                 Document.application_id == application_id,
-                Document.document_type.in_(matching_types),
+                Document.document_type.in_(slot_matching),
             )
             .all()
         )
@@ -224,9 +230,18 @@ class DocumentService:
         if user.role == "customer" and app.customer_id != user.id:
             raise AuthorizationError("You cannot view documents for this application")
 
-        docs = self.db.query(Document).filter(Document.application_id == application_id).all()
+        docs = self.db.query(Document).filter(Document.application_id == application_id).order_by(Document.id.asc()).all()
+        # Deduplicate to ensure only the latest document per slot is presented
+        latest_by_slot: dict[str, Document] = {}
+        for d in docs:
+            raw_t = d.document_type.value if hasattr(d.document_type, "value") else str(d.document_type)
+            slot = raw_t.lower()
+            if slot in ("photograph", "photo", "profile_photo"):
+                slot = "applicant_photo"
+            latest_by_slot[slot] = d
+
         results = []
-        for doc in docs:
+        for doc in latest_by_slot.values():
             signed_url = None
             try:
                 signed_url = await self._storage.generate_signed_url(doc.file_key)

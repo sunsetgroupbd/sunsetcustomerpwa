@@ -276,6 +276,14 @@ class ApplicationListItem(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, extra="ignore")
 
+    @model_validator(mode="after")
+    def populate_defaults(self):
+        if not getattr(self, "reference_number", None) and getattr(self, "application_number", None):
+            self.reference_number = self.application_number
+        if not getattr(self, "status", None) and getattr(self, "application_status", None):
+            self.status = self.application_status
+        return self
+
 
 class ApplicationDetail(ApplicationListItem):
     applicant_info: ApplicantInfoResponse | None = None

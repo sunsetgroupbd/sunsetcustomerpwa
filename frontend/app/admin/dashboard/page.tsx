@@ -179,7 +179,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-slate-400 text-xs font-semibold">#{index + 1}</span>
-                    <span className="font-mono font-bold text-xs text-slate-900">{app.reference_number}</span>
+                    <span className="font-mono font-bold text-xs text-slate-900">{app.reference_number || (app as any).application_number}</span>
                     <span className="text-[10px] font-bold text-[#008751] bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
                       {bizCode}
                     </span>
@@ -321,7 +321,7 @@ function AdminDashboardContent() {
                 return (
                   <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4">
-                      <div className="font-mono font-bold text-slate-900">{app.reference_number}</div>
+                      <div className="font-mono font-bold text-slate-900">{app.reference_number || (app as any).application_number}</div>
                       <div className="font-bold text-slate-900">{clientName}</div>
                       <div className="text-[11px] text-slate-500 font-mono">{clientPhone}</div>
                       {app.customer_id_number && (

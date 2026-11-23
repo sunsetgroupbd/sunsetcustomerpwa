@@ -38,6 +38,21 @@ export default function CustomerApplicationDetailPage({
   const [editReason, setEditReason] = useState('');
   const [isSubmittingEditReq, setIsSubmittingEditReq] = useState(false);
 
+  const deduplicatedCustomerDocs = React.useMemo(() => {
+    if (!application?.documents || !Array.isArray(application.documents)) return [];
+    const map = new Map<string, any>();
+    const sorted = [...application.documents].sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+    for (const doc of sorted) {
+      const rawType = (doc.document_type || (doc as any).type || 'other').toLowerCase();
+      let slot = rawType;
+      if (slot === 'photograph' || slot === 'photo' || slot === 'profile_photo') {
+        slot = 'applicant_photo';
+      }
+      map.set(slot, doc);
+    }
+    return Array.from(map.values());
+  }, [application?.documents]);
+
   const loadData = async () => {
     try {
       const [app, reqs] = await Promise.all([
@@ -332,11 +347,11 @@ export default function CustomerApplicationDetailPage({
               title="Attached Documents &amp; Verification"
               subtitle="Verification status of submitted credentials."
             >
-              {application.documents?.length === 0 ? (
+              {deduplicatedCustomerDocs.length === 0 ? (
                 <p className="text-xs text-slate-500">No documents attached.</p>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {application.documents?.map((doc) => (
+                  {deduplicatedCustomerDocs.map((doc) => (
                     <div key={doc.id} className="py-3 flex items-center justify-between gap-3 text-xs">
                       <div>
                         <div className="flex items-center gap-2">

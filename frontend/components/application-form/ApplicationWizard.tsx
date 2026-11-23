@@ -1077,7 +1077,10 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
         applicationId,
         Boolean(formData.declaration_accepted)
       );
-      setReferenceNumber(submitted.reference_number);
+      const newRef = submitted?.reference_number || (submitted as any)?.application_number || (submitted as any)?.data?.reference_number;
+      if (newRef) {
+        setReferenceNumber(newRef);
+      }
       setCurrentStep(9);
       if (onSuccess) onSuccess(submitted);
     } catch (err: any) {
@@ -2785,7 +2788,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 my-4">
               <span className="text-xs text-slate-500 block">Application Reference Number</span>
               <span className="text-lg font-mono font-bold text-[#006B3E] mt-1 block">
-                {referenceNumber || 'SKH-2026-00001'}
+                {referenceNumber || existingApplication?.reference_number || (existingApplication as any)?.application_number || 'SKH-2026-00003'}
               </span>
               <div className="mt-3 flex items-center justify-center gap-2">
                 <Badge status="submitted">Submitted</Badge>

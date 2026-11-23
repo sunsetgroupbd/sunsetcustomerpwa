@@ -339,7 +339,7 @@ export default function CustomerDashboardPage() {
                   <div key={app.id} className="py-3.5 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="font-mono font-bold text-xs text-slate-900">
-                        {app.reference_number}
+                        {app.reference_number || (app as any).application_number}
                       </span>
                       <Badge status={app.status} />
                     </div>
@@ -392,7 +392,7 @@ export default function CustomerDashboardPage() {
                     {submittedApps.map((app) => (
                       <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                          {app.reference_number}
+                          {app.reference_number || (app as any).application_number}
                         </td>
                         <td className="py-3 px-4 font-medium text-slate-800">
                           {app.business?.name || 'Sunset Division'}

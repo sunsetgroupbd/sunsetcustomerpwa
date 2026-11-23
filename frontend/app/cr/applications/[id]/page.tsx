@@ -38,6 +38,23 @@ export default function CrApplicationDetailPage({
 
   const [application, setApplication] = useState<Application | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
+
+  // Deduplicate documents by slot so re-uploaded items show only the latest version
+  const displayDocuments = React.useMemo(() => {
+    if (!documents || !Array.isArray(documents)) return [];
+    const map = new Map<string, any>();
+    // Sort ascending by ID so latest uploaded entry overwrites older ones
+    const sorted = [...documents].sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+    for (const doc of sorted) {
+      const rawType = (doc.document_type || doc.type || 'other').toLowerCase();
+      let slot = rawType;
+      if (slot === 'photograph' || slot === 'photo' || slot === 'profile_photo') {
+        slot = 'applicant_photo';
+      }
+      map.set(slot, doc);
+    }
+    return Array.from(map.values());
+  }, [documents]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -526,14 +543,14 @@ export default function CrApplicationDetailPage({
               title="Uploaded Documents &amp; Visual Previews"
               subtitle="Inspect uploaded attachments, preview high-res scans, and verify authenticity."
             >
-              {documents.length === 0 ? (
+              {displayDocuments.length === 0 ? (
                 <div className="py-8 text-center text-slate-400">
                   <Icons.FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
                   <p className="text-xs font-medium">No documents uploaded for this application yet.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {documents.map((doc) => {
+                  {displayDocuments.map((doc) => {
                     const docUrl = getDocumentUrl(doc);
                     const isImg = isImageFile(doc);
                     const isPdf = isPdfFile(doc);

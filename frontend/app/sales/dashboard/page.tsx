@@ -445,7 +445,7 @@ Investor Portal: ${window.location.origin}/login`;
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-xs text-slate-900">
-                          {app.reference_number}
+                          {app.reference_number || (app as any).application_number}
                         </span>
                         <span className="text-[10px] font-bold text-[#008751] bg-[#008751]/10 px-1.5 py-0.5 rounded">
                           {app.business?.code || 'SKH'}
@@ -505,7 +505,7 @@ Investor Portal: ${window.location.origin}/login`;
                     {applications.map((app) => (
                       <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                          {app.reference_number}
+                          {app.reference_number || (app as any).application_number}
                         </td>
                         <td className="py-3 px-4 font-medium text-slate-800">
                           {app.applicant_info?.full_name_en || 'Pending Draft'}
