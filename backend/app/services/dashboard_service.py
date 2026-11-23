@@ -28,7 +28,8 @@ class DashboardService:
         today = date.today()
         first_of_month = today.replace(day=1)
 
-        # 1. Total customers
+        # 1. Total customers (customers who have registered/active accounts or approved applications)
+        # Distinct customer users that are active
         total_customers = (
             self.db.query(func.count(User.id))
             .filter(User.role == "customer", User.is_active == True)
@@ -52,24 +53,35 @@ class DashboardService:
             key = status_val.value if hasattr(status_val, "value") else str(status_val)
             applications_by_status[key] = count
 
-        # 4. Applications by business
+        # 4. Applications by business & business distribution
         biz_rows = (
-            self.db.query(Business.name, func.count(Application.id))
+            self.db.query(Business.id, Business.name, Business.code, func.count(Application.id))
             .join(Application, Application.business_id == Business.id, isouter=True)
-            .group_by(Business.name)
+            .group_by(Business.id, Business.name, Business.code)
             .all()
         )
-        applications_by_business = {name: count for name, count in biz_rows}
+        applications_by_business = {name: count for _, name, _, count in biz_rows}
+        business_distribution = [
+            {
+                "business_id": str(bid),
+                "business_name": bname,
+                "business_code": bcode or "",
+                "count": count,
+            }
+            for bid, bname, bcode, count in biz_rows
+        ]
 
-        # 5. Pending, Approved, Rejected
+        # 5. Pending, Approved, Rejected, Returned (Correction Required)
         pending_statuses = [
             ApplicationStatus.SUBMITTED,
             ApplicationStatus.UNDER_REVIEW,
             ApplicationStatus.DOCUMENTS_REQUIRED,
-            ApplicationStatus.CORRECTION_REQUIRED,
         ]
         pending_applications = sum(
             applications_by_status.get(s.value, 0) for s in pending_statuses
+        )
+        returned_applications = applications_by_status.get(
+            ApplicationStatus.CORRECTION_REQUIRED.value, 0
         )
         approved_applications = applications_by_status.get(
             ApplicationStatus.APPROVED.value, 0
@@ -105,8 +117,10 @@ class DashboardService:
             pending_applications=pending_applications,
             approved_applications=approved_applications,
             rejected_applications=rejected_applications,
+            returned_applications=returned_applications,
             today_applications=today_applications,
             this_month_applications=this_month_applications,
+            business_distribution=business_distribution,
         )
 
     def get_cr_performance(self) -> list[dict[str, Any]]:

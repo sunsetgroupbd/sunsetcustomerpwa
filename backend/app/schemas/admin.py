@@ -9,6 +9,13 @@ from datetime import datetime
 from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field
 
 
+class BusinessDistributionItem(BaseModel):
+    business_id: str | int
+    business_name: str
+    business_code: str
+    count: int
+
+
 class DashboardStats(BaseModel):
     total_customers: int
     total_applications: int
@@ -17,8 +24,10 @@ class DashboardStats(BaseModel):
     pending_applications: int
     approved_applications: int
     rejected_applications: int
+    returned_applications: int = 0
     today_applications: int
     this_month_applications: int
+    business_distribution: list[BusinessDistributionItem] = []
 
 
 class UserCreate(BaseModel):

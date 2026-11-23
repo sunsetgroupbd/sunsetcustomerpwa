@@ -41,6 +41,11 @@ router = APIRouter(dependencies=[Depends(require_roles(["admin"]))])
     status_code=status.HTTP_200_OK,
     summary="Get aggregated dashboard metrics",
 )
+@router.get(
+    "/stats",
+    status_code=status.HTTP_200_OK,
+    summary="Get aggregated dashboard metrics (alias)",
+)
 async def get_dashboard_stats(
     db: Session = Depends(get_db),
 ):

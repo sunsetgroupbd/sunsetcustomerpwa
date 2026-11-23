@@ -695,7 +695,7 @@ function AdminDashboardContent() {
                   Total Customers
                 </span>
                 <span className="text-2xl font-bold text-slate-900 mt-2 block">
-                  {stats?.total_customers ?? '-'}
+                  {stats?.total_customers ?? 0}
                 </span>
               </Card>
 
