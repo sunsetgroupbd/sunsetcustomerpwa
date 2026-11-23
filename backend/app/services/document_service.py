@@ -107,10 +107,56 @@ class DocumentService:
         unique_id = uuid.uuid4().hex
         file_key = f"applications/{application_id}/{document_type}/{unique_id}{ext}"
 
-        # 6. Upload to private S3 storage
+        # 6. Upload new file to storage
         await self._storage.upload_file(file_key, content, content_type)
 
-        # 7. Create DB record
+        # 7. Auto-delete any previously uploaded document for this slot to prevent storage leak
+        matching_types = [doc_type_enum]
+        if doc_type_enum in (DocumentType.APPLICANT_PHOTO, DocumentType.PHOTOGRAPH):
+            matching_types = [DocumentType.APPLICANT_PHOTO, DocumentType.PHOTOGRAPH]
+        elif doc_type_enum == DocumentType.NOMINEE_PHOTO:
+            matching_types = [DocumentType.NOMINEE_PHOTO]
+        elif doc_type_enum == DocumentType.NOMINEE_NID:
+            matching_types = [DocumentType.NOMINEE_NID]
+
+        existing_docs = (
+            self.db.query(Document)
+            .filter(
+                Document.application_id == application_id,
+                Document.document_type.in_(matching_types),
+            )
+            .all()
+        )
+
+        for old_doc in existing_docs:
+            try:
+                await self._storage.delete_file(old_doc.file_key)
+                logger.info(
+                    "Auto-deleted previous document file %s (id=%d) for application %d",
+                    old_doc.file_key,
+                    old_doc.id,
+                    application_id,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Could not delete old file %s from storage: %s",
+                    old_doc.file_key,
+                    exc,
+                )
+            self._audit.log(
+                user_id=user.id,
+                action="document.replaced_and_deleted",
+                entity_type="document",
+                entity_id=str(old_doc.id),
+                metadata={
+                    "application_id": application_id,
+                    "document_type": old_doc.document_type.value,
+                    "file_key": old_doc.file_key,
+                },
+            )
+            self.db.delete(old_doc)
+
+        # 8. Create DB record for the new document
         doc = Document(
             application_id=application_id,
             document_type=doc_type_enum,
@@ -125,7 +171,7 @@ class DocumentService:
         self.db.commit()
         self.db.refresh(doc)
 
-        # 8. Audit log
+        # 9. Audit log
         self._audit.log(
             user_id=user.id,
             action="document.uploaded",
