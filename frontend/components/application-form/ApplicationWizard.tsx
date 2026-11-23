@@ -186,12 +186,18 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       existingApplication.documents.forEach((d: any) => {
         const typeKey = d.document_type || d.doc_type;
         if (typeKey) {
-          const rawUrl = d.download_url || d.file_path || d.file_url || '';
+          const rawUrl =
+            d.download_url ||
+            d.file_path ||
+            d.file_url ||
+            (d.file_key ? `/api/v1/uploads/${d.file_key}` : '');
           map[typeKey] = {
             id: String(d.id),
             name: d.original_filename || d.file_name || 'Uploaded document',
             url: resolveDocUrl(rawUrl),
-            mimeType: d.mime_type || (rawUrl.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+            mimeType:
+              d.mime_type ||
+              (rawUrl.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
             size: d.file_size,
           };
         }
@@ -207,6 +213,24 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     mimeType?: string;
   } | null>(null);
 
+  // Robust document lookup matching direct keys and all known backend aliases
+  const getUploadedDoc = (type: string): UploadedDocItem | undefined => {
+    if (uploadedDocs[type]) return uploadedDocs[type];
+    const aliases: Record<string, string[]> = {
+      applicant_photo: ['photograph', 'photo', 'profile_photo'],
+      photograph: ['applicant_photo', 'photo', 'profile_photo'],
+      nominee_photo: ['nominee_photograph', 'nominee_photo_front'],
+      nominee_nid: ['nominee_nid_front', 'nominee_nid_back', 'nominee_passport'],
+      nid_front: ['nid', 'national_id', 'passport'],
+      nid_back: ['nid_back_side', 'nid_back_page'],
+      tin_certificate: ['tin', 'tin_cert', 'e_tin'],
+    };
+    for (const alt of aliases[type] || []) {
+      if (uploadedDocs[alt]) return uploadedDocs[alt];
+    }
+    return undefined;
+  };
+
   // Sync / refresh documents with signed download URLs from server if applicationId exists
   useEffect(() => {
     if (applicationId) {
@@ -219,7 +243,11 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
               docs.forEach((d: any) => {
                 const typeKey = d.document_type || d.doc_type;
                 if (typeKey) {
-                  const rawUrl = d.download_url || d.file_path || d.file_url || '';
+                  const rawUrl =
+                    d.download_url ||
+                    d.file_path ||
+                    d.file_url ||
+                    (d.file_key ? `/api/v1/uploads/${d.file_key}` : '');
                   next[typeKey] = {
                     id: String(d.id),
                     name: d.original_filename || d.file_name || 'Uploaded document',
@@ -1339,7 +1367,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 {Object.keys(uploadedDocs).length} Document(s) Attached
               </span>
             </div>
-            <div className="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="p-3 sm:p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 { type: 'applicant_photo', label: 'Applicant Photograph', required: true },
                 { type: 'nid_front', label: 'NID Front / Passport Page', required: true },
@@ -1348,92 +1376,103 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 { type: 'nominee_nid', label: 'Nominee NID / Passport', required: true },
                 { type: 'tin_certificate', label: 'e-TIN Certificate', required: false },
               ].map((doc) => {
-                const uploaded = uploadedDocs[doc.type];
+                const uploaded = getUploadedDoc(doc.type);
                 const isImage = isImageDoc(uploaded);
                 const isPdf = isPdfDoc(uploaded);
 
                 return (
                   <div
                     key={doc.type}
-                    className={`flex items-center justify-between p-2.5 rounded-xl border text-xs transition-colors ${
+                    className={`p-2.5 sm:p-3 rounded-xl border flex items-center gap-3 transition-colors ${
                       uploaded
-                        ? 'border-emerald-200 bg-emerald-50/30 text-emerald-950'
+                        ? 'border-emerald-200 bg-emerald-50/30'
                         : doc.required
-                        ? 'border-amber-200 bg-amber-50/30 text-amber-950'
-                        : 'border-slate-200/60 bg-slate-50/50 text-slate-500'
+                        ? 'border-amber-200 bg-amber-50/25'
+                        : 'border-slate-200/70 bg-slate-50/40'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {/* Document Visual Thumbnail */}
-                      {uploaded ? (
-                        isImage && uploaded.url ? (
-                          <div
-                            onClick={() =>
-                              setPreviewModalDoc({
-                                title: doc.label,
-                                name: uploaded.name,
-                                url: uploaded.url,
-                                mimeType: uploaded.mimeType,
-                              })
-                            }
-                            className="relative w-11 h-11 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-100 cursor-pointer shadow-2xs hover:scale-105 transition-transform"
-                            title="Click to preview full image"
-                          >
-                            <img
-                              src={uploaded.url}
-                              alt={doc.label}
-                              className="w-full h-full object-cover object-center"
-                            />
+                    {/* Visual Thumbnail / Icon Box */}
+                    {uploaded ? (
+                      isImage && uploaded.url ? (
+                        <div
+                          onClick={() =>
+                            setPreviewModalDoc({
+                              title: doc.label,
+                              name: uploaded.name,
+                              url: uploaded.url,
+                              mimeType: uploaded.mimeType,
+                            })
+                          }
+                          className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-100 cursor-pointer shadow-xs group"
+                          title="Click to zoom image"
+                        >
+                          <img
+                            src={uploaded.url}
+                            alt={doc.label}
+                            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Icons.Eye className="w-4 h-4 text-white" />
                           </div>
-                        ) : isPdf ? (
-                          <div
-                            onClick={() =>
-                              setPreviewModalDoc({
-                                title: doc.label,
-                                name: uploaded.name,
-                                url: uploaded.url,
-                                mimeType: uploaded.mimeType,
-                              })
-                            }
-                            className="w-11 h-11 rounded-lg bg-rose-50 border border-rose-200 flex flex-col items-center justify-center shrink-0 cursor-pointer text-rose-600 hover:bg-rose-100 transition-colors shadow-2xs"
-                            title="Click to preview PDF"
-                          >
-                            <Icons.FileText className="w-4 h-4" />
-                            <span className="text-[9px] font-bold">PDF</span>
-                          </div>
-                        ) : (
-                          <div
-                            onClick={() =>
-                              setPreviewModalDoc({
-                                title: doc.label,
-                                name: uploaded.name,
-                                url: uploaded.url,
-                                mimeType: uploaded.mimeType,
-                              })
-                            }
-                            className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 cursor-pointer text-slate-500 shadow-2xs"
-                          >
-                            <Icons.FileText className="w-4 h-4" />
-                          </div>
-                        )
-                      ) : (
-                        <div className="w-11 h-11 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center shrink-0 text-slate-400">
-                          <Icons.Upload className="w-4 h-4" />
                         </div>
-                      )}
-
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-800 truncate">{doc.label}</p>
-                        <p className="text-[11px] text-slate-500 truncate" title={uploaded?.name}>
-                          {uploaded ? uploaded.name : doc.required ? 'Not attached (Required)' : 'Optional'}
-                        </p>
+                      ) : isPdf ? (
+                        <div
+                          onClick={() =>
+                            setPreviewModalDoc({
+                              title: doc.label,
+                              name: uploaded.name,
+                              url: uploaded.url,
+                              mimeType: uploaded.mimeType,
+                            })
+                          }
+                          className="w-16 h-16 rounded-xl bg-rose-50 border border-rose-200 flex flex-col items-center justify-center shrink-0 cursor-pointer text-rose-600 hover:bg-rose-100 transition-colors shadow-xs"
+                          title="Click to preview PDF"
+                        >
+                          <Icons.FileText className="w-5 h-5 mb-0.5" />
+                          <span className="text-[10px] font-bold">PDF</span>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() =>
+                            setPreviewModalDoc({
+                              title: doc.label,
+                              name: uploaded.name,
+                              url: uploaded.url,
+                              mimeType: uploaded.mimeType,
+                            })
+                          }
+                          className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 cursor-pointer text-slate-500 shadow-xs"
+                        >
+                          <Icons.FileText className="w-5 h-5" />
+                        </div>
+                      )
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center shrink-0 text-slate-400">
+                        <Icons.Upload className="w-5 h-5 mb-0.5" />
+                        <span className="text-[9px] font-medium">Missing</span>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Right side: Preview Button & Status */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {uploaded ? (
-                        <>
+                    {/* Details and Actions */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1 mb-0.5">
+                        <span className="font-bold text-slate-900 truncate text-xs">{doc.label}</span>
+                        {uploaded ? (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">
+                            ✓ Ready
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full shrink-0">
+                            {doc.required ? 'Required' : 'Optional'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 truncate" title={uploaded?.name}>
+                        {uploaded ? uploaded.name : 'No document uploaded yet'}
+                      </p>
+
+                      {uploaded && (
+                        <div className="mt-1.5 flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() =>
@@ -1444,19 +1483,15 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                                 mimeType: uploaded.mimeType,
                               })
                             }
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#006B3E] hover:text-[#005230] bg-[#006B3E]/10 hover:bg-[#006B3E]/20 px-2 py-1 rounded-md transition-colors"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#006B3E] hover:text-[#005230] bg-[#006B3E]/10 hover:bg-[#006B3E]/20 px-2 py-0.5 rounded transition-colors"
                           >
                             <Icons.Eye className="w-3 h-3" />
                             <span>Preview</span>
                           </button>
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                            ✓ Ready
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-[10px] font-medium text-slate-400">
-                          Pending
-                        </span>
+                          {uploaded.size ? (
+                            <span className="text-[10px] text-slate-400">{formatFileSize(uploaded.size)}</span>
+                          ) : null}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -2497,20 +2532,75 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                     { type: 'nominee_nid', label: 'Nominee NID' },
                     { type: 'tin_certificate', label: 'e-TIN' },
                   ].map((doc) => {
-                    const uploaded = uploadedDocs[doc.type];
+                    const uploaded = getUploadedDoc(doc.type);
+                    const isImage = isImageDoc(uploaded);
+                    const isPdf = isPdfDoc(uploaded);
+
                     return (
-                      <div key={doc.type} className="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
-                        <span className="text-slate-700 truncate">{doc.label}:</span>
+                      <div
+                        key={doc.type}
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/80 gap-2"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {uploaded ? (
+                            isImage && uploaded.url ? (
+                              <img
+                                src={uploaded.url}
+                                alt={doc.label}
+                                className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0"
+                              />
+                            ) : isPdf ? (
+                              <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                                <Icons.FileText className="w-4 h-4" />
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+                                <Icons.FileText className="w-4 h-4" />
+                              </div>
+                            )
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg border border-dashed border-slate-300 flex items-center justify-center shrink-0 text-slate-400">
+                              <Icons.Upload className="w-3.5 h-3.5" />
+                            </div>
+                          )}
+                          <span className="text-slate-700 font-medium truncate">{doc.label}:</span>
+                        </div>
                         {uploaded ? (
-                          <span className="text-emerald-700 font-semibold truncate ml-2">✓ {uploaded.name}</span>
+                          <span className="text-emerald-700 font-semibold truncate text-[11px] shrink-0">
+                            ✓ {uploaded.name}
+                          </span>
                         ) : (
-                          <span className="text-slate-400 italic text-[11px]">Not uploaded</span>
+                          <span className="text-slate-400 italic text-[11px] shrink-0">Not uploaded</span>
                         )}
                       </div>
                     );
                   })}
                 </div>
               </div>
+            </div>
+
+            {/* Quick Action Banner on Step 8 */}
+            <div className="p-3.5 sm:p-4 bg-emerald-50/80 border border-emerald-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="text-xs font-bold text-emerald-950">Ready to complete and confirm?</h4>
+                <p className="text-[11px] text-emerald-700 mt-0.5">
+                  Make sure you have accepted the declaration above, then click below to review your full application before submission.
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  if (validateAllBeforeSubmit()) {
+                    setIsReviewModalOpen(true);
+                  }
+                }}
+                isLoading={isSubmitting}
+                leftIcon={<Icons.Check className="w-4 h-4" />}
+                className="w-full sm:w-auto shrink-0 justify-center font-bold bg-[#006B3E] hover:bg-[#005230] shadow-sm text-xs sm:text-sm min-h-[42px]"
+              >
+                Review &amp; Submit Application
+              </Button>
             </div>
           </div>
         )}
@@ -2561,7 +2651,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
 
         {/* Navigation Buttons */}
         {currentStep < 9 && (
-          <div className="sticky bottom-14 md:static z-20 bg-white/95 md:bg-transparent backdrop-blur-md border-t border-slate-200 md:border-t md:border-slate-100 -mx-5 -mb-5 p-3.5 sm:p-4 md:p-0 md:m-0 md:pt-5 md:mt-6 shadow-md md:shadow-none">
+          <div className="mt-8 pt-5 border-t border-slate-200 w-full">
             {/* Mobile Layout (< sm): App-like full width primary button & balanced secondary controls */}
             <div className="sm:hidden flex flex-col gap-2.5 w-full">
               {/* Primary Action Button */}
@@ -2572,7 +2662,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                     size="md"
                     onClick={handleNext}
                     rightIcon={<Icons.ArrowRight className="w-4 h-4" />}
-                    className="w-full justify-center text-sm font-bold shadow-md bg-[#006B3E] hover:bg-[#005230]"
+                    className="w-full justify-center text-sm font-bold shadow-md bg-[#006B3E] hover:bg-[#005230] min-h-[44px]"
                   >
                     Next Step
                   </Button>
@@ -2587,7 +2677,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                     }}
                     isLoading={isSubmitting}
                     leftIcon={<Icons.Check className="w-4 h-4" />}
-                    className="w-full justify-center text-sm font-bold shadow-md bg-[#006B3E] hover:bg-[#005230]"
+                    className="w-full justify-center text-sm font-bold shadow-md bg-[#006B3E] hover:bg-[#005230] min-h-[46px]"
                   >
                     Review &amp; Submit Application
                   </Button>
@@ -2602,7 +2692,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                     size="sm"
                     onClick={handlePrev}
                     leftIcon={<Icons.ArrowLeft className="w-3.5 h-3.5" />}
-                    className="flex-1 justify-center text-xs text-slate-700 border-slate-200"
+                    className="flex-1 justify-center text-xs text-slate-700 border-slate-200 min-h-[38px]"
                   >
                     Previous
                   </Button>
@@ -2613,7 +2703,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                   onClick={() => handleSaveDraft(false)}
                   isLoading={isSavingDraft}
                   leftIcon={<Icons.FileText className="w-3.5 h-3.5" />}
-                  className="flex-1 justify-center text-xs text-slate-600 hover:text-slate-900 border border-slate-200/80 bg-slate-50/50"
+                  className="flex-1 justify-center text-xs text-slate-600 hover:text-slate-900 border border-slate-200/80 bg-slate-50/50 min-h-[38px]"
                 >
                   Save Draft
                 </Button>
