@@ -407,4 +407,21 @@ class EditRequestReview(BaseModel):
     admin_notes: str | None = None
 
 
+class ApplicationTrackStatus(BaseModel):
+    id: int
+    application_number: str
+    business_id: int
+    business_name: str
+    business_code: str
+    status: str
+    submission_date: date | None = None
+    applicant_name: str | None = None
+    customer_phone_masked: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    status_history: list[ApplicationStatusHistoryResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 

@@ -4,6 +4,7 @@ import {
   AuthResponse,
   Application,
   ApplicationEditRequest,
+  ApplicationTrackStatus,
   Business,
   CustomerProfileData,
   DashboardStats,
@@ -221,6 +222,9 @@ export const api = {
     },
 
     get: (id: string) => request<Application>(`/applications/${id}`),
+
+    track: (referenceNumber: string) =>
+      request<ApplicationTrackStatus>(`/applications/track/${encodeURIComponent(referenceNumber.trim())}`),
 
     createDraft: (data: { business_id: string; applicant_info?: any; current_step?: number }) =>
       request<Application>('/applications', {

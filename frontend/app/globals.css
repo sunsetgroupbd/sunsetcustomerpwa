@@ -807,6 +807,10 @@
     margin-left: var(--spacing);
   }
 
+  .ml-1\.5 {
+    margin-left: calc(var(--spacing) * 1.5);
+  }
+
   .ml-2 {
     margin-left: calc(var(--spacing) * 2);
   }
@@ -975,6 +979,10 @@
 
   .max-h-32 {
     max-height: calc(var(--spacing) * 32);
+  }
+
+  .max-h-36 {
+    max-height: calc(var(--spacing) * 36);
   }
 
   .max-h-56 {
@@ -3523,6 +3531,15 @@
 
   .placeholder\:text-slate-400::placeholder {
     color: var(--color-slate-400);
+  }
+
+  .last\:border-0:last-child {
+    border-style: var(--tw-border-style);
+    border-width: 0;
+  }
+
+  .last\:pb-0:last-child {
+    padding-bottom: 0;
   }
 
   @media (hover: hover) {

@@ -372,9 +372,11 @@ class ApplicationService:
     # -------------------------------------------------------------------------
     # Get Application
     # -------------------------------------------------------------------------
-    async def get_application(self, application_id: int, user: User) -> Application:
-        """Fetch application with all related models and role-based access validation."""
-        app = (
+    async def get_application(self, application_id: int | str, user: User) -> Application:
+        """Fetch application with all related models and role-based access validation.
+        Accepts integer application ID or string application_number (reference number).
+        """
+        query = (
             self.db.query(Application)
             .options(
                 joinedload(Application.applicant_info),
@@ -385,9 +387,12 @@ class ApplicationService:
                 joinedload(Application.business),
                 joinedload(Application.assigned_cr),
             )
-            .filter(Application.id == application_id)
-            .first()
         )
+        if isinstance(application_id, int) or (isinstance(application_id, str) and application_id.isdigit()):
+            app = query.filter(Application.id == int(application_id)).first()
+        else:
+            app = query.filter(func.upper(Application.application_number) == str(application_id).strip().upper()).first()
+
         if not app:
             raise NotFoundError(f"Application {application_id} not found.")
 

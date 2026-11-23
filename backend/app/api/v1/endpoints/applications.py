@@ -8,6 +8,7 @@ Covers the full application lifecycle:
 """
 
 import logging
+from datetime import datetime
 from typing import Optional
 
 from fastapi import (
@@ -20,10 +21,12 @@ from fastapi import (
     UploadFile,
     status,
 )
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.deps import get_current_active_user, get_db, require_roles
 from app.core.responses import paginated_response, success_response
+from app.models.application import Application
 from app.schemas.application import (
     ApplicationCreate,
     ApplicationDetail,
@@ -36,6 +39,7 @@ from app.schemas.application import (
     NomineeUpdate,
     RemarkCreate,
     StatusUpdateRequest,
+    ApplicationTrackStatus,
 )
 from app.schemas.document import DocumentVerifyRequest
 from app.services.application_service import ApplicationService
@@ -44,6 +48,77 @@ from app.services.document_service import DocumentService
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Public tracking route
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/track/{reference_number}",
+    status_code=status.HTTP_200_OK,
+    summary="Track application status publicly by reference number",
+)
+async def track_application(
+    reference_number: str,
+    db: Session = Depends(get_db),
+):
+    """Allow anyone (even before logging in) to track application milestone progress by Reference No."""
+    ref_clean = reference_number.strip().upper()
+    app = (
+        db.query(Application)
+        .options(
+            joinedload(Application.applicant_info),
+            joinedload(Application.business),
+            joinedload(Application.status_history),
+            joinedload(Application.customer),
+        )
+        .filter(func.upper(Application.application_number) == ref_clean)
+        .first()
+    )
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application reference '{reference_number}' was not found. Please verify the reference number.",
+        )
+
+    # Mask customer phone (e.g. 017****1234)
+    cust_phone = app.customer.mobile if app.customer else None
+    masked_phone = None
+    if cust_phone and len(cust_phone) >= 7:
+        masked_phone = cust_phone[:3] + "****" + cust_phone[-4:]
+    elif cust_phone:
+        masked_phone = cust_phone[:2] + "***"
+
+    history_list = []
+    if app.status_history:
+        for h in sorted(app.status_history, key=lambda x: x.created_at or datetime.min):
+            history_list.append(
+                {
+                    "id": h.id,
+                    "previous_status": h.previous_status.value if h.previous_status else None,
+                    "new_status": h.new_status.value if h.new_status else str(h.new_status),
+                    "changed_by_id": h.changed_by_id,
+                    "reason": h.reason,
+                    "created_at": h.created_at,
+                }
+            )
+
+    track_data = ApplicationTrackStatus(
+        id=app.id,
+        application_number=app.application_number,
+        business_id=app.business_id,
+        business_name=app.business.name if app.business else "Sunset Group",
+        business_code=app.business.code if app.business else "SG",
+        status=app.application_status.value if hasattr(app.application_status, "value") else str(app.application_status),
+        submission_date=app.application_date,
+        applicant_name=app.applicant_info.full_name_en if app.applicant_info else None,
+        customer_phone_masked=masked_phone,
+        created_at=app.created_at,
+        updated_at=app.updated_at,
+        status_history=history_list,
+    )
+    return success_response(data=track_data, message="Application status retrieved successfully.")
 
 
 # ---------------------------------------------------------------------------
@@ -181,14 +256,17 @@ async def list_applications(
     summary="Get application detail",
 )
 async def get_application(
-    application_id: int,
+    application_id: str,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    """Retrieve full detail of a single application, including sub-models."""
+    """Retrieve full detail of a single application, including sub-models.
+    Accepts integer application ID or reference number (e.g. SKH-2026-00001).
+    """
     try:
         service = ApplicationService(db)
-        app = await service.get_application(application_id, current_user)
+        target_id: int | str = int(application_id) if application_id.isdigit() else application_id
+        app = await service.get_application(target_id, current_user)
         return success_response(data=ApplicationDetail.model_validate(app), message="Application retrieved successfully.")
     except HTTPException:
         raise
@@ -306,7 +384,7 @@ async def request_edit_permission(
     summary="Get edit requests for an application",
 )
 async def get_application_edit_requests(
-    application_id: int,
+    application_id: str,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
@@ -315,7 +393,8 @@ async def get_application_edit_requests(
 
     try:
         service = ApplicationService(db)
-        app = await service.get_application(application_id, current_user)
+        target_id: int | str = int(application_id) if application_id.isdigit() else application_id
+        app = await service.get_application(target_id, current_user)
         reqs = (
             db.query(ApplicationEditRequest)
             .filter(ApplicationEditRequest.application_id == app.id)
@@ -549,7 +628,7 @@ async def upload_document(
     summary="List all documents for an application",
 )
 async def list_documents(
-    application_id: int,
+    application_id: str,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):

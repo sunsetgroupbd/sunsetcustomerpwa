@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { MobileNavBar } from '@/components/layout/MobileNavBar';
-import { Business } from '@/lib/types';
+import { Business, ApplicationTrackStatus } from '@/lib/types';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Modal } from '@/components/ui/Modal';
+import { Badge } from '@/components/ui/Badge';
 import { Icons } from '@/components/ui/Icons';
 
 export default function HomePage() {
@@ -18,6 +20,12 @@ export default function HomePage() {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'SKH' | 'DFI' | 'SCH' | 'SPC'>('all');
   const [trackRef, setTrackRef] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Quick Tracker Modal & State
+  const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
+  const [isSearchingTrack, setIsSearchingTrack] = useState(false);
+  const [trackResult, setTrackResult] = useState<ApplicationTrackStatus | null>(null);
+  const [trackError, setTrackError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadBusinesses() {
@@ -81,10 +89,24 @@ export default function HomePage() {
     }
   }, []);
 
-  const handleTrack = (e: React.FormEvent) => {
+  const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trackRef.trim()) return;
-    router.push(`/customer/applications/${trackRef.trim().toUpperCase()}`);
+    const cleanRef = trackRef.trim().toUpperCase();
+    if (!cleanRef) return;
+
+    setIsSearchingTrack(true);
+    setTrackError(null);
+    setTrackResult(null);
+    setIsTrackModalOpen(true);
+
+    try {
+      const data = await api.applications.track(cleanRef);
+      setTrackResult(data);
+    } catch (err: any) {
+      setTrackError(err.message || `Application reference "${cleanRef}" could not be located.`);
+    } finally {
+      setIsSearchingTrack(false);
+    }
   };
 
   const filteredBusinesses =
@@ -379,6 +401,193 @@ export default function HomePage() {
 
       {/* Native Mobile Bottom Navigation Bar */}
       <MobileNavBar />
+
+      {/* Track Status Lightbox Modal */}
+      <Modal
+        isOpen={isTrackModalOpen}
+        onClose={() => {
+          setIsTrackModalOpen(false);
+          setTrackResult(null);
+          setTrackError(null);
+        }}
+        title="Application Status Tracking"
+      >
+        <div className="space-y-4">
+          {isSearchingTrack && (
+            <div className="py-12 text-center text-xs text-slate-500">
+              <Icons.Spinner className="w-7 h-7 text-[#008751] animate-spin mx-auto mb-3" />
+              Verifying reference number and retrieving live records...
+            </div>
+          )}
+
+          {trackError && !isSearchingTrack && (
+            <div className="py-8 text-center space-y-3">
+              <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto">
+                <Icons.AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Application Not Found</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">{trackError}</p>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Please double-check the reference ID received in your SMS (e.g. <span className="font-mono font-bold text-slate-600">SKH-2026-00001</span>).
+              </p>
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsTrackModalOpen(false)}
+                  className="rounded-xl"
+                >
+                  Close &amp; Re-check
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {trackResult && !isSearchingTrack && (
+            <div className="space-y-4">
+              {/* Header Box */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-mono font-bold text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                    {trackResult.application_number}
+                  </span>
+                  <Badge variant={
+                    trackResult.status === 'approved'
+                      ? 'success'
+                      : trackResult.status === 'rejected'
+                      ? 'danger'
+                      : trackResult.status === 'correction_required' || trackResult.status === 'documents_required'
+                      ? 'warning'
+                      : 'info'
+                  }>
+                    {trackResult.status.replace(/_/g, ' ').toUpperCase()}
+                  </Badge>
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">{trackResult.business_name}</h3>
+                <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200/80 text-xs">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Applicant</span>
+                    <span className="font-semibold text-slate-800">{trackResult.applicant_name || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Mobile</span>
+                    <span className="font-mono text-slate-700">{trackResult.customer_phone_masked || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Milestones */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
+                  Processing Lifecycle
+                </span>
+                <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">
+                      ✓
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-bold text-slate-900">Application Submitted</div>
+                      <div className="text-[11px] text-slate-500">
+                        Received on {trackResult.submission_date || new Date(trackResult.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold ${
+                      trackResult.status !== 'draft' && trackResult.status !== 'submitted'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {trackResult.status !== 'draft' && trackResult.status !== 'submitted' ? '✓' : '•'}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-bold text-slate-900">CR Document Verification</div>
+                      <div className="text-[11px] text-slate-500">
+                        {trackResult.status === 'under_review'
+                          ? 'Currently under review by Customer Relations'
+                          : trackResult.status === 'documents_required' || trackResult.status === 'correction_required'
+                          ? 'Action required: Document or information correction requested'
+                          : trackResult.status === 'approved'
+                          ? 'All documents and eligibility verified'
+                          : 'Pending initial audit'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold ${
+                      trackResult.status === 'approved'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : trackResult.status === 'rejected'
+                        ? 'bg-rose-100 text-rose-700'
+                        : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      {trackResult.status === 'approved' ? '✓' : trackResult.status === 'rejected' ? '✕' : '3'}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-bold text-slate-900">Final Executive Approval</div>
+                      <div className="text-[11px] text-slate-500">
+                        {trackResult.status === 'approved'
+                          ? 'Approved! Official ownership allotment generated.'
+                          : trackResult.status === 'rejected'
+                          ? 'Application rejected by administration.'
+                          : 'Pending final executive sign-off.'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status History (if any) */}
+              {trackResult.status_history && trackResult.status_history.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Audit Activity Log
+                  </span>
+                  <div className="max-h-36 overflow-y-auto space-y-1.5 border border-slate-100 rounded-xl p-2.5 bg-slate-50/50 text-[11px]">
+                    {trackResult.status_history.map((h) => (
+                      <div key={h.id} className="flex items-baseline justify-between gap-2 border-b border-slate-100 last:border-0 pb-1 last:pb-0">
+                        <div>
+                          <span className="font-semibold text-slate-800 capitalize">{h.new_status.replace(/_/g, ' ')}</span>
+                          {h.reason && <p className="text-[10px] text-slate-500">{h.reason}</p>}
+                        </div>
+                        <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                          {new Date(h.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-2">
+                <Link
+                  href={`/customer/applications/${trackResult.application_number}`}
+                  className="flex-1"
+                >
+                  <Button variant="primary" size="md" className="w-full rounded-xl font-bold bg-[#008751] hover:bg-[#007043]">
+                    <span>View Full Details &amp; Documents</span>
+                    <Icons.ArrowRight className="w-4 h-4 ml-1.5" />
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => setIsTrackModalOpen(false)}
+                  className="rounded-xl"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

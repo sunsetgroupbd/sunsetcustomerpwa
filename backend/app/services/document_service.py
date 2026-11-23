@@ -220,17 +220,22 @@ class DocumentService:
         )
 
     async def list_documents(
-        self, application_id: int, user: User
+        self, application_id: int | str, user: User
     ) -> List[DocumentResponse]:
         """List all documents for an application with fresh signed URLs."""
-        app = self.db.query(Application).filter(Application.id == application_id).first()
+        if isinstance(application_id, int) or (isinstance(application_id, str) and application_id.isdigit()):
+            app = self.db.query(Application).filter(Application.id == int(application_id)).first()
+        else:
+            app = self.db.query(Application).filter(func.upper(Application.application_number) == str(application_id).strip().upper()).first()
+
         if not app:
             raise NotFoundError(f"Application {application_id} not found")
 
-        if user.role == "customer" and app.customer_id != user.id:
+        role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
+        if role_str == "customer" and app.customer_id != user.id:
             raise AuthorizationError("You cannot view documents for this application")
 
-        docs = self.db.query(Document).filter(Document.application_id == application_id).order_by(Document.id.asc()).all()
+        docs = self.db.query(Document).filter(Document.application_id == app.id).order_by(Document.id.asc()).all()
         # Deduplicate to ensure only the latest document per slot is presented
         latest_by_slot: dict[str, Document] = {}
         for d in docs:

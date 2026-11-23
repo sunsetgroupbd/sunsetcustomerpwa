@@ -242,6 +242,28 @@ export interface DashboardStats {
   }[];
 }
 
+export interface ApplicationTrackStatus {
+  id: number;
+  application_number: string;
+  business_id: number;
+  business_name: string;
+  business_code: string;
+  status: ApplicationStatus;
+  submission_date: string | null;
+  applicant_name: string | null;
+  customer_phone_masked: string | null;
+  created_at: string;
+  updated_at: string;
+  status_history: {
+    id: number;
+    previous_status: string | null;
+    new_status: string;
+    changed_by_id: number;
+    reason: string | null;
+    created_at: string;
+  }[];
+}
+
 export interface PackagePricing {
   id: string;
   business_id: string;
