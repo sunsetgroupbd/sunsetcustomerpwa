@@ -768,7 +768,6 @@ Investor Portal: ${window.location.origin}/login`;
                   { value: 'Cold Lead', label: 'Cold Lead / Direct Calling' },
                   { value: 'Reference', label: 'Reference / Referral' },
                   { value: 'Walk-in', label: 'Walk-in / Branch Visit' },
-                  { value: 'Newspaper', label: 'Newspaper / Print Media' },
                   { value: 'Website', label: 'Website / Digital Campaign' },
                   { value: 'Other', label: 'Other (Type Custom Source)' },
                 ]}
