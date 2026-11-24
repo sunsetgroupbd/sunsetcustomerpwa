@@ -196,6 +196,7 @@
     --tracking-widest: .1em;
     --leading-tight: 1.25;
     --leading-snug: 1.375;
+    --leading-normal: 1.5;
     --leading-relaxed: 1.625;
     --radius-md: .375rem;
     --radius-lg: .5rem;
@@ -2726,6 +2727,11 @@
     line-height: 1;
   }
 
+  .leading-normal {
+    --tw-leading: var(--leading-normal);
+    line-height: var(--leading-normal);
+  }
+
   .leading-relaxed {
     --tw-leading: var(--leading-relaxed);
     line-height: var(--leading-relaxed);
@@ -2845,6 +2851,16 @@
 
   .text-amber-800 {
     color: var(--color-amber-800);
+  }
+
+  .text-amber-800\/90 {
+    color: #953d00e6;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-amber-800\/90 {
+      color: color-mix(in oklab, var(--color-amber-800) 90%, transparent);
+    }
   }
 
   .text-amber-900 {

@@ -587,13 +587,25 @@ export default function AdminUsersPage() {
             <div className="w-9 h-9 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
               <Icons.Trash className="w-5 h-5" />
             </div>
-            <div className="text-xs text-rose-900 leading-relaxed">
+            <div className="text-xs text-rose-900 leading-relaxed space-y-1.5">
               <p className="font-semibold text-rose-800">Are you sure you want to delete this user?</p>
-              <p className="mt-1 text-slate-600">
+              <p className="text-slate-600">
                 You are about to delete <strong className="text-slate-900">{userToDelete?.full_name}</strong> (
                 <span className="font-mono">{userToDelete?.phone_number || (userToDelete as any)?.mobile}</span>).
-                This action cannot be undone.
               </p>
+              {userToDelete?.customer_id_number && (
+                <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-lg text-amber-900">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                    <Icons.AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Active Customer ID Allotment</span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-normal text-amber-800/90">
+                    This user has an official Customer ID (<strong className="font-mono">{userToDelete.customer_id_number}</strong>).
+                    Deleting will permanently purge this customer account, their approved application records, documents, and notifications.
+                  </p>
+                </div>
+              )}
+              <p className="text-[11px] text-slate-500 font-medium">This action cannot be undone.</p>
             </div>
           </div>
 

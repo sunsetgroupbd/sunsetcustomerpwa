@@ -305,8 +305,10 @@ async def delete_user(
         ApplicationRemark,
         ApplicationStatusHistory,
         CRAssignment,
+        ApplicationEditRequest,
     )
     from app.models.document import Document
+    from app.models.notification import Notification
     from app.models.customer import CustomerProfile
     from app.models.user import RefreshToken, OTPVerification
 
@@ -316,10 +318,17 @@ async def delete_user(
     )
     db.query(CRAssignment).filter(CRAssignment.cr_user_id == user_id).delete(synchronize_session=False)
 
-    # 2. If customer, clean up their applications
+    # 2. Clean up edit requests, remarks, status histories, and documents authored or created by this user
+    db.query(ApplicationEditRequest).filter(ApplicationEditRequest.requested_by_id == user_id).delete(synchronize_session=False)
+    db.query(ApplicationRemark).filter(ApplicationRemark.user_id == user_id).delete(synchronize_session=False)
+    db.query(ApplicationStatusHistory).filter(ApplicationStatusHistory.changed_by_id == user_id).delete(synchronize_session=False)
+    db.query(Document).filter(Document.uploaded_by_id == user_id).delete(synchronize_session=False)
+
+    # 3. If customer, clean up their applications and all child records
     apps = db.query(Application).filter(Application.customer_id == user_id).all()
     for app in apps:
         app_id = app.id
+        db.query(ApplicationEditRequest).filter(ApplicationEditRequest.application_id == app_id).delete(synchronize_session=False)
         db.query(ApplicantInfo).filter(ApplicantInfo.application_id == app_id).delete(synchronize_session=False)
         db.query(BankDetail).filter(BankDetail.application_id == app_id).delete(synchronize_session=False)
         db.query(OwnershipDetail).filter(OwnershipDetail.application_id == app_id).delete(synchronize_session=False)
@@ -329,9 +338,11 @@ async def delete_user(
         db.query(ApplicationStatusHistory).filter(ApplicationStatusHistory.application_id == app_id).delete(synchronize_session=False)
         db.query(CRAssignment).filter(CRAssignment.application_id == app_id).delete(synchronize_session=False)
         db.query(Document).filter(Document.application_id == app_id).delete(synchronize_session=False)
+        db.query(Notification).filter(Notification.application_id == app_id).delete(synchronize_session=False)
         db.delete(app)
 
-    # 3. Clean up user-related records
+    # 4. Clean up user-related records
+    db.query(Notification).filter(Notification.user_id == user_id).delete(synchronize_session=False)
     db.query(CustomerProfile).filter(CustomerProfile.user_id == user_id).delete(synchronize_session=False)
     db.query(RefreshToken).filter(RefreshToken.user_id == user_id).delete(synchronize_session=False)
     db.query(OTPVerification).filter(OTPVerification.user_id == user_id).delete(synchronize_session=False)
