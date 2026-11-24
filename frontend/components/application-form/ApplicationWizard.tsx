@@ -610,10 +610,9 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     const total = Math.max(0, qty * pricePerUnit - discount);
     const words = numberToWords(total);
     const booking = suggestedBookingMoney !== undefined ? suggestedBookingMoney : formData.booking_money;
-    const dues = Math.max(0, total - (formData.token_money + booking));
+    const effectiveBooking = Math.max(booking, formData.token_money || 0);
+    const dues = Math.max(0, total - effectiveBooking);
     const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
-    const bookingCount = formData.booking_installment_count || 1;
-    const bookingEmi = bookingCount > 0 ? Math.round(booking / bookingCount) : booking;
 
     setFormData((prev) => ({
       ...prev,
@@ -622,8 +621,8 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       price_per_ownership: pricePerUnit,
       discount_amount: discount,
       booking_money: booking,
-      booking_installment_count: bookingCount,
-      booking_installment_amount: bookingEmi,
+      booking_installment_count: 1,
+      booking_installment_amount: 0,
       total_price: total,
       amount_in_words: words,
       dues_amount: dues,
@@ -2278,7 +2277,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 return (
                   <div
                     key={pkg}
-                    onClick={() => updatePricing(pkg, units, formData.discount_amount, price, booking)}
+                    onClick={() => updatePricing(pkg, 1, formData.discount_amount, price, booking)}
                     className={`cursor-pointer p-4 rounded-xl border text-center transition-all flex flex-col justify-between ${
                       isSelected
                         ? 'border-[#006B3E] bg-[#006B3E]/5 ring-2 ring-[#006B3E]'
@@ -2367,164 +2366,183 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
         )}
 
         {/* STEP 6: Payment Information */}
-        {currentStep === 6 && (
-          <div className="space-y-6">
-            <div className="border-b border-slate-100 pb-3">
-              <h3 className="text-base font-semibold text-slate-900">Step 6: Payment Schedule &amp; Installments</h3>
-              <p className="text-xs text-slate-500">Configure down payment, booking EMI, and regular installment plan.</p>
-            </div>
+        {currentStep === 6 && (() => {
+          const bizCode = (currentBusiness?.code || '').toUpperCase().trim();
+          const isHospitalOrDfi = bizCode === 'SCH' || bizCode === 'DFI';
+          const maxAllowedEmis = isHospitalOrDfi ? 24 : 36;
+          const bookingTotal = Number(formData.booking_money) || 0;
+          const tokenPaid = Number(formData.token_money) || 0;
+          const bookingRemainingDue = Math.max(0, bookingTotal - tokenPaid);
 
-            {/* Part A: Initial Down Payment & Booking Money */}
-            <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">1. Booking &amp; Token Money</span>
-                <span className="text-xs font-medium text-slate-500">
-                  Total Package: <strong className="text-slate-800">৳ {formData.total_price.toLocaleString('en-IN')}</strong>
-                </span>
+          return (
+            <div className="space-y-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="text-base font-semibold text-slate-900">Step 6: Payment Schedule &amp; Installments</h3>
+                <p className="text-xs text-slate-500">
+                  Configure token payment, one-time booking money, and regular installment plan.
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Input
-                  label="Token Money (BDT)"
-                  type="number"
-                  value={formData.token_money || ''}
-                  onChange={(e) => {
-                    const tm = parseFloat(e.target.value) || 0;
-                    const dues = Math.max(0, formData.total_price - (tm + formData.booking_money));
-                    const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
-                    setFormData({ ...formData, token_money: tm, dues_amount: dues, installment_amount: instAmt });
-                  }}
-                />
-                <Input
-                  label="Total Booking Money (BDT)"
-                  type="number"
-                  value={formData.booking_money || ''}
-                  onChange={(e) => {
-                    const bm = parseFloat(e.target.value) || 0;
-                    const dues = Math.max(0, formData.total_price - (formData.token_money + bm));
-                    const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
-                    const bCount = formData.booking_installment_count || 1;
-                    const bEmi = bCount > 0 ? Math.round(bm / bCount) : bm;
-                    setFormData({
-                      ...formData,
-                      booking_money: bm,
-                      booking_installment_amount: bEmi,
-                      dues_amount: dues,
-                      installment_amount: instAmt,
-                    });
-                  }}
-                />
-                <Input
-                  label="Booking Date"
-                  type="date"
-                  value={formData.booking_date}
-                  onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })}
-                />
-                <Input
-                  label="Number of Booking EMIs"
-                  type="number"
-                  min={1}
-                  max={12}
-                  value={formData.booking_installment_count || 1}
-                  onChange={(e) => {
-                    const count = Math.max(1, parseInt(e.target.value) || 1);
-                    const bEmi = Math.round((formData.booking_money || 0) / count);
-                    setFormData({
-                      ...formData,
-                      booking_installment_count: count,
-                      booking_installment_amount: bEmi,
-                    });
-                  }}
-                />
-              </div>
-
-              {/* Booking EMI breakdown notice */}
-              <div className="flex flex-wrap items-center justify-between text-xs bg-white p-3 rounded-lg border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500">Booking Payment Mode:</span>
-                  <span className="font-semibold text-slate-800">
-                    {formData.booking_installment_count > 1
-                      ? `${formData.booking_installment_count} Installments / EMIs`
-                      : 'Full Single Payment'}
+              {/* Part 1: Token & Booking Money (Given At A Time) */}
+              <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">1. Booking &amp; Token Money</span>
+                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      Paid At A Time
+                    </span>
+                  </div>
+                  <span className="text-xs font-medium text-slate-500">
+                    Total Package: <strong className="text-slate-800">৳ {formData.total_price.toLocaleString('en-IN')}</strong>
                   </span>
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Input
+                    label="Token Money Paid (BDT)"
+                    type="number"
+                    value={formData.token_money || ''}
+                    placeholder="Current amount given"
+                    helperText="Amount paid right now (deducted from Booking Money)"
+                    onChange={(e) => {
+                      const tm = parseFloat(e.target.value) || 0;
+                      const effectiveBooking = Math.max(formData.booking_money, tm);
+                      const dues = Math.max(0, formData.total_price - effectiveBooking);
+                      const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
+                      setFormData({ ...formData, token_money: tm, dues_amount: dues, installment_amount: instAmt });
+                    }}
+                  />
+                  <Input
+                    label="Total Booking Money (BDT)"
+                    type="number"
+                    value={formData.booking_money || ''}
+                    helperText="Official package booking money"
+                    onChange={(e) => {
+                      const bm = parseFloat(e.target.value) || 0;
+                      const effectiveBooking = Math.max(bm, formData.token_money);
+                      const dues = Math.max(0, formData.total_price - effectiveBooking);
+                      const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
+                      setFormData({
+                        ...formData,
+                        booking_money: bm,
+                        dues_amount: dues,
+                        installment_amount: instAmt,
+                      });
+                    }}
+                  />
+                  <Input
+                    label="Booking Payment Date"
+                    type="date"
+                    value={formData.booking_date}
+                    helperText="Date by which remaining booking money is due"
+                    onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })}
+                  />
+                </div>
+
+                {/* Booking Money Clean Breakdown Notice */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white p-3 rounded-lg border border-slate-200">
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Token Money Paid Today</span>
+                    <span className="font-bold text-slate-800 text-sm">
+                      ৳ {tokenPaid.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Remaining Booking Due</span>
+                    <span className="font-bold text-amber-700 text-sm">
+                      ৳ {bookingRemainingDue.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Total Booking Commitment</span>
+                    <span className="font-bold text-[#006B3E] text-sm">
+                      ৳ {bookingTotal.toLocaleString('en-IN')} <span className="text-[10px] font-normal text-slate-500">(1-time payment)</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Part 2: Regular Installment Plan on Remaining Rest Amount */}
+              <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">2. Regular Installment Plan (On Remaining Rest Amount)</span>
+                    <span className="text-[11px] text-slate-500 block mt-0.5">
+                      Max {maxAllowedEmis} EMIs available for {currentBusiness?.name || 'this division'}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Dues: ৳ {formData.dues_amount.toLocaleString('en-IN')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Select
+                    label="Installment Frequency"
+                    value={formData.installment_type}
+                    onChange={(e) => setFormData({ ...formData, installment_type: e.target.value as any })}
+                    options={[
+                      { value: 'monthly', label: 'Monthly' },
+                      { value: 'quarterly', label: 'Quarterly' },
+                      { value: 'half_yearly', label: 'Half-Yearly' },
+                      { value: 'yearly', label: 'Yearly' },
+                    ]}
+                  />
+                  <Input
+                    label="Number of Installments (EMIs)"
+                    type="number"
+                    min={1}
+                    max={maxAllowedEmis}
+                    value={formData.number_of_installments || ''}
+                    helperText={`Allowed: 1 to ${maxAllowedEmis} EMIs`}
+                    onChange={(e) => {
+                      let n = parseInt(e.target.value) || 0;
+                      if (n > maxAllowedEmis) n = maxAllowedEmis;
+                      const instAmt = n > 0 ? Math.round(formData.dues_amount / n) : 0;
+                      setFormData({ ...formData, number_of_installments: n, installment_amount: instAmt });
+                    }}
+                  />
+                  <Input
+                    label="Regular EMI Amount (BDT)"
+                    type="number"
+                    value={formData.installment_amount || ''}
+                    onChange={(e) => setFormData({ ...formData, installment_amount: parseFloat(e.target.value) || 0 })}
+                  />
+                  <Input
+                    label="Installment Starting Date"
+                    type="date"
+                    value={formData.installment_start_date}
+                    onChange={(e) => setFormData({ ...formData, installment_start_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Summary Balance Card */}
+              <div className="bg-[#006B3E]/5 border border-[#006B3E]/20 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div>
-                  <span className="text-slate-500 mr-1.5">Booking EMI Amount:</span>
-                  <span className="font-bold text-[#006B3E]">
-                    ৳ {((formData.booking_installment_amount || (formData.booking_installment_count > 0 ? Math.round(formData.booking_money / formData.booking_installment_count) : formData.booking_money)) || 0).toLocaleString('en-IN')}
-                    {formData.booking_installment_count > 1 ? ' / installment' : ''}
+                  <span className="text-xs text-slate-500 block">Remaining Rest Amount (Installment Dues)</span>
+                  <span className="text-2xl font-bold text-[#006B3E]">
+                    ৳ {formData.dues_amount.toLocaleString('en-IN')}
+                  </span>
+                  <span className="text-[11px] text-slate-600 block mt-0.5">
+                    Total Package: <strong>৳ {formData.total_price.toLocaleString('en-IN')}</strong> · Total Booking: <strong>৳ {bookingTotal.toLocaleString('en-IN')}</strong>
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-slate-500 block">Installment Plan Summary</span>
+                  <span className="text-xs font-semibold text-slate-800 block">
+                    {formData.number_of_installments > 0
+                      ? `${formData.number_of_installments} EMIs of ৳ ${(formData.installment_amount || 0).toLocaleString('en-IN')} (${formData.installment_type || 'Monthly'})`
+                      : 'Select installments or pay lump sum'}
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    Starts on {formData.installment_start_date || 'N/A'}
                   </span>
                 </div>
               </div>
             </div>
-
-            {/* Part B: Regular Installment Plan on Dues */}
-            <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">2. Regular Installment Plan (On Remaining Dues)</span>
-                <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                  Dues: ৳ {formData.dues_amount.toLocaleString('en-IN')}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Select
-                  label="Installment Frequency"
-                  value={formData.installment_type}
-                  onChange={(e) => setFormData({ ...formData, installment_type: e.target.value as any })}
-                  options={[
-                    { value: 'monthly', label: 'Monthly' },
-                    { value: 'quarterly', label: 'Quarterly' },
-                    { value: 'half_yearly', label: 'Half-Yearly' },
-                    { value: 'yearly', label: 'Yearly' },
-                  ]}
-                />
-                <Input
-                  label="Number of Installments (EMIs)"
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={formData.number_of_installments || ''}
-                  onChange={(e) => {
-                    const n = parseInt(e.target.value) || 0;
-                    const instAmt = n > 0 ? Math.round(formData.dues_amount / n) : 0;
-                    setFormData({ ...formData, number_of_installments: n, installment_amount: instAmt });
-                  }}
-                />
-                <Input
-                  label="Regular EMI Amount (BDT)"
-                  type="number"
-                  value={formData.installment_amount || ''}
-                  onChange={(e) => setFormData({ ...formData, installment_amount: parseFloat(e.target.value) || 0 })}
-                />
-                <Input
-                  label="Installment Starting Date"
-                  type="date"
-                  value={formData.installment_start_date}
-                  onChange={(e) => setFormData({ ...formData, installment_start_date: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Summary Balance Card */}
-            <div className="bg-[#006B3E]/5 border border-[#006B3E]/20 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div>
-                <span className="text-xs text-slate-500 block">Remaining Dues Balance</span>
-                <span className="text-2xl font-bold text-[#006B3E]">
-                  ৳ {formData.dues_amount.toLocaleString('en-IN')}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-slate-500 block">Plan Summary</span>
-                <span className="text-xs font-semibold text-slate-800">
-                  {formData.number_of_installments > 0
-                    ? `${formData.number_of_installments} EMIs of ৳ ${(formData.installment_amount || 0).toLocaleString('en-IN')} (${formData.installment_type || 'Monthly'})`
-                    : 'Select installments or pay lump sum'}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* STEP 7: Documents & Attachments */}
         {currentStep === 7 && (
@@ -2794,9 +2812,9 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 <span className="text-slate-500">Booking Money:</span>
                 <span className="font-semibold text-slate-900">
                   ৳ {formData.booking_money.toLocaleString('en-IN')}
-                  {formData.booking_installment_count > 1 ? ` (${formData.booking_installment_count} EMIs)` : ''}
+                  {formData.token_money > 0 ? ` (Token: ৳ ${formData.token_money.toLocaleString('en-IN')})` : ''}
                 </span>
-                <span className="text-slate-500">Remaining Dues:</span>
+                <span className="text-slate-500">Remaining Rest Dues:</span>
                 <span className="font-semibold text-slate-900">
                   ৳ {formData.dues_amount.toLocaleString('en-IN')}
                   {formData.number_of_installments > 0 ? ` (${formData.number_of_installments} EMIs)` : ''}

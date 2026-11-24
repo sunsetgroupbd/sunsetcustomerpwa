@@ -126,7 +126,9 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
   const grossTotal = pricePerUnit * qty;
   const discount = Number(own.discount_amount || own.discount) || 0;
   const netTotal = Number(own.total_price) || Math.max(0, grossTotal - discount);
-  const bookingPaid = Number(pay.booking_money || pay.token_money) || 0;
+  const tokenMoney = Number(pay.token_money) || 0;
+  const bookingTotal = Number(pay.booking_money) || Number(pay.token_money) || 0;
+  const bookingPaid = bookingTotal;
   const remainingDues = Number(pay.dues_amount) || Math.max(0, netTotal - bookingPaid);
   const refNum = data.referenceNumber || 'SKH-2026-00003';
 
@@ -423,8 +425,8 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
           <tbody>
             <tr>
               <td style="font-weight:700; color:#006B3E;">
-                ৳ ${bookingPaid.toLocaleString('en-IN')}
-                ${(pay.booking_installment_count && pay.booking_installment_count > 1) ? `<br><small style="color:#64748b; font-weight:normal;">(${pay.booking_installment_count} Booking EMIs of ৳ ${(Number(pay.booking_installment_amount) || Math.round(bookingPaid / pay.booking_installment_count)).toLocaleString('en-IN')})</small>` : ''}
+                ৳ ${bookingTotal.toLocaleString('en-IN')}
+                ${tokenMoney > 0 ? `<br><small style="color:#64748b; font-weight:normal;">(Token: ৳ ${tokenMoney.toLocaleString('en-IN')} · Due: ৳ ${Math.max(0, bookingTotal - tokenMoney).toLocaleString('en-IN')})</small>` : ''}
               </td>
               <td style="font-weight:700; color:#b91c1c;">৳ ${remainingDues.toLocaleString('en-IN')}</td>
               <td>
@@ -804,11 +806,11 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
                   <div className="p-1.5 rounded border border-slate-200 bg-slate-50">
                     <span className="text-[8px] uppercase font-bold text-slate-500 block">Booking Money</span>
                     <span className="font-mono font-bold text-[#006B3E] text-[11px] block">
-                      ৳ {bookingPaid.toLocaleString('en-IN')}
+                      ৳ {bookingTotal.toLocaleString('en-IN')}
                     </span>
-                    {(pay.booking_installment_count && pay.booking_installment_count > 1) ? (
+                    {tokenMoney > 0 ? (
                       <span className="text-[8px] text-slate-500 block">
-                        {pay.booking_installment_count} EMIs @ ৳ {(Number(pay.booking_installment_amount) || Math.round(bookingPaid / pay.booking_installment_count)).toLocaleString('en-IN')}
+                        Token: ৳ {tokenMoney.toLocaleString('en-IN')} · Due: ৳ {Math.max(0, bookingTotal - tokenMoney).toLocaleString('en-IN')}
                       </span>
                     ) : null}
                   </div>
