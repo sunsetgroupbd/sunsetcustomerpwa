@@ -580,9 +580,13 @@ def seed_applications(
     db.commit()
 
 
-def run_seed() -> None:
+def run_seed(skip_applications: bool = False) -> None:
     print("=" * 60)
-    print("  SUNSET GROUP — COMPLETE DEMO & ROLE SEEDER")
+    print("  SUNSET GROUP — DATABASE SEEDER")
+    if skip_applications:
+        print("  MODE: ACCOUNTS & CONFIG ONLY (NO DEMO APPLICATIONS)")
+    else:
+        print("  MODE: FULL SEED (ACCOUNTS + DEMO APPLICATIONS)")
     print("=" * 60)
 
     # Ensure all tables exist
@@ -607,7 +611,11 @@ def run_seed() -> None:
 
         admin = users["01700000000"]
         seed_pricing_and_terms(db, businesses, admin)
-        seed_applications(db, businesses, users)
+
+        if not skip_applications:
+            seed_applications(db, businesses, users)
+        else:
+            print("\n--- Skipped demo applications as requested (--no-apps) ---")
     except Exception as exc:
         db.rollback()
         print(f"\n[ERROR] Seeding failed: {exc}")
@@ -630,4 +638,5 @@ def run_seed() -> None:
 
 
 if __name__ == "__main__":
-    run_seed()
+    skip_apps = "--no-apps" in sys.argv or "--accounts-only" in sys.argv
+    run_seed(skip_applications=skip_apps)
