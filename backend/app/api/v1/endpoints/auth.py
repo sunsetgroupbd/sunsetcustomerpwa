@@ -297,7 +297,9 @@ async def upload_avatar(
             detail="File size exceeds the 5MB limit.",
         )
 
-    avatars_dir = Path(__file__).resolve().parent.parent.parent.parent / "uploads" / "avatars"
+    # Save to backend/uploads/avatars (same uploads root mounted at /api/v1/uploads)
+    backend_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+    avatars_dir = backend_root / "uploads" / "avatars"
     avatars_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = int(datetime.now(timezone.utc).timestamp())

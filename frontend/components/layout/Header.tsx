@@ -11,6 +11,11 @@ import { NotificationBell } from './NotificationBell';
 
 export const Header: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
+  const [avatarLoadError, setAvatarLoadError] = React.useState(false);
+
+  React.useEffect(() => {
+    setAvatarLoadError(false);
+  }, [user?.avatar_url]);
 
   const getDashboardLink = () => {
     if (!user) return '/login';
@@ -108,11 +113,12 @@ export const Header: React.FC = () => {
                   </div>
 
                   <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-emerald-500/20 bg-emerald-50 text-[#008751] flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-transform group-hover:scale-105">
-                    {user.avatar_url ? (
+                    {user.avatar_url && !avatarLoadError ? (
                       <img
                         src={getAvatarUrl(user.avatar_url) || ''}
                         alt={user.full_name || 'Profile'}
                         className="w-full h-full object-cover"
+                        onError={() => setAvatarLoadError(true)}
                       />
                     ) : (
                       <span className="text-xs font-bold uppercase">

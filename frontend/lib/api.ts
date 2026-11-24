@@ -19,8 +19,22 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/a
 
 export const getAvatarUrl = (url?: string | null): string | null => {
   if (!url) return null;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  const baseUrl = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  // If running in browser and no NEXT_PUBLIC_API_URL set, default to backend server origin
+  let baseUrl = '';
+  if (typeof window !== 'undefined') {
+    const envUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (envUrl) {
+      baseUrl = envUrl.replace(/\/api\/v1\/?$/, '');
+    } else {
+      // Typically backend runs on port 8000
+      baseUrl = `${window.location.protocol}//${window.location.hostname}:8000`;
+    }
+  } else {
+    baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').replace(/\/api\/v1\/?$/, '');
+  }
   return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 

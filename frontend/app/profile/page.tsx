@@ -119,10 +119,12 @@ export default function ProfilePage() {
     setIsUploadingAvatar(true);
     setErrorMsg(null);
     setSuccessMsg(null);
+    setAvatarError(false);
 
     try {
       await api.auth.uploadAvatar(file);
       await refreshProfile();
+      setAvatarError(false);
       setSuccessMsg('Profile picture uploaded successfully! It is now displayed across your header and profile.');
     } catch (err: any) {
       console.error('Avatar upload failed:', err);
@@ -246,6 +248,7 @@ export default function ProfilePage() {
     }
   };
 
+  const [avatarError, setAvatarError] = useState(false);
   const avatarUrl = getAvatarUrl(user?.avatar_url || user?.profile_photo_url);
 
   return (
@@ -285,11 +288,12 @@ export default function ProfilePage() {
                     <Icons.Spinner className="w-8 h-8 text-[#008751] animate-spin" />
                     <span className="text-[10px] font-semibold text-slate-500 mt-1">Uploading...</span>
                   </div>
-                ) : avatarUrl ? (
+                ) : (avatarUrl && !avatarError) ? (
                   <img
                     src={avatarUrl}
                     alt={user?.full_name || 'Profile'}
                     className="w-full h-full object-cover"
+                    onError={() => setAvatarError(true)}
                   />
                 ) : (
                   <span className="text-3xl font-black text-slate-400">
