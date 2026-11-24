@@ -185,7 +185,7 @@ Investor Portal: ${window.location.origin}/login`;
   return (
     <DashboardShell
       title="Sales Executive Desk"
-      subtitle="Register prospective investors on behalf, track ownership applications, and monitor onboarding pipeline."
+      subtitle="Register clients, track applications, and view your pipeline."
       actions={
         <div className="flex items-center gap-2">
           <Button
@@ -196,7 +196,7 @@ Investor Portal: ${window.location.origin}/login`;
             }}
             leftIcon={<Icons.Plus className="w-4 h-4" />}
           >
-            Register Customer on Behalf
+            Register Customer
           </Button>
         </div>
       }
@@ -568,18 +568,18 @@ Investor Portal: ${window.location.origin}/login`;
             setIsModalOpen(false);
           }
         }}
-        title="Register Customer on Behalf"
-        description="Register a prospective investor or walk-in client, generate their portal access credentials, and initialize their ownership application."
+        title="Register Customer"
+        description="Create account and start application."
       >
         {createdResult ? (
           <div className="space-y-4">
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900">
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900">
               <div className="flex items-center gap-2 mb-1">
                 <Icons.CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                <h4 className="font-bold text-sm">Customer Account & Application Created!</h4>
+                <h4 className="font-bold text-sm">Account & Application Created</h4>
               </div>
               <p className="text-xs text-emerald-800">
-                The customer account has been created. Share these credentials with the customer so they can log in to review their application, upload documents, and complete verification.
+                Share these login details with the customer to sign in.
               </p>
             </div>
 
@@ -655,7 +655,7 @@ Investor Portal: ${window.location.origin}/login`;
             {modalError && <Alert type="error">{modalError}</Alert>}
 
             <Input
-              label="Customer Full Name"
+              label="Customer Name"
               required
               placeholder="e.g. Mohammad Rahim"
               value={fullName}
@@ -663,25 +663,25 @@ Investor Portal: ${window.location.origin}/login`;
             />
 
             <Input
-              label="Customer Mobile Phone"
+              label="Mobile Number"
               required
               type="tel"
               placeholder="017XXXXXXXX"
-              helperText="11-digit Bangladeshi mobile number used as the customer login ID."
+              helperText="11-digit mobile number for login."
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
 
             <Input
-              label="Customer Email (Optional)"
+              label="Email (Optional)"
               type="email"
-              placeholder="investor@example.com"
+              placeholder="customer@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
 
             <Select
-              label="Target Business Division"
+              label="Business Division"
               required
               value={businessId}
               onChange={(e) => setBusinessId(e.target.value)}
@@ -713,7 +713,7 @@ Investor Portal: ${window.location.origin}/login`;
             </div>
 
             <Input
-              label="Total Investment Amount (BDT, Optional)"
+              label="Investment Amount (BDT, Optional)"
               type="number"
               placeholder="e.g. 500000"
               value={totalAmount}
@@ -723,7 +723,7 @@ Investor Portal: ${window.location.origin}/login`;
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-xs font-semibold text-slate-700">
-                  Initial Portal Password <span className="text-rose-500">*</span>
+                  Portal Password <span className="text-rose-500">*</span>
                 </label>
                 <button
                   type="button"
