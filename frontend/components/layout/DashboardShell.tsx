@@ -22,7 +22,7 @@ function NavTabs() {
   const currentTab = searchParams ? searchParams.get('tab') : null;
   const { user } = useAuth();
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'subadmin';
   const isCr = user?.role === 'cr';
   const isSales = user?.role === 'sales';
 
@@ -55,25 +55,31 @@ function NavTabs() {
     return pathname === href;
   };
 
+  const currentNav = isAdmin ? adminNav : isCr ? crNav : salesNav;
+
   return (
-    <div className="mb-6 flex border-b border-slate-200 overflow-x-auto no-scrollbar">
-      {(isAdmin ? adminNav : isCr ? crNav : salesNav).map((item) => {
-        const isActive = checkIsActive(item.href);
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`flex items-center gap-2 py-2.5 px-3.5 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${isActive
-              ? 'border-[#008751] text-[#008751] bg-[#008751]/5 font-semibold'
-              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+    <div className="mb-6 relative">
+      {/* Outer wrapper with clean rounded container & touch-friendly scroll */}
+      <div className="flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200/80 overflow-x-auto no-scrollbar scroll-smooth">
+        {currentNav.map((item) => {
+          const isActive = checkIsActive(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-1.5 sm:gap-2 py-2 px-3 sm:px-3.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap transition-all duration-150 select-none ${
+                isActive
+                  ? 'bg-white text-[#008751] font-bold shadow-xs border border-slate-200/60 ring-1 ring-black/5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
-          >
-            <Icon className="w-4 h-4" />
-            {item.label}
-          </Link>
-        );
-      })}
+            >
+              <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${isActive ? 'text-[#008751]' : 'text-slate-400'}`} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
