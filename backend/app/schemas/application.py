@@ -188,6 +188,8 @@ class PaymentDetailCreate(BaseModel):
     booking_money: Decimal | None = None
     booking_money_date: date | None = None
     booking_date: date | None = None
+    booking_installment_count: int | None = 1
+    booking_installment_amount: Decimal | None = None
     installment_type: str | None = None
     number_of_installments: int | None = None
     installment_amount: Decimal | None = None
@@ -202,7 +204,7 @@ class PaymentDetailCreate(BaseModel):
     def clean_payment_date(cls, v: Any) -> date | None:
         return parse_optional_date(v)
 
-    @field_validator("token_money", "booking_money", "installment_amount", "dues_amount", mode="before")
+    @field_validator("token_money", "booking_money", "booking_installment_amount", "installment_amount", "dues_amount", mode="before")
     @classmethod
     def clean_payment_decimal(cls, v: Any) -> Any:
         if v is None or v == "":

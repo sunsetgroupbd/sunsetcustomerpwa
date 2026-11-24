@@ -346,6 +346,8 @@ class PaymentDetail(Base):
     token_money: Mapped[Numeric | None] = mapped_column(Numeric(12, 2), nullable=True)  # type: ignore[type-arg]
     booking_money: Mapped[Numeric | None] = mapped_column(Numeric(12, 2), nullable=True)  # type: ignore[type-arg]
     booking_money_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    booking_installment_count: Mapped[int | None] = mapped_column(Integer, nullable=True, default=1)
+    booking_installment_amount: Mapped[Numeric | None] = mapped_column(Numeric(12, 2), nullable=True)  # type: ignore[type-arg]
     installment_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     number_of_installments: Mapped[int | None] = mapped_column(Integer, nullable=True)
     installment_amount: Mapped[Numeric | None] = mapped_column(Numeric(12, 2), nullable=True)  # type: ignore[type-arg]

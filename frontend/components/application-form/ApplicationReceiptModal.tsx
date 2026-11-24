@@ -44,6 +44,8 @@ export interface ReceiptData {
     token_money?: number | null;
     booking_money?: number | null;
     booking_date?: string | null;
+    booking_installment_count?: number | null;
+    booking_installment_amount?: number | null;
     installment_type?: string | null;
     number_of_installments?: number | null;
     installment_amount?: number | null;
@@ -414,13 +416,16 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
             <tr>
               <th>Booking / Token Money Paid</th>
               <th>Remaining Balance Dues</th>
-              <th>Installment Plan</th>
+              <th>Installment Plan (Dues)</th>
               <th>Payment Reference</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style="font-weight:700; color:#006B3E;">৳ ${bookingPaid.toLocaleString('en-IN')}</td>
+              <td style="font-weight:700; color:#006B3E;">
+                ৳ ${bookingPaid.toLocaleString('en-IN')}
+                ${(pay.booking_installment_count && pay.booking_installment_count > 1) ? `<br><small style="color:#64748b; font-weight:normal;">(${pay.booking_installment_count} Booking EMIs of ৳ ${(Number(pay.booking_installment_amount) || Math.round(bookingPaid / pay.booking_installment_count)).toLocaleString('en-IN')})</small>` : ''}
+              </td>
               <td style="font-weight:700; color:#b91c1c;">৳ ${remainingDues.toLocaleString('en-IN')}</td>
               <td>
                 ${
@@ -797,10 +802,15 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
                   <div className="p-1.5 rounded border border-slate-200 bg-slate-50">
-                    <span className="text-[8px] uppercase font-bold text-slate-500 block">Booking Money Paid</span>
-                    <span className="font-mono font-bold text-[#006B3E] text-[11px]">
+                    <span className="text-[8px] uppercase font-bold text-slate-500 block">Booking Money</span>
+                    <span className="font-mono font-bold text-[#006B3E] text-[11px] block">
                       ৳ {bookingPaid.toLocaleString('en-IN')}
                     </span>
+                    {(pay.booking_installment_count && pay.booking_installment_count > 1) ? (
+                      <span className="text-[8px] text-slate-500 block">
+                        {pay.booking_installment_count} EMIs @ ৳ {(Number(pay.booking_installment_amount) || Math.round(bookingPaid / pay.booking_installment_count)).toLocaleString('en-IN')}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="p-1.5 rounded border border-slate-200 bg-slate-50">
                     <span className="text-[8px] uppercase font-bold text-slate-500 block">Remaining Balance</span>

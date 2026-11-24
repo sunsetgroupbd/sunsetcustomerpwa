@@ -147,6 +147,8 @@ export interface PaymentDetail {
   token_money?: number;
   booking_money: number;
   booking_date?: string | null;
+  booking_installment_count?: number;
+  booking_installment_amount?: number;
   installment_type?: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly' | string;
   number_of_installments: number;
   installment_amount: number;
