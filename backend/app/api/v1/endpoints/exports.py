@@ -90,12 +90,6 @@ async def export_applications_xlsx(
         assigned_cr_id=assigned_cr_id,
         search=search,
     )
-        date_to=date_to,
-        application_status=application_status,
-        payment_status=payment_status,
-        assigned_cr_id=assigned_cr_id,
-        search=search,
-    )
     service = ExportService(db)
     xlsx_bytes = service.export_applications_xlsx(filters, current_user)
     filename = f"applications_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
