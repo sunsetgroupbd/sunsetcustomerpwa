@@ -36,7 +36,7 @@ class UserCreate(BaseModel):
     mobile: str
     email: EmailStr | None = None
     password: str
-    role: str  # admin | cr | sales | customer
+    role: str  # admin | subadmin | cr | sales | customer
     employee_id: str | None = None
     designation: str | None = None
     username: str | None = None

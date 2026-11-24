@@ -78,7 +78,7 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
-    if (!authLoading && (!user || user.role !== 'admin')) {
+    if (!authLoading && (!user || (user.role !== 'admin' && user.role !== 'subadmin'))) {
       router.push('/login');
       return;
     }
@@ -252,6 +252,7 @@ export default function AdminUsersPage() {
                 <option value="customer">Customers</option>
                 <option value="sales">Sales Team</option>
                 <option value="cr">CR Team</option>
+                <option value="subadmin">Subadmins</option>
                 <option value="admin">Administrators</option>
               </select>
 
@@ -349,12 +350,15 @@ export default function AdminUsersPage() {
                           variant={
                             u.role === 'admin'
                               ? 'purple'
+                              : u.role === 'subadmin'
+                              ? 'info'
                               : u.role === 'cr'
                               ? 'info'
                               : u.role === 'sales'
                               ? 'warning'
                               : 'default'
                           }
+                          className={u.role === 'subadmin' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 font-semibold' : ''}
                         >
                           {u.role.toUpperCase()}
                         </Badge>
@@ -385,7 +389,7 @@ export default function AdminUsersPage() {
                               {u.is_active ? 'Suspend' : 'Activate'}
                             </Button>
                           )}
-                          {String(u.id) !== String(user?.id) && (
+                          {user?.role === 'admin' && String(u.id) !== String(user?.id) && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -478,7 +482,12 @@ export default function AdminUsersPage() {
                 <option value="customer">Customer (Investor / Shareholder)</option>
                 <option value="sales">Sales Executive (Relationship Manager)</option>
                 <option value="cr">Customer Relations Officer (CR)</option>
-                <option value="admin">System Administrator</option>
+                {user?.role === 'admin' && (
+                  <>
+                    <option value="subadmin">Subadmin (Limited System Access)</option>
+                    <option value="admin">System Administrator</option>
+                  </>
+                )}
               </select>
             </div>
 

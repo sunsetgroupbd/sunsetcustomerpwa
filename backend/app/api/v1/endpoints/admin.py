@@ -29,7 +29,7 @@ from app.services.sales_team_service import import_sales_team_csv
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(require_roles(["admin"]))])
+router = APIRouter(dependencies=[Depends(require_roles(["admin", "subadmin"]))])
 
 
 # ---------------------------------------------------------------------------
@@ -167,10 +167,14 @@ async def list_users(
 async def create_user(
     payload: UserCreate,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(require_roles(["admin"])),
+    admin_user: User = Depends(require_roles(["admin", "subadmin"])),
 ):
     """Create a new user account with specified role and active status."""
-    from app.core.exceptions import ConflictError
+    from app.core.exceptions import ConflictError, ForbiddenException
+
+    current_role = admin_user.role.value if hasattr(admin_user.role, "value") else str(admin_user.role)
+    if current_role == "subadmin" and payload.role.lower() in ["admin", "subadmin"]:
+        raise ForbiddenException("Subadmins cannot create administrator or subadmin accounts.")
 
     # Check mobile uniqueness
     if db.query(User).filter(User.mobile == payload.mobile).first():
@@ -245,12 +249,22 @@ async def update_user(
     user_id: int,
     payload: UserUpdate,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(require_roles(["admin"])),
+    admin_user: User = Depends(require_roles(["admin", "subadmin"])),
 ):
     """Update user properties (role, active state, name, email)."""
+    from app.core.exceptions import ForbiddenException
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
+    current_role = admin_user.role.value if hasattr(admin_user.role, "value") else str(admin_user.role)
+    target_role = user.role.value if hasattr(user.role, "value") else str(user.role)
+    if current_role == "subadmin":
+        if target_role in ["admin", "subadmin"]:
+            raise ForbiddenException("Subadmins cannot modify administrator accounts.")
+        if payload.role and payload.role.lower() in ["admin", "subadmin"]:
+            raise ForbiddenException("Subadmins cannot assign administrator roles.")
 
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(user, k, v)
@@ -281,6 +295,11 @@ async def delete_user(
     admin_user: User = Depends(require_roles(["admin"])),
 ):
     """Delete a user account and cleanly cascade any related records."""
+    current_role = admin_user.role.value if hasattr(admin_user.role, "value") else str(admin_user.role)
+    if current_role != "admin":
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("Only full administrators can delete user accounts.")
+
     if admin_user.id == user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -419,7 +438,7 @@ async def import_sales_csv(
     file: Optional[UploadFile] = File(None),
     csv_text: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    admin_user: User = Depends(require_roles(["admin"])),
+    admin_user: User = Depends(require_roles(["admin", "subadmin"])),
 ):
     """
     Import sales team accounts from CSV file or raw CSV text.
@@ -531,7 +550,7 @@ async def review_edit_request(
     request_id: int,
     payload: EditRequestReview,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(require_roles(["admin"])),
+    admin_user: User = Depends(require_roles(["admin", "subadmin"])),
 ):
     """
     Admin approves or rejects an edit request.

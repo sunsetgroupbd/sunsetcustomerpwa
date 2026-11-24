@@ -6,7 +6,8 @@ forgot password, and reset password flows.
 
 import logging
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, status
 from sqlalchemy.orm import Session
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -260,6 +261,75 @@ async def get_me(
             "is_active": current_user.is_active,
             "is_verified": current_user.is_verified,
             "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+            "avatar_url": current_user.avatar_url,
+            "employee_id": current_user.employee_id,
+            "designation": current_user.designation,
+            "username": current_user.username,
+            "customer_id_number": current_user.customer_id_number,
         },
         message="User profile retrieved.",
+    )
+
+
+@router.post(
+    "/avatar",
+    status_code=status.HTTP_200_OK,
+    summary="Upload user profile picture",
+)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Upload and set avatar for the current authenticated user (any role)."""
+    allowed_exts = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in allowed_exts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file format '{ext}'. Allowed formats: JPG, PNG, WEBP, GIF.",
+        )
+
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size exceeds the 5MB limit.",
+        )
+
+    avatars_dir = Path(__file__).resolve().parent.parent.parent.parent / "uploads" / "avatars"
+    avatars_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    filename = f"avatar_{current_user.id}_{timestamp}{ext}"
+    file_path = avatars_dir / filename
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    avatar_url = f"/api/v1/uploads/avatars/{filename}"
+    current_user.avatar_url = avatar_url
+    db.commit()
+    db.refresh(current_user)
+
+    return success_response(
+        data={"avatar_url": avatar_url},
+        message="Profile photo updated successfully.",
+    )
+
+
+@router.delete(
+    "/avatar",
+    status_code=status.HTTP_200_OK,
+    summary="Remove user profile picture",
+)
+async def delete_avatar(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Remove avatar for current user."""
+    current_user.avatar_url = None
+    db.commit()
+    return success_response(
+        data={"avatar_url": None},
+        message="Profile photo removed.",
     )

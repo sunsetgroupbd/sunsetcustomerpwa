@@ -181,5 +181,6 @@ class UserResponse(BaseModel):
     is_active: bool
     is_verified: bool
     created_at: datetime
+    avatar_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

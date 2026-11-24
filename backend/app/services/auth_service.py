@@ -256,6 +256,11 @@ class AuthService:
             "is_active": user.is_active,
             "is_verified": user.is_verified,
             "created_at": user.created_at.isoformat() if user.created_at else None,
+            "avatar_url": getattr(user, "avatar_url", None),
+            "employee_id": user.employee_id,
+            "designation": user.designation,
+            "username": user.username,
+            "customer_id_number": user.customer_id_number,
         }
 
         tokens = {

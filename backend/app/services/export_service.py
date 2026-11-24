@@ -100,11 +100,11 @@ class ExportService:
     # Applications Export - CSV
     # -------------------------------------------------------------------------
     def export_applications_csv(self, filters: ExportFilters, user: User) -> bytes:
-        if user.role not in ("admin", "cr"):
+        if user.role not in ("admin", "subadmin", "cr"):
             raise AuthorizationError("Only CR team and Admins can export application data")
 
         apps = self._build_application_query(filters, user).all()
-        records = [self._application_to_dict(a, is_admin=(user.role == "admin")) for a in apps]
+        records = [self._application_to_dict(a, is_admin=(user.role in ("admin", "subadmin"))) for a in apps]
 
         output = io.StringIO()
         if records:
@@ -126,11 +126,11 @@ class ExportService:
     # Applications Export - Excel (XLSX)
     # -------------------------------------------------------------------------
     def export_applications_xlsx(self, filters: ExportFilters, user: User) -> bytes:
-        if user.role not in ("admin", "cr"):
+        if user.role not in ("admin", "subadmin", "cr"):
             raise AuthorizationError("Only CR team and Admins can export application data")
 
         apps = self._build_application_query(filters, user).all()
-        records = [self._application_to_dict(a, is_admin=(user.role == "admin")) for a in apps]
+        records = [self._application_to_dict(a, is_admin=(user.role in ("admin", "subadmin"))) for a in apps]
 
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -167,7 +167,7 @@ class ExportService:
     # Customers Export - Excel (XLSX)
     # -------------------------------------------------------------------------
     def export_customers_xlsx(self, filters: ExportFilters, user: User) -> bytes:
-        if user.role != "admin":
+        if user.role not in ("admin", "subadmin"):
             raise AuthorizationError("Only Administrators can export full customer directories")
 
         query = self.db.query(User).filter(User.role == "customer")
@@ -229,7 +229,7 @@ class ExportService:
     # Payments Export - Excel (XLSX)
     # -------------------------------------------------------------------------
     def export_payments_xlsx(self, filters: ExportFilters, user: User) -> bytes:
-        if user.role != "admin":
+        if user.role not in ("admin", "subadmin"):
             raise AuthorizationError("Only Administrators can export payment ledgers")
 
         apps = self._build_application_query(filters, user).all()
@@ -318,7 +318,7 @@ class ExportService:
     # CR Performance Export - Excel (XLSX)
     # -------------------------------------------------------------------------
     def export_cr_performance_xlsx(self, filters: ExportFilters, user: User) -> bytes:
-        if user.role != "admin":
+        if user.role not in ("admin", "subadmin"):
             raise AuthorizationError("Only Administrators can export team performance reports")
 
         from app.services.dashboard_service import DashboardService

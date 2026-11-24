@@ -136,7 +136,7 @@ export const MobileNavBar: React.FC = () => {
       return [
         { label: 'Dashboard', href: '/customer/dashboard', icon: Icons.FileText },
         { label: 'Notifications', isNotif: true, icon: Icons.Bell, badge: unreadCount },
-        { label: 'My Profile', href: '/customer/profile', icon: Icons.User },
+        { label: 'My Profile', href: '/profile', icon: Icons.User },
       ];
     }
 
@@ -144,7 +144,7 @@ export const MobileNavBar: React.FC = () => {
       return [
         { label: 'CR Queue', href: '/cr/dashboard', icon: Icons.FileText },
         { label: 'Notifications', isNotif: true, icon: Icons.Bell, badge: unreadCount },
-        { label: 'Home', href: '/', icon: Icons.Home },
+        { label: 'Profile', href: '/profile', icon: Icons.User },
       ];
     }
 
@@ -152,16 +152,16 @@ export const MobileNavBar: React.FC = () => {
       return [
         { label: 'Sales Desk', href: '/sales/dashboard', icon: Icons.FileText },
         { label: 'Notifications', isNotif: true, icon: Icons.Bell, badge: unreadCount },
-        { label: 'Home', href: '/', icon: Icons.Home },
+        { label: 'Profile', href: '/profile', icon: Icons.User },
       ];
     }
 
-    // Admin
+    // Admin & Subadmin
     return [
       { label: 'Overview', href: '/admin/dashboard', icon: Icons.Building },
       { label: 'Notifications', isNotif: true, icon: Icons.Bell, badge: unreadCount },
       { label: 'Users', href: '/admin/users', icon: Icons.Users },
-      { label: 'Exports', href: '/admin/exports', icon: Icons.Download },
+      { label: 'Profile', href: '/profile', icon: Icons.User },
     ];
   };
 

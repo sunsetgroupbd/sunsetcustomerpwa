@@ -16,7 +16,7 @@ from app.services.export_service import ExportService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(require_roles(["admin", "cr"]))])
+router = APIRouter(dependencies=[Depends(require_roles(["admin", "cr", "subadmin"]))])
 
 
 @router.get(
@@ -32,7 +32,7 @@ async def export_applications_csv(
     assigned_cr_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin", "cr"])),
+    current_user: User = Depends(require_roles(["admin", "cr", "subadmin"])),
 ):
     """Download applications CSV with role-based field filtering."""
     filters = ExportFilters(
@@ -67,7 +67,7 @@ async def export_applications_xlsx(
     assigned_cr_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin", "cr"])),
+    current_user: User = Depends(require_roles(["admin", "cr", "subadmin"])),
 ):
     """Download professionally formatted Excel workbook."""
     filters = ExportFilters(
@@ -96,7 +96,7 @@ async def export_applications_xlsx(
 async def export_customers_xlsx(
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
+    current_user: User = Depends(require_roles(["admin", "subadmin"])),
 ):
     """Download customer master list Excel workbook."""
     filters = ExportFilters(search=search)
@@ -120,7 +120,7 @@ async def export_payments_xlsx(
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
+    current_user: User = Depends(require_roles(["admin", "subadmin"])),
 ):
     """Download payment ledger Excel with automated sum totals row."""
     filters = ExportFilters(
@@ -145,7 +145,7 @@ async def export_payments_xlsx(
 )
 async def export_cr_performance_xlsx(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
+    current_user: User = Depends(require_roles(["admin", "subadmin"])),
 ):
     """Download team throughput and SLA metrics."""
     filters = ExportFilters()

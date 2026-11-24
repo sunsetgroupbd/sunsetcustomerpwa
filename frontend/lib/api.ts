@@ -17,6 +17,13 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
+export const getAvatarUrl = (url?: string | null): string | null => {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const baseUrl = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+  return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 class ApiError extends Error {
   status: number;
   data: any;
@@ -187,6 +194,20 @@ export const api = {
       }),
 
     me: () => request<User>('/auth/me'),
+
+    uploadAvatar: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return request<{ avatar_url: string }>('/auth/avatar', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+
+    removeAvatar: () =>
+      request<{ avatar_url: null }>('/auth/avatar', {
+        method: 'DELETE',
+      }),
 
     logout: () => {
       clearStoredTokens();

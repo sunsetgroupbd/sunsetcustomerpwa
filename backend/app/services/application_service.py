@@ -1212,7 +1212,7 @@ class ApplicationService:
 
     def _assert_access(self, app: Application, user: User) -> None:
         role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
-        if role_str == "admin":
+        if role_str in ("admin", "subadmin"):
             return
         if role_str == "customer" and app.customer_id != user.id:
             raise AuthorizationError("You do not have access to this application.")

@@ -105,7 +105,7 @@ async def list_customers(
     per_page: int = Query(20, ge=1, le=100, description="Results per page"),
     search: Optional[str] = Query(None, description="Search by name, mobile, or email"),
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "cr"])),
+    current_user=Depends(require_roles(["admin", "cr", "subadmin"])),
 ):
     """
     Paginated list of all customers. Admin and CR roles only.

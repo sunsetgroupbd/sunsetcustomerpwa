@@ -44,6 +44,12 @@ export const Icons = {
     </svg>
   ),
 
+  Camera: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+      <path fillRule="evenodd" d="M9.75 3.75a.75.75 0 0 0-.66.39L8.14 6H5.25A2.25 2.25 0 0 0 3 8.25v9A2.25 2.25 0 0 0 5.25 19.5h13.5A2.25 2.25 0 0 0 21 17.25v-9A2.25 2.25 0 0 0 18.75 6h-2.89l-.95-1.86a.75.75 0 0 0-.66-.39H9.75zM12 9a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 1.5a3 3 0 1 1 0 6 3 3 0 0 1 0-6z" clipRule="evenodd" />
+    </svg>
+  ),
+
   Building: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
       <path fillRule="evenodd" d="M3 3a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v13h2a1 1 0 1 1 0 2H1a1 1 0 1 1 0-2h2V3zm4 3a1 1 0 1 0 0 2h2a1 1 0 1 0 0-2H7zm0 5a1 1 0 1 0 0 2h2a1 1 0 1 0 0-2H7zm0 5a1 1 0 1 0 0 2h2a1 1 0 1 0 0-2H7zm10-7h-2v2h2v-2zm0 4h-2v2h2v-2zm0 4h-2v2h2v-2z" clipRule="evenodd" />

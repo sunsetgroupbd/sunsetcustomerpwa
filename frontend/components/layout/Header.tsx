@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { getAvatarUrl } from '@/lib/api';
 import { Icons } from '@/components/ui/Icons';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -13,7 +14,7 @@ export const Header: React.FC = () => {
 
   const getDashboardLink = () => {
     if (!user) return '/login';
-    if (user.role === 'admin') return '/admin/dashboard';
+    if (user.role === 'admin' || user.role === 'subadmin') return '/admin/dashboard';
     if (user.role === 'sales') return '/sales/dashboard';
     if (user.role === 'cr') return '/cr/dashboard';
     return '/customer/dashboard';
@@ -48,16 +49,14 @@ export const Header: React.FC = () => {
                   Dashboard
                 </Link>
 
-                {user.role === 'customer' && (
-                  <Link
-                    href="/customer/profile"
-                    className="text-sm font-medium text-slate-700 hover:text-[#008751] transition-colors"
-                  >
-                    My Profile
-                  </Link>
-                )}
+                <Link
+                  href="/profile"
+                  className="text-sm font-medium text-slate-700 hover:text-[#008751] transition-colors"
+                >
+                  My Profile
+                </Link>
 
-                {user.role === 'admin' && (
+                {(user.role === 'admin' || user.role === 'subadmin') && (
                   <>
                     <Link
                       href="/admin/users"
@@ -81,33 +80,47 @@ export const Header: React.FC = () => {
               <div className="flex items-center gap-2 sm:gap-3">
                 <NotificationBell />
 
-                {user.role === 'customer' ? (
-                  <Link href="/customer/profile" className="text-right hover:opacity-80 transition-opacity" title="View Profile">
-                    <div className="text-xs font-semibold text-slate-900 leading-tight hidden sm:block">
-                      {user.full_name || user.phone_number}
-                    </div>
-                    <Badge variant="success">
-                      {user.role.toUpperCase()}
-                    </Badge>
-                  </Link>
-                ) : (
-                  <div className="text-right">
-                    <div className="text-xs font-semibold text-slate-900 leading-tight hidden sm:block">
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-2 sm:gap-2.5 p-1 rounded-full hover:bg-slate-100 transition-colors group"
+                  title="View & Edit Profile"
+                >
+                  <div className="text-right hidden sm:block">
+                    <div className="text-xs font-semibold text-slate-900 leading-tight group-hover:text-[#008751] transition-colors">
                       {user.full_name || user.phone_number}
                     </div>
                     <Badge
                       variant={
                         user.role === 'admin'
                           ? 'purple'
+                          : user.role === 'subadmin'
+                          ? 'info'
                           : user.role === 'sales'
-                            ? 'warning'
-                            : 'info'
+                          ? 'warning'
+                          : user.role === 'cr'
+                          ? 'info'
+                          : 'success'
                       }
+                      className={user.role === 'subadmin' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px] py-0 px-1.5' : 'text-[10px] py-0 px-1.5'}
                     >
-                      {user.role === 'sales' ? 'SALES' : user.role.toUpperCase()}
+                      {user.role === 'subadmin' ? 'SUBADMIN' : user.role === 'sales' ? 'SALES' : user.role.toUpperCase()}
                     </Badge>
                   </div>
-                )}
+
+                  <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-emerald-500/20 bg-emerald-50 text-[#008751] flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-transform group-hover:scale-105">
+                    {user.avatar_url ? (
+                      <img
+                        src={getAvatarUrl(user.avatar_url) || ''}
+                        alt={user.full_name || 'Profile'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs font-bold uppercase">
+                        {(user.full_name || user.phone_number || 'U').charAt(0)}
+                      </span>
+                    )}
+                  </div>
+                </Link>
 
                 {/* Signout button */}
                 <Button

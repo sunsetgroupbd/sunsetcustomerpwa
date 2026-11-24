@@ -100,7 +100,7 @@ function AdminDashboardContent() {
   };
 
   useEffect(() => {
-    if (!authLoading && (!user || user.role !== 'admin')) {
+    if (!authLoading && (!user || (user.role !== 'admin' && user.role !== 'subadmin'))) {
       router.push('/login');
       return;
     }
@@ -705,8 +705,8 @@ function AdminDashboardContent() {
               </Card>
 
               <Card className="border-slate-200">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate" title="Users who registered but do not have an approved application yet">
-                  Registered Users
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate" title="Customers who registered an account but do not have an approved application yet">
+                  Registered Customers
                 </span>
                 <span className="text-2xl font-bold text-slate-700 mt-2 block">
                   {stats?.total_registered_users ?? 0}

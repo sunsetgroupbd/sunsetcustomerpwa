@@ -178,7 +178,21 @@ def create_app() -> FastAPI:
         from app.db.base import Base
         from app.db.session import engine
         from app import models as _app_models  # noqa: F401
+        from sqlalchemy import inspect, text
         Base.metadata.create_all(bind=engine)
+        with engine.connect() as conn:
+            insp = inspect(conn)
+            if "users" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("users")]
+                if "avatar_url" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500)"))
+                    conn.commit()
+            if engine.dialect.name == "postgresql":
+                try:
+                    conn.execute(text("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'subadmin'"))
+                    conn.commit()
+                except Exception:
+                    pass
     except Exception as exc:
         logger.warning("Could not auto-create tables on startup: %s", exc)
 

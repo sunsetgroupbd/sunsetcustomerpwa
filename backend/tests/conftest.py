@@ -4,7 +4,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
-from app.db.session import get_db
+from app.core.dependencies import get_db
+from app.db.session import get_db as get_db_session
 from main import app
 
 # Place test.db inside backend/tests and clean up automatically
@@ -40,13 +41,20 @@ def db():
 
 @pytest.fixture(scope="function")
 def client(db):
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    )
+    TestingSessionLocal = sessionmaker(bind=engine)
+
     def override_get_db():
+        session = TestingSessionLocal()
         try:
-            yield db
+            yield session
         finally:
-            pass
+            session.close()
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db_session] = override_get_db
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

@@ -1,6 +1,6 @@
 // TypeScript interfaces for Sunset Customer Application Platform
 
-export type UserRole = 'customer' | 'cr' | 'sales' | 'admin';
+export type UserRole = 'customer' | 'cr' | 'sales' | 'admin' | 'subadmin';
 
 export type ApplicationStatus =
   | 'draft'
@@ -41,6 +41,8 @@ export interface User {
   customer_id_number?: string | null;
   designation?: string | null;
   username?: string | null;
+  avatar_url?: string | null;
+  profile_photo_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +53,7 @@ export interface CustomerProfileData {
   mobile: string;
   email: string | null;
   customer_id_number?: string | null;
+  avatar_url?: string | null;
   role: UserRole;
   is_active: boolean;
   is_verified: boolean;

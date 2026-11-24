@@ -35,7 +35,7 @@ function VerifyOtpContent() {
     setError(null);
     try {
       const user = await verifyOtp(phoneNumber.trim(), otpCode.trim());
-      if (user.role === 'admin') router.push('/admin/dashboard');
+      if (user.role === 'admin' || user.role === 'subadmin') router.push('/admin/dashboard');
       else if (user.role === 'cr') router.push('/cr/dashboard');
       else router.push('/customer/dashboard');
     } catch (err: any) {

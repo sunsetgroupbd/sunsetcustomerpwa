@@ -30,7 +30,7 @@ export default function LoginPage() {
     setError(null);
     try {
       const user = await login(phoneNumber.trim(), password);
-      if (user.role === 'admin') router.push('/admin/dashboard');
+      if (user.role === 'admin' || user.role === 'subadmin') router.push('/admin/dashboard');
       else if (user.role === 'sales') router.push('/sales/dashboard');
       else if (user.role === 'cr') router.push('/cr/dashboard');
       else router.push('/customer/dashboard');

@@ -18,6 +18,7 @@ from app.db.base import Base
 
 class UserRole(str, enum.Enum):
     admin = "admin"
+    subadmin = "subadmin"
     cr = "cr"
     sales = "sales"
     customer = "customer"
@@ -41,6 +42,7 @@ class User(Base):
     customer_id_number: Mapped[str | None] = mapped_column(String(50), nullable=True, unique=True, index=True)
     designation: Mapped[str | None] = mapped_column(String(150), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="userrole"), nullable=False, default=UserRole.customer
     )
