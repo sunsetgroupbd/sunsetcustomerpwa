@@ -490,7 +490,25 @@ export const api = {
       if (filters?.start_date) q.set('start_date', filters.start_date);
       if (filters?.end_date) q.set('end_date', filters.end_date);
       const query = q.toString() ? `?${q.toString()}` : '';
-      return request<Blob>(`/exports/applications/excel${query}`);
+      return request<Blob>(`/exports/applications/xlsx${query}`);
+    },
+    downloadCustomersExcel: async (search?: string) => {
+      const q = new URLSearchParams();
+      if (search) q.set('search', search);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<Blob>(`/exports/customers/xlsx${query}`);
+    },
+    downloadPaymentsExcel: async (filters?: { business_id?: string; payment_status?: string; start_date?: string; end_date?: string }) => {
+      const q = new URLSearchParams();
+      if (filters?.business_id) q.set('business_id', filters.business_id);
+      if (filters?.payment_status) q.set('payment_status', filters.payment_status);
+      if (filters?.start_date) q.set('start_date', filters.start_date);
+      if (filters?.end_date) q.set('end_date', filters.end_date);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<Blob>(`/exports/payments/xlsx${query}`);
+    },
+    downloadCrPerformanceExcel: async () => {
+      return request<Blob>('/exports/cr-performance/xlsx');
     },
   },
 

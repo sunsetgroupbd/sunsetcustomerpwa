@@ -182,6 +182,12 @@ export const Icons = {
     </svg>
   ),
 
+  FileSpreadsheet: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+      <path fillRule="evenodd" d="M4 3a2 2 0 0 1 2-2h8.59a2 2 0 0 1 1.41.59l4.41 4.41a2 2 0 0 1 .59 1.41V21a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V3zm10 0v5h5l-5-5zm-7 7.5a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 7 10.5zm0 3a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 7 13.5zm0 3a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 7 16.5z" clipRule="evenodd" />
+    </svg>
+  ),
+
   Edit: ({ className = 'w-5 h-5', size = 20, ...props }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
       <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />

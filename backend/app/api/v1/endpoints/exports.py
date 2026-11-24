@@ -27,7 +27,10 @@ async def export_applications_csv(
     business_id: Optional[int] = Query(None),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
     application_status: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     payment_status: Optional[str] = Query(None),
     assigned_cr_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
@@ -37,9 +40,9 @@ async def export_applications_csv(
     """Download applications CSV with role-based field filtering."""
     filters = ExportFilters(
         business_id=business_id,
-        date_from=date_from,
-        date_to=date_to,
-        application_status=application_status,
+        date_from=date_from or start_date,
+        date_to=date_to or end_date,
+        application_status=application_status or status,
         payment_status=payment_status,
         assigned_cr_id=assigned_cr_id,
         search=search,
@@ -58,11 +61,19 @@ async def export_applications_csv(
     "/applications/xlsx",
     summary="Export applications as formatted Excel (XLSX)",
 )
+@router.get(
+    "/applications/excel",
+    summary="Export applications as formatted Excel (XLSX) - alias",
+    include_in_schema=False,
+)
 async def export_applications_xlsx(
     business_id: Optional[int] = Query(None),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
     application_status: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     payment_status: Optional[str] = Query(None),
     assigned_cr_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
@@ -72,7 +83,13 @@ async def export_applications_xlsx(
     """Download professionally formatted Excel workbook."""
     filters = ExportFilters(
         business_id=business_id,
-        date_from=date_from,
+        date_from=date_from or start_date,
+        date_to=date_to or end_date,
+        application_status=application_status or status,
+        payment_status=payment_status,
+        assigned_cr_id=assigned_cr_id,
+        search=search,
+    )
         date_to=date_to,
         application_status=application_status,
         payment_status=payment_status,

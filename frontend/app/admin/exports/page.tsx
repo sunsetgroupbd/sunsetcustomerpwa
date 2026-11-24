@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
@@ -18,13 +19,24 @@ export default function AdminExportsPage() {
   const { user, isLoading: authLoading } = useAuth();
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBiz, setSelectedBiz] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
 
-  const [isExportingCsv, setIsExportingCsv] = useState(false);
-  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  // Application Export Filters
+  const [appBiz, setAppBiz] = useState('');
+  const [appStatus, setAppStatus] = useState('');
+  const [appStartDate, setAppStartDate] = useState('');
+  const [appEndDate, setAppEndDate] = useState('');
+
+  // Customer Directory Filter
+  const [custSearch, setCustSearch] = useState('');
+
+  // Payment Ledger Filters
+  const [payBiz, setPayBiz] = useState('');
+  const [payStatus, setPayStatus] = useState('');
+  const [payStartDate, setPayStartDate] = useState('');
+  const [payEndDate, setPayEndDate] = useState('');
+
+  // Loading States
+  const [loadingExport, setLoadingExport] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
@@ -58,59 +70,209 @@ export default function AdminExportsPage() {
     document.body.removeChild(a);
   };
 
-  const handleExportCsv = async () => {
-    setIsExportingCsv(true);
+  const getTodayStamp = () => new Date().toISOString().split('T')[0];
+
+  // 1. Export Applications (CSV)
+  const handleExportApplicationsCsv = async () => {
+    setLoadingExport('app_csv');
     setStatusMsg(null);
     try {
       const blob = await api.exports.downloadApplicationsCsv({
-        business_id: selectedBiz || undefined,
-        status: selectedStatus || undefined,
-        start_date: startDate || undefined,
-        end_date: endDate || undefined,
+        business_id: appBiz || undefined,
+        status: appStatus || undefined,
+        start_date: appStartDate || undefined,
+        end_date: appEndDate || undefined,
       });
-      triggerDownload(blob, `sunset_applications_${new Date().toISOString().split('T')[0]}.csv`);
-      setStatusMsg({ type: 'success', text: 'CSV export downloaded successfully.' });
+      const filename = `applications_export_${getTodayStamp()}.csv`;
+      triggerDownload(blob, filename);
+      setStatusMsg({ type: 'success', text: `Downloaded ${filename} successfully.` });
     } catch (err: any) {
-      setStatusMsg({ type: 'error', text: err.message || 'Failed to download CSV export.' });
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to download Applications CSV.' });
     } finally {
-      setIsExportingCsv(false);
+      setLoadingExport(null);
     }
   };
 
-  const handleExportExcel = async () => {
-    setIsExportingExcel(true);
+  // 2. Export Applications (Excel)
+  const handleExportApplicationsExcel = async () => {
+    setLoadingExport('app_excel');
     setStatusMsg(null);
     try {
       const blob = await api.exports.downloadApplicationsExcel({
-        business_id: selectedBiz || undefined,
-        status: selectedStatus || undefined,
-        start_date: startDate || undefined,
-        end_date: endDate || undefined,
+        business_id: appBiz || undefined,
+        status: appStatus || undefined,
+        start_date: appStartDate || undefined,
+        end_date: appEndDate || undefined,
       });
-      triggerDownload(blob, `sunset_applications_${new Date().toISOString().split('T')[0]}.xlsx`);
-      setStatusMsg({ type: 'success', text: 'Excel export downloaded successfully.' });
+      const filename = `applications_report_${getTodayStamp()}.xlsx`;
+      triggerDownload(blob, filename);
+      setStatusMsg({ type: 'success', text: `Downloaded ${filename} successfully.` });
     } catch (err: any) {
-      setStatusMsg({ type: 'error', text: err.message || 'Failed to download Excel export.' });
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to download Applications Excel.' });
     } finally {
-      setIsExportingExcel(false);
+      setLoadingExport(null);
+    }
+  };
+
+  // 3. Export Customer Directory (Excel)
+  const handleExportCustomersExcel = async () => {
+    setLoadingExport('cust_excel');
+    setStatusMsg(null);
+    try {
+      const blob = await api.exports.downloadCustomersExcel(custSearch || undefined);
+      const filename = `customers_directory_${getTodayStamp()}.xlsx`;
+      triggerDownload(blob, filename);
+      setStatusMsg({ type: 'success', text: `Downloaded ${filename} successfully.` });
+    } catch (err: any) {
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to download Customer Directory.' });
+    } finally {
+      setLoadingExport(null);
+    }
+  };
+
+  // 4. Export Payments Ledger (Excel)
+  const handleExportPaymentsExcel = async () => {
+    setLoadingExport('pay_excel');
+    setStatusMsg(null);
+    try {
+      const blob = await api.exports.downloadPaymentsExcel({
+        business_id: payBiz || undefined,
+        payment_status: payStatus || undefined,
+        start_date: payStartDate || undefined,
+        end_date: payEndDate || undefined,
+      });
+      const filename = `payment_ledger_${getTodayStamp()}.xlsx`;
+      triggerDownload(blob, filename);
+      setStatusMsg({ type: 'success', text: `Downloaded ${filename} successfully.` });
+    } catch (err: any) {
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to download Payment Ledger.' });
+    } finally {
+      setLoadingExport(null);
+    }
+  };
+
+  // 5. Export CR Performance (Excel)
+  const handleExportCrPerformanceExcel = async () => {
+    setLoadingExport('cr_excel');
+    setStatusMsg(null);
+    try {
+      const blob = await api.exports.downloadCrPerformanceExcel();
+      const filename = `cr_performance_sla_${getTodayStamp()}.xlsx`;
+      triggerDownload(blob, filename);
+      setStatusMsg({ type: 'success', text: `Downloaded ${filename} successfully.` });
+    } catch (err: any) {
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to download CR Performance Report.' });
+    } finally {
+      setLoadingExport(null);
     }
   };
 
   return (
     <DashboardShell
       title="Data Export Center"
-      subtitle="Generate audit-ready CSV and Excel spreadsheets of customer applications across Sunset divisions."
+      subtitle="Generate audit-ready spreadsheets of applications, customer accounts, and payment ledgers across Sunset divisions."
+      actions={
+        <Link href="/admin/dashboard">
+          <Button variant="secondary" size="sm" className="flex items-center gap-1.5">
+            <Icons.ArrowLeft className="w-4 h-4" />
+            <span>Back to Dashboard</span>
+          </Button>
+        </Link>
+      }
     >
-      <div className="max-w-3xl space-y-6">
-        {statusMsg && <Alert type={statusMsg.type}>{statusMsg.text}</Alert>}
+      <div className="max-w-5xl space-y-6">
+        {statusMsg && (
+          <Alert type={statusMsg.type} className="animate-in fade-in">
+            {statusMsg.text}
+          </Alert>
+        )}
 
-        <Card title="Configure Dataset Filters" subtitle="Refine the records you want to include in the export.">
+        {/* Quick Format Explainer Guide */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-emerald-100 text-[#008751] flex items-center justify-center shrink-0 mt-0.5">
+              <Icons.FileSpreadsheet className="w-5 h-5" />
+            </div>
+            <div className="text-xs text-emerald-950 space-y-1">
+              <span className="font-bold text-emerald-900 block">Excel Format (.xlsx) — Recommended</span>
+              <p className="text-slate-600 leading-relaxed">
+                Includes formatted column headers, automated mathematical sums, currency symbols, and clean column widths. Ideal for printing, boardroom review, and tax audits.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+              <Icons.FileText className="w-5 h-5" />
+            </div>
+            <div className="text-xs text-blue-950 space-y-1">
+              <span className="font-bold text-blue-900 block">CSV Format (.csv) — Raw Data</span>
+              <p className="text-slate-600 leading-relaxed">
+                Lightweight comma-separated table format. Best for importing directly into accounting tools, ERPs, CRM systems, or custom data warehouse scripts.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            REPORT 1: CUSTOMER APPLICATIONS REPORT (PRIMARY)
+            ========================================================================= */}
+        <Card className="border-slate-200 shadow-xs">
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-[#008751] flex items-center justify-center shrink-0">
+                  <Icons.FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    1. Customer Applications Ledger
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Audit-ready master log of all customer investor applications with stage statuses and division allotments.
+                  </p>
+                </div>
+              </div>
+              <span className="self-start sm:self-auto text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                Primary Audit Log
+              </span>
+            </div>
+
+            {/* Field Chips: What will be exported */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs">
+              <span className="text-[11px] font-semibold text-slate-700 block mb-1.5 uppercase tracking-wider">
+                Columns Included in this Export:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'Application Ref #',
+                  'Submission Date',
+                  'Applicant Full Name',
+                  'Mobile Phone',
+                  'Email Address',
+                  'Division (SKH / DFI / SG)',
+                  'Package Type & Shares',
+                  'Share Value (BDT)',
+                  'Payment Status',
+                  'Assigned CR Officer',
+                  'Current Workflow Status',
+                ].map((col) => (
+                  <span
+                    key={col}
+                    className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-white border border-slate-200 text-slate-700"
+                  >
+                    {col}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Mandatory Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
               <Select
-                label="Business Division"
-                value={selectedBiz}
-                onChange={(e) => setSelectedBiz(e.target.value)}
+                label="Division Filter"
+                value={appBiz}
+                onChange={(e) => setAppBiz(e.target.value)}
                 options={[
                   { value: '', label: 'All Divisions (Unified)' },
                   ...(Array.isArray(businesses) ? businesses : []).map((b) => ({
@@ -122,16 +284,16 @@ export default function AdminExportsPage() {
 
               <Select
                 label="Application Status"
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
+                value={appStatus}
+                onChange={(e) => setAppStatus(e.target.value)}
                 options={[
-                  { value: '', label: 'All Statuses' },
-                  { value: 'submitted', label: 'Submitted' },
+                  { value: '', label: 'All Statuses (Full Log)' },
+                  { value: 'approved', label: 'Approved Only' },
                   { value: 'under_review', label: 'Under Review' },
+                  { value: 'submitted', label: 'Submitted (New)' },
                   { value: 'action_required', label: 'Action Required' },
-                  { value: 'approved', label: 'Approved' },
+                  { value: 'correction_required', label: 'Correction Required' },
                   { value: 'rejected', label: 'Rejected' },
-                  { value: 'returned', label: 'Returned' },
                   { value: 'draft', label: 'Draft' },
                 ]}
               />
@@ -139,51 +301,281 @@ export default function AdminExportsPage() {
               <Input
                 label="From Date"
                 type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                value={appStartDate}
+                onChange={(e) => setAppStartDate(e.target.value)}
               />
 
               <Input
                 label="To Date"
                 type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                value={appEndDate}
+                onChange={(e) => setAppEndDate(e.target.value)}
               />
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+            {/* Download Buttons */}
+            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-3">
               <Button
-                variant="primary"
-                onClick={handleExportCsv}
-                isLoading={isExportingCsv}
+                variant="outline"
+                size="sm"
+                onClick={handleExportApplicationsCsv}
+                isLoading={loadingExport === 'app_csv'}
                 leftIcon={<Icons.Download className="w-4 h-4" />}
-                className="flex-1"
+                className="w-full sm:w-auto"
               >
-                Download CSV Spreadsheet
+                Download CSV (.csv)
               </Button>
 
               <Button
-                variant="secondary"
-                onClick={handleExportExcel}
-                isLoading={isExportingExcel}
+                variant="primary"
+                size="sm"
+                onClick={handleExportApplicationsExcel}
+                isLoading={loadingExport === 'app_excel'}
                 leftIcon={<Icons.Download className="w-4 h-4" />}
-                className="flex-1"
+                className="w-full sm:w-auto"
               >
-                Download Excel (.xlsx) Report
+                Download Excel (.xlsx)
               </Button>
             </div>
           </div>
         </Card>
 
-        {/* Security & Audit notice */}
-        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
-          <span className="font-bold text-slate-800 block">Security and Compliance Notice</span>
-          <p>
-            Exported spreadsheets contain customer personally identifiable information (PII) including national IDs, phone numbers, and financial details. Treat downloaded files as confidential and strictly in compliance with Sunset Group corporate governance.
-          </p>
+        {/* =========================================================================
+            REPORT 2: APPROVED CUSTOMERS MASTER DIRECTORY
+            ========================================================================= */}
+        <Card className="border-slate-200 shadow-xs">
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                  <Icons.Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    2. Approved Customers Master Directory
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Allotted customer registry of verified shareholders with assigned Customer ID numbers and contact records.
+                  </p>
+                </div>
+              </div>
+              <span className="self-start sm:self-auto text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                Investor Directory
+              </span>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs">
+              <span className="text-[11px] font-semibold text-slate-700 block mb-1.5 uppercase tracking-wider">
+                Columns Included in this Export:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'Customer ID Number',
+                  'Investor Full Name',
+                  'Mobile Phone',
+                  'Email Address',
+                  'Residential Address',
+                  'District & Division',
+                  'Verification Status',
+                  'Account Creation Date',
+                ].map((col) => (
+                  <span
+                    key={col}
+                    className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-white border border-slate-200 text-slate-700"
+                  >
+                    {col}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-end gap-3 pt-1">
+              <div className="flex-1 w-full">
+                <Input
+                  label="Optional Search Filter"
+                  placeholder="Filter by Name, Mobile, or Customer ID..."
+                  value={custSearch}
+                  onChange={(e) => setCustSearch(e.target.value)}
+                />
+              </div>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleExportCustomersExcel}
+                isLoading={loadingExport === 'cust_excel'}
+                leftIcon={<Icons.Download className="w-4 h-4" />}
+                className="w-full sm:w-auto shrink-0"
+              >
+                Download Customer Directory (.xlsx)
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* =========================================================================
+            REPORT 3 & 4 IN TWO COLUMNS: FINANCIAL LEDGER & TEAM PERFORMANCE
+            ========================================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Report 3: Payment & Accounting Ledger */}
+          <Card className="border-slate-200 shadow-xs flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                  <Icons.FileSpreadsheet className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    3. Payment & Collections Ledger
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Financial audit log of share purchases, payment slips, and verification notes.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs">
+                <span className="text-[11px] font-semibold text-slate-700 block mb-1.5 uppercase tracking-wider">
+                  Columns Included:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'Application Ref #',
+                    'Applicant Name',
+                    'Division',
+                    'Share Value (BDT)',
+                    'Payment Status',
+                    'Bank Name',
+                    'Transaction Ref',
+                  ].map((col) => (
+                    <span
+                      key={col}
+                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-white border border-slate-200 text-slate-700"
+                    >
+                      {col}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <Select
+                  label="Division"
+                  value={payBiz}
+                  onChange={(e) => setPayBiz(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Divisions' },
+                    ...(Array.isArray(businesses) ? businesses : []).map((b) => ({
+                      value: b.id,
+                      label: b.code,
+                    })),
+                  ]}
+                />
+
+                <Select
+                  label="Payment Status"
+                  value={payStatus}
+                  onChange={(e) => setPayStatus(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Payments' },
+                    { value: 'verified', label: 'Verified Only' },
+                    { value: 'pending', label: 'Pending' },
+                  ]}
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 mt-4 border-t border-slate-100 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPaymentsExcel}
+                isLoading={loadingExport === 'pay_excel'}
+                leftIcon={<Icons.Download className="w-4 h-4" />}
+                className="w-full sm:w-auto"
+              >
+                Download Payment Ledger (.xlsx)
+              </Button>
+            </div>
+          </Card>
+
+          {/* Report 4: CR Team Verification & Performance SLA */}
+          <Card className="border-slate-200 shadow-xs flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <Icons.Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    4. CR Team Verification SLA
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Throughput and review volume breakdown per Customer Relations team member.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs">
+                <span className="text-[11px] font-semibold text-slate-700 block mb-1.5 uppercase tracking-wider">
+                  Columns Included:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'CR Officer Name',
+                    'Employee ID',
+                    'Mobile & Email',
+                    'Total Assigned',
+                    'Pending Review',
+                    'Approved Applications',
+                    'Rejected Count',
+                  ].map((col) => (
+                    <span
+                      key={col}
+                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-white border border-slate-200 text-slate-700"
+                    >
+                      {col}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50/60 border border-amber-200/60 rounded-xl text-xs text-amber-900 leading-relaxed">
+                <span className="font-semibold block mb-0.5">Automated Team Audit</span>
+                Aggregates live verification performance for all active CR officers without requiring manual date calculation.
+              </div>
+            </div>
+
+            <div className="pt-4 mt-4 border-t border-slate-100 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCrPerformanceExcel}
+                isLoading={loadingExport === 'cr_excel'}
+                leftIcon={<Icons.Download className="w-4 h-4" />}
+                className="w-full sm:w-auto"
+              >
+                Download Team SLA Report (.xlsx)
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        {/* Compliance and Data Privacy Notice */}
+        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex items-start gap-3 text-xs text-slate-600">
+          <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
+            <Icons.CheckCircle className="w-3.5 h-3.5" />
+          </div>
+          <div className="space-y-1">
+            <span className="font-bold text-slate-900 block">
+              Audit Compliance & Privacy Protection
+            </span>
+            <p className="leading-relaxed">
+              Exported spreadsheets contain customer personally identifiable information (PII) including national IDs, phone numbers, and share allotment values. All export actions are logged with timestamp and user ID in the system audit log.
+            </p>
+          </div>
         </div>
       </div>
     </DashboardShell>
   );
 }
-
