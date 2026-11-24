@@ -53,6 +53,76 @@ async def list_businesses(
 
 
 @router.get(
+    "/{business_id}/packages",
+    status_code=status.HTTP_200_OK,
+    summary="Get packages pricing for a business",
+)
+async def get_business_packages(
+    business_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Return active package pricing for a given business division.
+    """
+    try:
+        service = BusinessService(db)
+        result = await service.get_business(business_id)
+        # Transform pricing items to match PackagePricing interface expected by frontend
+        packages = [
+            {
+                "id": str(p["id"]),
+                "business_id": str(business_id),
+                "package_type": p["package_name"],
+                "base_price": float(p["price"]),
+                "description": f"{p['package_name']} Ownership Package",
+                "is_active": True,
+            }
+            for p in result.get("pricing", [])
+        ]
+        return success_response(data=packages, message="Packages retrieved successfully.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to retrieve packages for business %s: %s", business_id, exc, exc_info=True)
+        raise
+
+
+@router.get(
+    "/{business_id}/terms",
+    status_code=status.HTTP_200_OK,
+    summary="Get terms and conditions for a business",
+)
+async def get_business_terms(
+    business_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Return active terms and conditions for a given business division.
+    """
+    try:
+        service = BusinessService(db)
+        result = await service.get_business(business_id)
+        terms = result.get("terms")
+        if not terms:
+            return success_response(data=None, message="No active terms found.")
+        return success_response(
+            data={
+                "id": str(terms["id"]),
+                "business_id": str(business_id),
+                "version": terms["version"],
+                "content": terms["content"],
+                "is_active": True,
+            },
+            message="Terms retrieved successfully.",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to retrieve terms for business %s: %s", business_id, exc, exc_info=True)
+        raise
+
+
+@router.get(
     "/{business_id}",
     status_code=status.HTTP_200_OK,
     summary="Get business detail with pricing and active terms (authenticated)",

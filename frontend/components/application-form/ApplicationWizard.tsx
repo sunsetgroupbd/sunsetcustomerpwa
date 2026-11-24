@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Application, Business, PackagePricing, TermsAndConditions, Nominee } from '@/lib/types';
 import { api } from '@/lib/api';
 import { numberToWords } from '@/lib/number-to-words';
+import { getDivisionPackages, DivisionPackageSpec } from '@/lib/packages';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -593,10 +594,17 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
   };
 
   // Recalculate Total Price and Words whenever package/qty/discount changes
-  const updatePricing = (pkgType: string, qty: number, discount: number, pricePerUnit: number) => {
+  const updatePricing = (
+    pkgType: string,
+    qty: number,
+    discount: number,
+    pricePerUnit: number,
+    suggestedBookingMoney?: number
+  ) => {
     const total = Math.max(0, qty * pricePerUnit - discount);
     const words = numberToWords(total);
-    const dues = Math.max(0, total - (formData.token_money + formData.booking_money));
+    const booking = suggestedBookingMoney !== undefined ? suggestedBookingMoney : formData.booking_money;
+    const dues = Math.max(0, total - (formData.token_money + booking));
     const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
 
     setFormData((prev) => ({
@@ -605,6 +613,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       number_of_ownership: qty,
       price_per_ownership: pricePerUnit,
       discount_amount: discount,
+      booking_money: booking,
       total_price: total,
       amount_in_words: words,
       dues_amount: dues,
@@ -2247,25 +2256,51 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {['Bronze', 'Silver', 'Gold', 'Platinum'].map((pkg) => {
                 const isSelected = Boolean(formData.package_type && formData.package_type.toLowerCase() === pkg.toLowerCase());
+                const bizPackages = getDivisionPackages(currentBusiness.code);
+                const spec = bizPackages.find((s) => s.name.toLowerCase() === pkg.toLowerCase());
                 const matchedPkg = packages.find((p) => p.package_type.toLowerCase() === pkg.toLowerCase());
-                const price = matchedPkg ? matchedPkg.base_price : pkg === 'Bronze' ? 300000 : pkg === 'Silver' ? 500000 : pkg === 'Gold' ? 800000 : 1200000;
+                const price = matchedPkg ? matchedPkg.base_price : (spec ? spec.price : 350000);
+                const booking = spec ? spec.bookingMoney : Math.round(price * 0.25);
+                const units = spec ? spec.units : 1;
 
                 return (
                   <div
                     key={pkg}
-                    onClick={() => updatePricing(pkg, formData.number_of_ownership, formData.discount_amount, price)}
-                    className={`cursor-pointer p-4 rounded-xl border text-center transition-all ${
+                    onClick={() => updatePricing(pkg, units, formData.discount_amount, price, booking)}
+                    className={`cursor-pointer p-4 rounded-xl border text-center transition-all flex flex-col justify-between ${
                       isSelected
                         ? 'border-[#006B3E] bg-[#006B3E]/5 ring-2 ring-[#006B3E]'
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                        : 'border-slate-200 hover:border-slate-300 bg-white shadow-sm'
                     }`}
                   >
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Package</span>
-                    <h4 className="text-lg font-bold text-slate-900 mt-1">{pkg}</h4>
-                    <p className="text-sm font-semibold text-[#006B3E] mt-2">
-                      ৳ {price.toLocaleString('en-IN')}
-                    </p>
-                    <span className="text-[11px] text-slate-400 mt-1 block">per ownership share</span>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Package</span>
+                        <span className="text-[10px] font-semibold text-[#006B3E] bg-[#006B3E]/10 px-1.5 py-0.5 rounded">
+                          {spec?.sharesText || `${units}x Unit`}
+                        </span>
+                      </div>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">{pkg}</h4>
+                      <p className="text-base font-extrabold text-[#006B3E] mt-2">
+                        ৳ {price.toLocaleString('en-IN')}
+                      </p>
+                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                        Booking: <span className="text-slate-800 font-semibold">৳ {booking.toLocaleString('en-IN')}</span>
+                      </p>
+                    </div>
+
+                    {spec && (
+                      <div className="mt-3 pt-2.5 border-t border-slate-100 text-left">
+                        {spec.space && (
+                          <p className="text-[10px] text-slate-500 mb-0.5">
+                            <span className="font-semibold text-slate-700">Space:</span> {spec.space}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-emerald-700 font-medium leading-tight">
+                          {spec.perks}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })}

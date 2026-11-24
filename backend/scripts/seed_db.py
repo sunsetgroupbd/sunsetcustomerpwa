@@ -187,18 +187,54 @@ def seed_users(db: Session) -> dict[str, User]:
     return user_map
 
 
+# Authentic project package pricing and attributes (in BDT)
+PROJECT_PACKAGES = {
+    # Sunset Kuakata Hotel & Resort
+    "SKH": [
+        {"package_name": "Bronze", "price": Decimal("570000.00"), "booking_money": Decimal("150000.00"), "units": 1},
+        {"package_name": "Silver", "price": Decimal("1680000.00"), "booking_money": Decimal("450000.00"), "units": 3},
+        {"package_name": "Gold", "price": Decimal("2750000.00"), "booking_money": Decimal("750000.00"), "units": 5},
+        {"package_name": "Platinum", "price": Decimal("5400000.00"), "booking_money": Decimal("1200000.00"), "units": 10},
+    ],
+    # Dhaka Fantasy Island
+    "DFI": [
+        {"package_name": "Bronze", "price": Decimal("350000.00"), "booking_money": Decimal("100000.00"), "units": 1},
+        {"package_name": "Silver", "price": Decimal("1020000.00"), "booking_money": Decimal("300000.00"), "units": 3},
+        {"package_name": "Gold", "price": Decimal("1650000.00"), "booking_money": Decimal("500000.00"), "units": 5},
+        {"package_name": "Platinum", "price": Decimal("3200000.00"), "booking_money": Decimal("800000.00"), "units": 10},
+    ],
+    # Sun Care Hospital & Diagnostic Centre
+    "SCH": [
+        {"package_name": "Bronze", "price": Decimal("350000.00"), "booking_money": Decimal("100000.00"), "units": 1},
+        {"package_name": "Silver", "price": Decimal("1020000.00"), "booking_money": Decimal("300000.00"), "units": 3},
+        {"package_name": "Gold", "price": Decimal("1650000.00"), "booking_money": Decimal("500000.00"), "units": 5},
+        {"package_name": "Platinum", "price": Decimal("3200000.00"), "booking_money": Decimal("800000.00"), "units": 10},
+    ],
+    # Super Combo (4-in-1 Investment)
+    "SPC": [
+        {"package_name": "Bronze", "price": Decimal("1240000.00"), "booking_money": Decimal("300000.00"), "units": 1},
+        {"package_name": "Silver", "price": Decimal("3630000.00"), "booking_money": Decimal("700000.00"), "units": 3},
+        {"package_name": "Gold", "price": Decimal("5900000.00"), "booking_money": Decimal("1000000.00"), "units": 5},
+        {"package_name": "Platinum", "price": Decimal("11500000.00"), "booking_money": Decimal("1700000.00"), "units": 10},
+    ],
+}
+
+
 def seed_pricing_and_terms(db: Session, businesses: dict[str, Business], admin: User) -> None:
     print("\n--- 3. Seeding Package Pricing & Terms ---")
-    packages_data = [
-        ("Bronze", Decimal("250000.00")),
-        ("Silver", Decimal("500000.00")),
-        ("Gold", Decimal("1000000.00")),
-        ("Platinum", Decimal("2000000.00")),
-    ]
 
     for code, biz in businesses.items():
+        biz_pkgs = PROJECT_PACKAGES.get(code, [
+            {"package_name": "Bronze", "price": Decimal("350000.00")},
+            {"package_name": "Silver", "price": Decimal("1000000.00")},
+            {"package_name": "Gold", "price": Decimal("2000000.00")},
+            {"package_name": "Platinum", "price": Decimal("3500000.00")},
+        ])
+
         # Packages
-        for pkg_name, price in packages_data:
+        for pkg_info in biz_pkgs:
+            pkg_name = pkg_info["package_name"]
+            price = pkg_info["price"]
             existing = (
                 db.query(PricingConfiguration)
                 .filter(
@@ -217,6 +253,10 @@ def seed_pricing_and_terms(db: Session, businesses: dict[str, Business], admin: 
                     created_by_id=admin.id,
                 )
                 db.add(cfg)
+            else:
+                # Update price to authentic values
+                existing.price = price
+                existing.is_active = True
 
         # Terms and conditions
         terms = db.query(TermsAndConditions).filter(TermsAndConditions.business_id == biz.id).first()
@@ -237,7 +277,7 @@ def seed_pricing_and_terms(db: Session, businesses: dict[str, Business], admin: 
             db.add(t)
 
     db.commit()
-    print("  [OK] Packages & Terms seeded for all 4 divisions.")
+    print("  [OK] Packages & Terms seeded with authentic project values.")
 
 
 def seed_applications(

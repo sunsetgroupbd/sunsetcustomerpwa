@@ -17,6 +17,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Icons } from '@/components/ui/Icons';
 import { openSmsWithCredentials } from '@/lib/sms';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { getDivisionPackages } from '@/lib/packages';
 
 export default function SalesDashboardPage() {
   const router = useRouter();
@@ -35,7 +36,7 @@ export default function SalesDashboardPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [businessId, setBusinessId] = useState('');
-  const [packageType, setPackageType] = useState('Standard Ownership');
+  const [packageType, setPackageType] = useState('Bronze');
   const [numberOfShares, setNumberOfShares] = useState(1);
   const [totalAmount, setTotalAmount] = useState<string>('');
   const [tempPassword, setTempPassword] = useState('Sunset@123');
@@ -60,7 +61,7 @@ export default function SalesDashboardPage() {
     setFullName('');
     setPhone('');
     setEmail('');
-    setPackageType('Standard Ownership');
+    setPackageType('Bronze');
     setNumberOfShares(1);
     setTotalAmount('');
     setTempPassword('Sunset@123');
@@ -684,27 +685,46 @@ Investor Portal: ${window.location.origin}/login`;
               label="Business Division"
               required
               value={businessId}
-              onChange={(e) => setBusinessId(e.target.value)}
+              onChange={(e) => {
+                const newBizId = e.target.value;
+                setBusinessId(newBizId);
+                const selectedBiz = businesses.find((b) => b.id === newBizId);
+                const pkgs = getDivisionPackages(selectedBiz?.code);
+                const currentPkg = pkgs.find((p) => p.name === packageType) || pkgs[0];
+                if (currentPkg) {
+                  setPackageType(currentPkg.name);
+                  setNumberOfShares(currentPkg.units);
+                  setTotalAmount(currentPkg.price.toString());
+                }
+              }}
               options={businesses.map((b) => ({ value: b.id, label: `${b.code} — ${b.name}` }))}
             />
 
             <div className="grid grid-cols-2 gap-3">
               <Select
-                label="Package Type"
+                label="Package Tier"
                 value={packageType}
-                onChange={(e) => setPackageType(e.target.value)}
+                onChange={(e) => {
+                  const newPkg = e.target.value;
+                  setPackageType(newPkg);
+                  const selectedBiz = businesses.find((b) => b.id === businessId);
+                  const pkgs = getDivisionPackages(selectedBiz?.code);
+                  const matched = pkgs.find((p) => p.name === newPkg);
+                  if (matched) {
+                    setNumberOfShares(matched.units);
+                    setTotalAmount(matched.price.toString());
+                  }
+                }}
                 options={[
-                  { value: 'Standard Ownership', label: 'Standard Ownership' },
-                  { value: 'Silver Suite', label: 'Silver Suite' },
-                  { value: 'Gold Suite', label: 'Gold Suite' },
-                  { value: 'Platinum Ownership', label: 'Platinum Ownership' },
-                  { value: 'Diamond Executive', label: 'Diamond Executive' },
-                  { value: 'Custom Package', label: 'Custom Package' },
+                  { value: 'Bronze', label: 'Bronze' },
+                  { value: 'Silver', label: 'Silver' },
+                  { value: 'Gold', label: 'Gold' },
+                  { value: 'Platinum', label: 'Platinum' },
                 ]}
               />
 
               <Input
-                label="Number of Shares"
+                label="Number of Shares / Units"
                 type="number"
                 min={1}
                 value={numberOfShares}
@@ -713,7 +733,7 @@ Investor Portal: ${window.location.origin}/login`;
             </div>
 
             <Input
-              label="Investment Amount (BDT, Optional)"
+              label="Investment Amount (BDT)"
               type="number"
               placeholder="e.g. 500000"
               value={totalAmount}
