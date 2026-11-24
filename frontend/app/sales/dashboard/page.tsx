@@ -763,12 +763,12 @@ Investor Portal: ${window.location.origin}/login`;
                 value={leadSource}
                 onChange={(e) => setLeadSource(e.target.value)}
                 options={[
-                  { value: 'Facebook', label: 'Facebook / Social Media' },
-                  { value: 'Fair', label: 'Fair / Expo / Exhibition' },
-                  { value: 'Cold Lead', label: 'Cold Lead / Direct Calling' },
-                  { value: 'Reference', label: 'Reference / Referral' },
-                  { value: 'Walk-in', label: 'Walk-in / Branch Visit' },
-                  { value: 'Website', label: 'Website / Digital Campaign' },
+                  { value: 'Facebook', label: 'Facebook' },
+                  { value: 'Fair', label: 'Fair' },
+                  { value: 'Cold Lead', label: 'Cold Lead' },
+                  { value: 'Reference', label: 'Reference' },
+                  { value: 'Website', label: 'Website' },
+                  { value: 'Walk-in', label: 'Walk-in' },
                   { value: 'Other', label: 'Other (Type Custom Source)' },
                 ]}
               />
