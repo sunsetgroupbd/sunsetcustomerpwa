@@ -28,9 +28,24 @@ class DashboardService:
         today = date.today()
         first_of_month = today.replace(day=1)
 
-        # 1. Total customers (customers who have registered/active accounts or approved applications)
-        # Distinct customer users that are active
+        # 1. Total Customers: only count customers whose application has been APPROVED (or who have an allotted customer ID)
+        approved_customer_ids = (
+            self.db.query(Application.customer_id)
+            .filter(Application.application_status == ApplicationStatus.APPROVED)
+        )
         total_customers = (
+            self.db.query(func.count(User.id))
+            .filter(
+                User.role == "customer",
+                User.is_active == True,
+                (User.customer_id_number != None) | (User.id.in_(approved_customer_ids)),
+            )
+            .scalar()
+            or 0
+        )
+
+        # 1b. Total Registered Accounts (initial registered users before approval)
+        total_registered_users = (
             self.db.query(func.count(User.id))
             .filter(User.role == "customer", User.is_active == True)
             .scalar()
@@ -111,6 +126,7 @@ class DashboardService:
 
         return DashboardStats(
             total_customers=total_customers,
+            total_registered_users=total_registered_users,
             total_applications=total_applications,
             applications_by_status=applications_by_status,
             applications_by_business=applications_by_business,

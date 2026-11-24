@@ -221,6 +221,7 @@ export interface Application {
 export interface DashboardStats {
   total_applications: number;
   total_customers: number;
+  total_registered_users?: number;
   pending_applications: number;
   approved_applications: number;
   rejected_applications: number;

@@ -680,9 +680,9 @@ function AdminDashboardContent() {
           /* ---------------- EXECUTIVE OVERVIEW ---------------- */
           <div className="space-y-6">
             {/* Top Metric Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-7 gap-3 sm:gap-4">
               <Card className="border-slate-200">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate">
                   Total Applications
                 </span>
                 <span className="text-2xl font-bold text-slate-900 mt-2 block">
@@ -690,17 +690,31 @@ function AdminDashboardContent() {
                 </span>
               </Card>
 
-              <Card className="border-slate-200">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                  Total Customers
-                </span>
-                <span className="text-2xl font-bold text-slate-900 mt-2 block">
+              <Card className="border-slate-200 bg-emerald-50/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider block truncate">
+                    Total Customers
+                  </span>
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                    Approved
+                  </span>
+                </div>
+                <span className="text-2xl font-bold text-emerald-900 mt-2 block">
                   {stats?.total_customers ?? 0}
                 </span>
               </Card>
 
               <Card className="border-slate-200">
-                <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider block">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate" title="Users who registered but do not have an approved application yet">
+                  Registered Users
+                </span>
+                <span className="text-2xl font-bold text-slate-700 mt-2 block">
+                  {stats?.total_registered_users ?? 0}
+                </span>
+              </Card>
+
+              <Card className="border-slate-200">
+                <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider block truncate">
                   Under Review
                 </span>
                 <span className="text-2xl font-bold text-blue-600 mt-2 block">
@@ -709,8 +723,8 @@ function AdminDashboardContent() {
               </Card>
 
               <Card className="border-slate-200">
-                <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider block">
-                  Approved
+                <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider block truncate">
+                  Approved Apps
                 </span>
                 <span className="text-2xl font-bold text-emerald-600 mt-2 block">
                   {stats?.approved_applications ?? 0}
@@ -718,7 +732,7 @@ function AdminDashboardContent() {
               </Card>
 
               <Card className="border-slate-200">
-                <span className="text-[11px] font-semibold text-amber-600 uppercase tracking-wider block">
+                <span className="text-[11px] font-semibold text-amber-600 uppercase tracking-wider block truncate">
                   Action Required
                 </span>
                 <span className="text-2xl font-bold text-amber-600 mt-2 block">
@@ -727,7 +741,7 @@ function AdminDashboardContent() {
               </Card>
 
               <Card className="border-slate-200">
-                <span className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider block">
+                <span className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider block truncate">
                   Rejected
                 </span>
                 <span className="text-2xl font-bold text-rose-600 mt-2 block">

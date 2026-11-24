@@ -18,6 +18,7 @@ class BusinessDistributionItem(BaseModel):
 
 class DashboardStats(BaseModel):
     total_customers: int
+    total_registered_users: int = 0
     total_applications: int
     applications_by_status: dict[str, int]
     applications_by_business: dict[str, int]
