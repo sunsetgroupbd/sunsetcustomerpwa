@@ -271,6 +271,7 @@ class ApplicationListItem(BaseModel):
     business_code: str | None = None
     business_name: str | None = None
     is_edit_unlocked: bool = False
+    lead_source: str | None = None
     declaration_accepted: bool
     submitted_at: datetime | None = None
     created_at: datetime
@@ -379,6 +380,7 @@ class ApplicationOnBehalfCreate(BaseModel):
     package_type: str | None = None
     number_of_shares: int = 1
     total_amount: Decimal | None = None
+    lead_source: str | None = None
     temporary_password: str | None = None
 
     @field_validator("customer_email", mode="before")

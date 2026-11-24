@@ -39,6 +39,8 @@ export default function SalesDashboardPage() {
   const [packageType, setPackageType] = useState('Bronze');
   const [numberOfShares, setNumberOfShares] = useState(1);
   const [totalAmount, setTotalAmount] = useState<string>('');
+  const [leadSource, setLeadSource] = useState('Facebook');
+  const [customLeadSource, setCustomLeadSource] = useState('');
   const [tempPassword, setTempPassword] = useState('Sunset@123');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -64,6 +66,8 @@ export default function SalesDashboardPage() {
     setPackageType('Bronze');
     setNumberOfShares(1);
     setTotalAmount('');
+    setLeadSource('Facebook');
+    setCustomLeadSource('');
     setTempPassword('Sunset@123');
     setModalError(null);
     setCreatedResult(null);
@@ -135,6 +139,7 @@ export default function SalesDashboardPage() {
     setIsSubmitting(true);
     try {
       const passwordToUse = tempPassword.trim() || generateRandomPassword();
+      const resolvedLeadSource = leadSource === 'Other' ? (customLeadSource.trim() || 'Other') : leadSource;
       const res = await api.sales.createOnBehalf({
         customer_name: fullName.trim(),
         customer_phone: phone.trim(),
@@ -143,6 +148,7 @@ export default function SalesDashboardPage() {
         package_type: packageType,
         number_of_shares: Number(numberOfShares) || 1,
         total_amount: totalAmount ? Number(totalAmount) : undefined,
+        lead_source: resolvedLeadSource,
         temporary_password: passwordToUse,
       });
 
@@ -496,6 +502,7 @@ Investor Portal: ${window.location.origin}/login`;
                       <th className="py-3 px-4">Division</th>
                       <th className="py-3 px-4">Package</th>
                       <th className="py-3 px-4">Shares</th>
+                      <th className="py-3 px-4">Lead Source</th>
                       <th className="py-3 px-4">Date</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4 text-right">Actions</th>
@@ -521,6 +528,15 @@ Investor Portal: ${window.location.origin}/login`;
                         </td>
                         <td className="py-3 px-4 text-slate-600">
                           {app.ownership_detail?.number_of_shares || app.ownership_detail?.number_of_ownership || 1}
+                        </td>
+                        <td className="py-3 px-4">
+                          {app.lead_source ? (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                              {app.lead_source}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-slate-500">
                           {app.submission_date ? new Date(app.submission_date).toLocaleDateString() : 'Draft'}
@@ -739,6 +755,34 @@ Investor Portal: ${window.location.origin}/login`;
               value={totalAmount}
               onChange={(e) => setTotalAmount(e.target.value)}
             />
+
+            {/* Source of Lead */}
+            <div className="space-y-2">
+              <Select
+                label="Source of Lead"
+                value={leadSource}
+                onChange={(e) => setLeadSource(e.target.value)}
+                options={[
+                  { value: 'Facebook', label: 'Facebook / Social Media' },
+                  { value: 'Fair', label: 'Fair / Expo / Exhibition' },
+                  { value: 'Cold Lead', label: 'Cold Lead / Direct Calling' },
+                  { value: 'Reference', label: 'Reference / Referral' },
+                  { value: 'Walk-in', label: 'Walk-in / Branch Visit' },
+                  { value: 'Newspaper', label: 'Newspaper / Print Media' },
+                  { value: 'Website', label: 'Website / Digital Campaign' },
+                  { value: 'Other', label: 'Other (Type Custom Source)' },
+                ]}
+              />
+
+              {leadSource === 'Other' && (
+                <Input
+                  label="Specify Source"
+                  placeholder="e.g. Billboard, TV Commercial, Event"
+                  value={customLeadSource}
+                  onChange={(e) => setCustomLeadSource(e.target.value)}
+                />
+              )}
+            </div>
 
             <div>
               <div className="flex justify-between items-center mb-1">

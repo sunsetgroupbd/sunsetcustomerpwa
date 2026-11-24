@@ -355,6 +355,7 @@ export const api = {
       package_type?: string;
       number_of_shares?: number;
       total_amount?: number;
+      lead_source?: string;
       temporary_password?: string;
     }) =>
       request<Application>('/applications/on-behalf', {
@@ -373,6 +374,7 @@ export const api = {
       package_type?: string;
       number_of_shares?: number;
       total_amount?: number;
+      lead_source?: string;
       temporary_password?: string;
     }) =>
       request<Application>('/applications/on-behalf', {

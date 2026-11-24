@@ -281,7 +281,7 @@ class ApplicationService:
         self.db.add(customer)
         self.db.flush()
 
-        profile = CustomerProfile(user_id=customer.id)
+        profile = CustomerProfile(user_id=customer.id, lead_source=data.lead_source.strip() if data.lead_source else None)
         self.db.add(profile)
         self.db.flush()
 
@@ -314,6 +314,7 @@ class ApplicationService:
             customer_id=customer.id,
             business_id=business.id,
             sales_agent_id=creator_user.id if is_sales else None,
+            lead_source=data.lead_source.strip() if data.lead_source else None,
             application_date=datetime.now(timezone.utc).date(),
             application_status=ApplicationStatus.DRAFT,
             payment_status=PaymentStatus.PENDING,

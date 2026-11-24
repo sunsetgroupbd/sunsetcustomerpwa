@@ -206,6 +206,7 @@ export interface Application {
   sales_agent_id?: string | null;
   sales_agent_name?: string | null;
   sales_agent_employee_id?: string | null;
+  lead_source?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
   business_code?: string | null;

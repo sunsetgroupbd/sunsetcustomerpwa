@@ -25,6 +25,7 @@ class CustomerProfile(Base):
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
     emergency_contact: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    lead_source: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -71,6 +71,7 @@ class Application(Base):
     sales_agent_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    lead_source: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     is_edit_unlocked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     declaration_accepted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
