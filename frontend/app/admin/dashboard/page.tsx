@@ -754,18 +754,47 @@ function AdminDashboardContent() {
             {stats?.business_distribution && stats.business_distribution.length > 0 && (
               <Card title="Applications by Business Division">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {stats.business_distribution.map((b) => (
-                    <div key={b.business_id} className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#008751] bg-[#008751]/10 px-2 py-0.5 rounded">
-                        {b.business_code}
-                      </span>
-                      <h4 className="text-sm font-bold text-slate-900 mt-2 truncate">{b.business_name}</h4>
-                      <div className="flex items-baseline gap-1.5 mt-1">
-                        <span className="text-xl font-bold text-slate-900">{b.count}</span>
-                        <span className="text-xs text-slate-500">applications</span>
+                  {stats.business_distribution.map((b) => {
+                    const code = (b.business_code || '').toUpperCase().trim();
+                    const logoSrc =
+                      code === 'SCH'
+                        ? '/suncarelogo.png'
+                        : code === 'DFI'
+                        ? '/dfilogo.png'
+                        : code === 'SPC'
+                        ? '/sunsetcombologo.png'
+                        : '/sunsetlogo.png';
+
+                    return (
+                      <div
+                        key={b.business_id}
+                        className="p-4 bg-white rounded-xl border border-slate-200/80 hover:border-slate-300 hover:shadow-sm transition-all flex flex-col justify-between"
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="w-12 h-12 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
+                            <img
+                              src={logoSrc}
+                              alt={b.business_name}
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#008751] bg-[#008751]/10 px-2 py-0.5 rounded-full">
+                            {b.business_code}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900 truncate" title={b.business_name}>
+                            {b.business_name}
+                          </h4>
+                          <div className="flex items-baseline gap-1.5 mt-1.5 pt-2 border-t border-slate-100">
+                            <span className="text-2xl font-extrabold text-slate-900">{b.count}</span>
+                            <span className="text-xs font-medium text-slate-500">applications</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </Card>
             )}
