@@ -310,8 +310,8 @@ export default function CrApplicationDetailPage({
           {isEditable ? (
             <Link href={`/customer/apply?application_id=${application.id}`}>
               <Button variant="primary" size="sm" className="bg-[#008751] hover:bg-[#007043] flex items-center gap-1.5">
-                <Icons.Edit className="w-4 h-4" />
-                <span>Fill / Edit Form</span>
+                <Icons.CheckCircle className="w-4 h-4" />
+                <span>Activate</span>
               </Button>
             </Link>
           ) : pendingEditReq ? (

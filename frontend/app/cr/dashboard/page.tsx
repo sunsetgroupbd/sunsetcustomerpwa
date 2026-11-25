@@ -162,7 +162,7 @@ export default function CrDashboardPage() {
               )}
             </div>
             <span className="text-xl font-bold text-amber-900 mt-0.5 block">{pendingCount}</span>
-            <span className="text-[10px] text-amber-700">To Fill Form</span>
+            <span className="text-[10px] text-amber-700">To Activate</span>
           </button>
 
           <button
@@ -356,8 +356,8 @@ export default function CrDashboardPage() {
                               size="sm"
                               className="w-full bg-[#008751] hover:bg-[#007043] text-xs font-bold justify-center flex items-center gap-1 py-2"
                             >
-                              <Icons.Edit className="w-3.5 h-3.5" />
-                              <span>Fill Form</span>
+                              <Icons.CheckCircle className="w-3.5 h-3.5" />
+                              <span>Activate</span>
                             </Button>
                           </Link>
                         ) : null}
@@ -485,8 +485,8 @@ export default function CrDashboardPage() {
                                     size="sm"
                                     className="bg-[#008751] hover:bg-[#007043] text-xs font-bold flex items-center gap-1"
                                   >
-                                    <Icons.Edit className="w-3.5 h-3.5" />
-                                    <span>Fill Form</span>
+                                    <Icons.CheckCircle className="w-3.5 h-3.5" />
+                                    <span>Activate</span>
                                   </Button>
                                 </Link>
                               ) : null}

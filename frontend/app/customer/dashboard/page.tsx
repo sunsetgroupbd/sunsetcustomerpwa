@@ -14,6 +14,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Icons } from '@/components/ui/Icons';
 import { ApplicationReceiptModal } from '@/components/application-form/ApplicationReceiptModal';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { CompanyBankAccountsCard } from '@/components/customer/CompanyBankAccountsCard';
 
 // Colorful Floating Balloon Celebration Component
 interface BalloonProps {
@@ -430,6 +431,9 @@ export default function CustomerDashboardPage() {
             </div>
           )}
         </Card>
+
+        {/* Official Company Bank Accounts for Payments & Deposits */}
+        <CompanyBankAccountsCard />
       </div>
 
       {/* Animated Birthday Celebration Overlay - Pure Floating Balloons & Text (No Background Box) */}
