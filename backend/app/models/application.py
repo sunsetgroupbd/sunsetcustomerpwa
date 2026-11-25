@@ -104,7 +104,13 @@ class Application(Base):
 
     @property
     def customer_id_number(self) -> str | None:
-        return self.customer.customer_id_number if self.customer else None
+        if self.customer and self.customer.customer_id_number:
+            return self.customer.customer_id_number
+        status_val = self.application_status.value if hasattr(self.application_status, "value") else str(self.application_status)
+        if status_val == "approved" and self.customer_id:
+            year = self.created_at.year if self.created_at else 2026
+            return f"SG-CUST-{year}-{self.customer_id:04d}"
+        return None
 
     @property
     def customer_name(self) -> str | None:

@@ -238,8 +238,9 @@ async def list_applications(
             page=page,
             per_page=per_page,
         )
+        items_data = [ApplicationDetail.model_validate(app) for app in result]
         return paginated_response(
-            items=result,
+            items=items_data,
             total=total,
             page=page,
             per_page=per_page,

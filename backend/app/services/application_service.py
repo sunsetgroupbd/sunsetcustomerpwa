@@ -471,6 +471,32 @@ class ApplicationService:
         total = query.count()
         offset = (page - 1) * per_page
         items = query.order_by(Application.id.desc()).offset(offset).limit(per_page).all()
+
+        # Ensure approved applications have permanent customer_id_number assigned
+        need_commit = False
+        for app in items:
+            status_val = app.application_status.value if hasattr(app.application_status, "value") else str(app.application_status)
+            if status_val == "approved" and app.customer and not app.customer.customer_id_number:
+                year = app.created_at.year if app.created_at else datetime.now(timezone.utc).year
+                prefix = f"SG-CUST-{year}-"
+                count = (
+                    self.db.query(func.count(User.id))
+                    .filter(User.customer_id_number.like(f"{prefix}%"))
+                    .scalar()
+                    or 0
+                )
+                seq = count + 1
+                cust_id = f"{prefix}{seq:04d}"
+                while self.db.query(User).filter(User.customer_id_number == cust_id).first():
+                    seq += 1
+                    cust_id = f"{prefix}{seq:04d}"
+                app.customer.customer_id_number = cust_id
+                if app.customer.customer_profile:
+                    app.customer.customer_profile.customer_id_number = cust_id
+                need_commit = True
+        if need_commit:
+            self.db.commit()
+
         return items, total
 
     # -------------------------------------------------------------------------

@@ -309,7 +309,14 @@ export default function CrDashboardPage() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-slate-900">{clientName}</h4>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900">{clientName}</h4>
+                          {app.status === 'approved' || app.customer_id_number ? (
+                            <span className="inline-block font-mono text-[10px] font-bold text-[#006B3E] bg-emerald-50 border border-emerald-300 px-1.5 py-0.5 rounded mt-0.5">
+                              Cust ID: {app.customer_id_number || (app.customer_id ? `SG-CUST-2026-${String(app.customer_id).padStart(4, '0')}` : 'Approved')}
+                            </span>
+                          ) : null}
+                        </div>
                         <span className="font-mono font-semibold text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
                           {clientPhone}
                         </span>
@@ -408,6 +415,11 @@ export default function CrDashboardPage() {
                           </td>
                           <td className="py-3 px-4">
                             <div className="font-bold text-slate-900">{clientName}</div>
+                            {app.status === 'approved' || app.customer_id_number ? (
+                              <div className="inline-flex items-center gap-1 mt-0.5 bg-emerald-50 border border-emerald-300 text-[#006B3E] px-1.5 py-0.5 rounded font-mono text-[10px] font-bold">
+                                <span>Cust ID: {app.customer_id_number || (app.customer_id ? `SG-CUST-2026-${String(app.customer_id).padStart(4, '0')}` : 'Approved')}</span>
+                              </div>
+                            ) : null}
                           </td>
                           <td className="py-3 px-4 font-mono font-semibold text-slate-800">
                             {clientPhone}

@@ -206,12 +206,17 @@ function AdminDashboardContent() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h4 className="text-sm font-bold text-slate-900">{clientName}</h4>
-                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                      Customer ID:{' '}
-                      <span className="font-semibold text-slate-800">
-                        {app.customer_id_number || 'Pending Admin Approval'}
-                      </span>
-                    </div>
+                    {app.status === 'approved' || app.customer_id_number ? (
+                      <div className="inline-flex items-center gap-1.5 mt-1 bg-emerald-50 border border-emerald-300 text-[#006B3E] px-2 py-0.5 rounded font-mono text-[11px] font-bold shadow-2xs">
+                        <Icons.Shield className="w-3.5 h-3.5 text-[#006B3E]" />
+                        <span>Cust ID: {app.customer_id_number || (app.customer_id ? `SG-CUST-2026-${String(app.customer_id).padStart(4, '0')}` : 'Approved Investor')}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                        Customer ID:{' '}
+                        <span className="font-semibold text-slate-600">Pending Approval</span>
+                      </div>
+                    )}
                   </div>
                   <span className="font-mono font-semibold text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded shrink-0">
                     {clientPhone}
@@ -339,11 +344,12 @@ function AdminDashboardContent() {
                       <div className="font-mono font-bold text-slate-900">{app.reference_number || (app as any).application_number}</div>
                       <div className="font-bold text-slate-900">{clientName}</div>
                       <div className="text-[11px] text-slate-500 font-mono">{clientPhone}</div>
-                      {app.customer_id_number && (
-                        <div className="text-[10px] text-[#008751] font-mono font-bold mt-0.5">
-                          Cust ID: {app.customer_id_number}
+                      {app.status === 'approved' || app.customer_id_number ? (
+                        <div className="inline-flex items-center gap-1 mt-1 bg-emerald-50 border border-emerald-300 text-[#006B3E] px-2 py-0.5 rounded font-mono text-[11px] font-extrabold shadow-2xs">
+                          <Icons.Shield className="w-3 h-3 text-[#006B3E]" />
+                          <span>Cust ID: {app.customer_id_number || (app.customer_id ? `SG-CUST-2026-${String(app.customer_id).padStart(4, '0')}` : 'Approved Investor')}</span>
                         </div>
-                      )}
+                      ) : null}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1.5">
