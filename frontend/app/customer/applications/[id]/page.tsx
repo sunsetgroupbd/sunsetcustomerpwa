@@ -15,6 +15,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Modal } from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Textarea';
 import { ApplicationReceiptModal } from '@/components/application-form/ApplicationReceiptModal';
+import { ProjectTransferModal } from '@/components/customer/ProjectTransferModal';
 
 interface PreviewDocState {
   id: string | number;
@@ -45,6 +46,7 @@ export default function CustomerApplicationDetailPage({
   const [editRequests, setEditRequests] = useState<ApplicationEditRequest[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [editReason, setEditReason] = useState('');
   const [isSubmittingEditReq, setIsSubmittingEditReq] = useState(false);
 
@@ -599,6 +601,18 @@ export default function CustomerApplicationDetailPage({
                     {application.payment_detail?.number_of_installments} x ৳ {application.payment_detail?.installment_amount?.toLocaleString('en-IN')} ({application.payment_detail?.installment_type})
                   </span>
                 </div>
+
+                {/* Discreet Project / Package Transfer Option */}
+                <div className="pt-2.5 mt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Investment Adjustment</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsTransferModalOpen(true)}
+                    className="hover:text-slate-600 underline transition-colors cursor-pointer"
+                  >
+                    Request Project Transfer
+                  </button>
+                </div>
               </div>
             </Card>
 
@@ -767,6 +781,22 @@ export default function CustomerApplicationDetailPage({
             },
             nominees: application.nominees as any,
             declarationAccepted: Boolean(application.declaration_accepted),
+          }}
+        />
+      )}
+
+      {/* Discreet Project / Package Transfer Modal */}
+      {application && (
+        <ProjectTransferModal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          application={application}
+          onSuccess={() => {
+            setStatusMsg({
+              type: 'success',
+              text: 'Project transfer request submitted successfully. Our team will review and contact you.',
+            });
+            loadData();
           }}
         />
       )}

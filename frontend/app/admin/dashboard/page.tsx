@@ -16,6 +16,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Icons } from '@/components/ui/Icons';
 import { openSmsWithCredentials } from '@/lib/sms';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { SuperComboAllocationModal } from '@/components/admin/SuperComboAllocationModal';
 
 function AdminDashboardContent() {
   const router = useRouter();
@@ -48,6 +49,9 @@ function AdminDashboardContent() {
   // Assign CR modal
   const [assigningApp, setAssigningApp] = useState<Application | null>(null);
   const [selectedCrId, setSelectedCrId] = useState('');
+
+  // Super Combo Portfolio Allocation Modal
+  const [selectedSuperComboApp, setSelectedSuperComboApp] = useState<Application | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -183,6 +187,16 @@ function AdminDashboardContent() {
                     <span className="text-[10px] font-bold text-[#008751] bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
                       {bizCode}
                     </span>
+                    {bizCode === 'SPC' && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSuperComboApp(app)}
+                        className="text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                        title="View 4-in-1 Asset Allocation"
+                      >
+                        4-in-1 Ratio
+                      </button>
+                    )}
                   </div>
                   <Badge status={app.status} />
                 </div>
@@ -331,9 +345,21 @@ function AdminDashboardContent() {
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <span className="font-bold text-[#008751] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[11px]">
-                        {bizCode}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-[#008751] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[11px]">
+                          {bizCode}
+                        </span>
+                        {bizCode === 'SPC' && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSuperComboApp(app)}
+                            className="text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                            title="View 4-in-1 Asset Allocation"
+                          >
+                            4-in-1 Ratio
+                          </button>
+                        )}
+                      </div>
                       <div className="font-semibold text-slate-800 mt-1">{packageName}</div>
                       <div className="text-[11px] text-slate-500">{shares} {shares > 1 ? 'Shares' : 'Share'}</div>
                     </td>
@@ -524,7 +550,18 @@ function AdminDashboardContent() {
                             </Badge>
                           </td>
                           <td className="py-3 px-4 max-w-xs text-slate-700">
-                            <p className="line-clamp-2">{req.reason}</p>
+                            {req.reason.includes('[PROJECT TRANSFER]') ? (
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded">
+                                  Project Transfer
+                                </span>
+                                <p className="text-xs font-semibold text-slate-900 leading-snug">
+                                  {req.reason.replace('[PROJECT TRANSFER]', '').trim()}
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="line-clamp-2">{req.reason}</p>
+                            )}
                             {req.admin_notes && (
                               <p className="text-[11px] text-slate-400 mt-0.5 italic">Note: {req.admin_notes}</p>
                             )}
@@ -904,6 +941,13 @@ function AdminDashboardContent() {
           </div>
         </form>
       </Modal>
+
+      {/* Super Combo 4-in-1 Asset Allocation Breakdown Modal */}
+      <SuperComboAllocationModal
+        isOpen={!!selectedSuperComboApp}
+        onClose={() => setSelectedSuperComboApp(null)}
+        application={selectedSuperComboApp}
+      />
     </DashboardShell>
   );
 }
