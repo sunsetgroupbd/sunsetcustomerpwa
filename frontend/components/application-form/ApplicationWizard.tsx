@@ -71,6 +71,22 @@ export const formatFileSize = (bytes?: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+export const addMonthsToDate = (dateStr: string, months: number): string => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return '';
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10) - 1;
+  const d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return '';
+  const date = new Date(y, m, d);
+  date.setMonth(date.getMonth() + months);
+  const newY = date.getFullYear();
+  const newM = String(date.getMonth() + 1).padStart(2, '0');
+  const newD = String(date.getDate()).padStart(2, '0');
+  return `${newY}-${newM}-${newD}`;
+};
+
 interface WizardProps {
   business: Business;
   availableBusinesses?: Business[];
@@ -225,6 +241,17 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     url: string;
     mimeType?: string;
   } | null>(null);
+
+  // Discount percentage state (bi-directionally synchronized with discount_amount)
+  const [discountPercent, setDiscountPercent] = useState<string>(() => {
+    const gross = (Number(existingApplication?.ownership_detail?.number_of_ownership) || 1) *
+                  (Number(existingApplication?.ownership_detail?.price_per_ownership) || 0);
+    const disc = Number(existingApplication?.ownership_detail?.discount_amount) || 0;
+    if (gross > 0 && disc > 0) {
+      return String(Number(((disc / gross) * 100).toFixed(2)));
+    }
+    return '';
+  });
 
   // Robust document lookup matching direct keys and all known backend aliases
   const getUploadedDoc = (type: string): UploadedDocItem | undefined => {
@@ -610,9 +637,17 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
     const total = Math.max(0, qty * pricePerUnit - discount);
     const words = numberToWords(total);
     const booking = suggestedBookingMoney !== undefined ? suggestedBookingMoney : formData.booking_money;
-    const effectiveBooking = Math.max(booking, formData.token_money || 0);
+    const token = formData.token_money || 0;
+    const effectiveBooking = Math.max(booking, token);
     const dues = Math.max(0, total - effectiveBooking);
     const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
+    const bookingCount = formData.booking_installment_count || 1;
+    const remainingBooking = Math.max(0, booking - token);
+    const bookingEmi = bookingCount > 1 ? Math.round(remainingBooking / bookingCount) : remainingBooking;
+
+    const gross = qty * pricePerUnit;
+    const pct = gross > 0 && discount > 0 ? Number(((discount / gross) * 100).toFixed(2)) : 0;
+    setDiscountPercent(pct > 0 ? String(pct) : '');
 
     setFormData((prev) => ({
       ...prev,
@@ -621,8 +656,8 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       price_per_ownership: pricePerUnit,
       discount_amount: discount,
       booking_money: booking,
-      booking_installment_count: 1,
-      booking_installment_amount: 0,
+      booking_installment_count: bookingCount,
+      booking_installment_amount: bookingEmi,
       total_price: total,
       amount_in_words: words,
       dues_amount: dues,
@@ -2317,7 +2352,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
               })}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
               <Input
                 label="Number of Ownerships"
                 type="number"
@@ -2326,6 +2361,11 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 value={formData.number_of_ownership}
                 onChange={(e) => {
                   const qty = parseInt(e.target.value) || 1;
+                  const newGross = qty * (formData.price_per_ownership || 0);
+                  const pct = newGross > 0 && formData.discount_amount > 0
+                    ? Number(((formData.discount_amount / newGross) * 100).toFixed(2))
+                    : 0;
+                  setDiscountPercent(pct > 0 ? String(pct) : '');
                   updatePricing(formData.package_type, qty, formData.discount_amount, formData.price_per_ownership);
                 }}
               />
@@ -2335,18 +2375,87 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 value={formData.price_per_ownership}
                 onChange={(e) => {
                   const p = parseFloat(e.target.value) || 0;
+                  const newGross = (formData.number_of_ownership || 1) * p;
+                  const pct = newGross > 0 && formData.discount_amount > 0
+                    ? Number(((formData.discount_amount / newGross) * 100).toFixed(2))
+                    : 0;
+                  setDiscountPercent(pct > 0 ? String(pct) : '');
                   updatePricing(formData.package_type, formData.number_of_ownership, formData.discount_amount, p);
                 }}
               />
               <Input
                 label="Special Discount (BDT)"
                 type="number"
-                value={formData.discount_amount}
+                value={formData.discount_amount || ''}
+                placeholder="0"
+                helperText={discountPercent ? `Equals ${discountPercent}% of package` : 'Type amount or choose %'}
                 onChange={(e) => {
                   const d = parseFloat(e.target.value) || 0;
+                  const gross = (formData.number_of_ownership || 1) * (formData.price_per_ownership || 0);
+                  const pct = gross > 0 && d > 0 ? Number(((d / gross) * 100).toFixed(2)) : 0;
+                  setDiscountPercent(pct > 0 ? String(pct) : '');
                   updatePricing(formData.package_type, formData.number_of_ownership, d, formData.price_per_ownership);
                 }}
               />
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Discount (%)
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min={0}
+                      max={100}
+                      value={discountPercent}
+                      placeholder="0.0"
+                      onChange={(e) => {
+                        const valStr = e.target.value;
+                        setDiscountPercent(valStr);
+                        const val = parseFloat(valStr) || 0;
+                        const gross = (formData.number_of_ownership || 1) * (formData.price_per_ownership || 0);
+                        const d = Math.round((val / 100) * gross);
+                        updatePricing(formData.package_type, formData.number_of_ownership, d, formData.price_per_ownership);
+                      }}
+                      className="w-full h-10 px-3 pr-7 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006B3E]/20 focus:border-[#006B3E]"
+                    />
+                    <span className="absolute right-2.5 top-2.5 text-xs font-semibold text-slate-400 pointer-events-none">
+                      %
+                    </span>
+                  </div>
+                  <select
+                    aria-label="Discount percentage presets"
+                    value={['0', '2', '3', '5', '7.5', '10', '12', '15', '20', '25', '30'].includes(discountPercent) ? discountPercent : ''}
+                    onChange={(e) => {
+                      const valStr = e.target.value;
+                      if (!valStr) return;
+                      setDiscountPercent(valStr);
+                      const val = parseFloat(valStr) || 0;
+                      const gross = (formData.number_of_ownership || 1) * (formData.price_per_ownership || 0);
+                      const d = Math.round((val / 100) * gross);
+                      updatePricing(formData.package_type, formData.number_of_ownership, d, formData.price_per_ownership);
+                    }}
+                    className="h-10 px-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#006B3E]/20 focus:border-[#006B3E]"
+                  >
+                    <option value="">Preset</option>
+                    <option value="0">0%</option>
+                    <option value="2">2%</option>
+                    <option value="3">3%</option>
+                    <option value="5">5%</option>
+                    <option value="7.5">7.5%</option>
+                    <option value="10">10%</option>
+                    <option value="12">12%</option>
+                    <option value="15">15%</option>
+                    <option value="20">20%</option>
+                    <option value="25">25%</option>
+                    <option value="30">30%</option>
+                  </select>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Select preset or type custom %
+                </span>
+              </div>
             </div>
 
             {/* Calculated Total Box */}
@@ -2369,27 +2478,96 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
         {currentStep === 6 && (() => {
           const bizCode = (currentBusiness?.code || '').toUpperCase().trim();
           const isHospitalOrDfi = bizCode === 'SCH' || bizCode === 'DFI';
-          const maxAllowedEmis = isHospitalOrDfi ? 24 : 36;
+          const suggestedMaxEmis = isHospitalOrDfi ? 24 : 36;
           const bookingTotal = Number(formData.booking_money) || 0;
           const tokenPaid = Number(formData.token_money) || 0;
           const bookingRemainingDue = Math.max(0, bookingTotal - tokenPaid);
+          const bookingEmiCount = Math.max(1, Number(formData.booking_installment_count) || 1);
+          const bookingEmiAmount = bookingEmiCount > 1 
+            ? Math.round(bookingRemainingDue / bookingEmiCount) 
+            : bookingRemainingDue;
+          const totalRemainingPayable = Math.max(0, formData.total_price - tokenPaid);
+
+          // Handler when Token Money changes
+          const handleTokenChange = (tm: number) => {
+            const effectiveBooking = Math.max(bookingTotal, tm);
+            const dues = Math.max(0, formData.total_price - effectiveBooking);
+            const remainingBk = Math.max(0, bookingTotal - tm);
+            const bEmi = bookingEmiCount > 1 ? Math.round(remainingBk / bookingEmiCount) : remainingBk;
+            const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
+            setFormData({
+              ...formData,
+              token_money: tm,
+              booking_installment_amount: bEmi,
+              dues_amount: dues,
+              installment_amount: instAmt,
+            });
+          };
+
+          // Handler when Total Booking Money changes
+          const handleBookingMoneyChange = (bm: number) => {
+            const effectiveBooking = Math.max(bm, tokenPaid);
+            const dues = Math.max(0, formData.total_price - effectiveBooking);
+            const remainingBk = Math.max(0, bm - tokenPaid);
+            const bEmi = bookingEmiCount > 1 ? Math.round(remainingBk / bookingEmiCount) : remainingBk;
+            const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
+            setFormData({
+              ...formData,
+              booking_money: bm,
+              booking_installment_amount: bEmi,
+              dues_amount: dues,
+              installment_amount: instAmt,
+            });
+          };
+
+          // Handler when Booking EMIs count changes
+          const handleBookingEmiCountChange = (count: number) => {
+            const validCount = Math.max(1, count);
+            const bEmi = validCount > 1 ? Math.round(bookingRemainingDue / validCount) : bookingRemainingDue;
+            // Auto-advance installment start date to start after booking EMIs finish
+            const autoInstallmentStartDate = formData.booking_date 
+              ? addMonthsToDate(formData.booking_date, validCount) 
+              : formData.installment_start_date;
+
+            setFormData({
+              ...formData,
+              booking_installment_count: validCount,
+              booking_installment_amount: bEmi,
+              installment_start_date: autoInstallmentStartDate || formData.installment_start_date,
+            });
+          };
+
+          // Handler when Booking Date changes
+          const handleBookingDateChange = (date: string) => {
+            const autoInstallmentStartDate = date 
+              ? addMonthsToDate(date, bookingEmiCount) 
+              : formData.installment_start_date;
+
+            setFormData({
+              ...formData,
+              booking_date: date,
+              installment_start_date: autoInstallmentStartDate || formData.installment_start_date,
+            });
+          };
 
           return (
             <div className="space-y-6">
               <div className="border-b border-slate-100 pb-3">
                 <h3 className="text-base font-semibold text-slate-900">Step 6: Payment Schedule &amp; Installments</h3>
                 <p className="text-xs text-slate-500">
-                  Configure token payment, one-time booking money, and regular installment plan.
+                  Configure token payment, booking money (single or EMIs), and regular installment plan.
                 </p>
               </div>
 
-              {/* Part 1: Token & Booking Money (Given At A Time) */}
+              {/* Part 1: Booking & Token Money (Phase 1) */}
               <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">1. Booking &amp; Token Money</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      1. Booking &amp; Token Money (Phase 1)
+                    </span>
                     <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      Paid At A Time
+                      {bookingEmiCount > 1 ? `${bookingEmiCount} Booking EMIs` : 'Single Booking Payment'}
                     </span>
                   </div>
                   <span className="text-xs font-medium text-slate-500">
@@ -2397,49 +2575,40 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <Input
                     label="Token Money Paid (BDT)"
                     type="number"
                     value={formData.token_money || ''}
-                    placeholder="Current amount given"
-                    helperText="Amount paid right now (deducted from Booking Money)"
-                    onChange={(e) => {
-                      const tm = parseFloat(e.target.value) || 0;
-                      const effectiveBooking = Math.max(formData.booking_money, tm);
-                      const dues = Math.max(0, formData.total_price - effectiveBooking);
-                      const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
-                      setFormData({ ...formData, token_money: tm, dues_amount: dues, installment_amount: instAmt });
-                    }}
+                    placeholder="Paid right now"
+                    helperText="Deducted from Booking Money"
+                    onChange={(e) => handleTokenChange(parseFloat(e.target.value) || 0)}
                   />
                   <Input
                     label="Total Booking Money (BDT)"
                     type="number"
                     value={formData.booking_money || ''}
-                    helperText="Official package booking money"
-                    onChange={(e) => {
-                      const bm = parseFloat(e.target.value) || 0;
-                      const effectiveBooking = Math.max(bm, formData.token_money);
-                      const dues = Math.max(0, formData.total_price - effectiveBooking);
-                      const instAmt = formData.number_of_installments > 0 ? Math.round(dues / formData.number_of_installments) : 0;
-                      setFormData({
-                        ...formData,
-                        booking_money: bm,
-                        dues_amount: dues,
-                        installment_amount: instAmt,
-                      });
-                    }}
+                    helperText="Official booking commitment"
+                    onChange={(e) => handleBookingMoneyChange(parseFloat(e.target.value) || 0)}
                   />
                   <Input
-                    label="Booking Payment Date"
+                    label="Number of Booking EMIs"
+                    type="number"
+                    min={1}
+                    value={formData.booking_installment_count || 1}
+                    helperText="1 = Single Payment · 2+ = Monthly EMIs"
+                    onChange={(e) => handleBookingEmiCountChange(parseInt(e.target.value) || 1)}
+                  />
+                  <Input
+                    label="Booking Starting Date"
                     type="date"
                     value={formData.booking_date}
-                    helperText="Date by which remaining booking money is due"
-                    onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })}
+                    helperText="Date booking payments start"
+                    onChange={(e) => handleBookingDateChange(e.target.value)}
                   />
                 </div>
 
-                {/* Booking Money Clean Breakdown Notice */}
+                {/* Phase 1 Live Breakdown Box */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white p-3 rounded-lg border border-slate-200">
                   <div>
                     <span className="text-slate-500 block text-[11px]">Token Money Paid Today</span>
@@ -2454,25 +2623,34 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[11px]">Total Booking Commitment</span>
+                    <span className="text-slate-500 block text-[11px]">Booking Payment Schedule</span>
                     <span className="font-bold text-[#006B3E] text-sm">
-                      ৳ {bookingTotal.toLocaleString('en-IN')} <span className="text-[10px] font-normal text-slate-500">(1-time payment)</span>
+                      {bookingEmiCount > 1
+                        ? `${bookingEmiCount} EMIs of ৳ ${bookingEmiAmount.toLocaleString('en-IN')}/mo`
+                        : `1 Payment on ${formData.booking_date || 'Booking Date'}`}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Part 2: Regular Installment Plan on Remaining Rest Amount */}
+              {/* Part 2: Regular Installment Plan on Remaining Rest Amount (Phase 2) */}
               <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">2. Regular Installment Plan (On Remaining Rest Amount)</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        2. Regular Installment Plan (Phase 2 - Remaining Rest Amount)
+                      </span>
+                      <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                        Starts After Booking Money
+                      </span>
+                    </div>
                     <span className="text-[11px] text-slate-500 block mt-0.5">
-                      Max {maxAllowedEmis} EMIs available for {currentBusiness?.name || 'this division'}
+                      Standard guideline: ~{suggestedMaxEmis} EMIs for {currentBusiness?.name || 'this division'} (flexible, not locked)
                     </span>
                   </div>
-                  <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    Dues: ৳ {formData.dues_amount.toLocaleString('en-IN')}
+                  <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded border border-amber-200 self-start sm:self-auto">
+                    Rest Dues: ৳ {formData.dues_amount.toLocaleString('en-IN')}
                   </span>
                 </div>
 
@@ -2492,12 +2670,11 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                     label="Number of Installments (EMIs)"
                     type="number"
                     min={1}
-                    max={maxAllowedEmis}
                     value={formData.number_of_installments || ''}
-                    helperText={`Allowed: 1 to ${maxAllowedEmis} EMIs`}
+                    placeholder="e.g. 12, 24, 36"
+                    helperText={`Flexible count (guideline ~${suggestedMaxEmis} EMIs)`}
                     onChange={(e) => {
-                      let n = parseInt(e.target.value) || 0;
-                      if (n > maxAllowedEmis) n = maxAllowedEmis;
+                      const n = parseInt(e.target.value) || 0;
                       const instAmt = n > 0 ? Math.round(formData.dues_amount / n) : 0;
                       setFormData({ ...formData, number_of_installments: n, installment_amount: instAmt });
                     }}
@@ -2512,32 +2689,47 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                     label="Installment Starting Date"
                     type="date"
                     value={formData.installment_start_date}
+                    helperText="Starts after booking payments complete"
                     onChange={(e) => setFormData({ ...formData, installment_start_date: e.target.value })}
                   />
                 </div>
               </div>
 
               {/* Summary Balance Card */}
-              <div className="bg-[#006B3E]/5 border border-[#006B3E]/20 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div>
-                  <span className="text-xs text-slate-500 block">Remaining Rest Amount (Installment Dues)</span>
+              <div className="bg-[#006B3E]/5 border border-[#006B3E]/20 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="text-xs text-slate-500 block">Total Remaining Outstanding (Payable)</span>
                   <span className="text-2xl font-bold text-[#006B3E]">
-                    ৳ {formData.dues_amount.toLocaleString('en-IN')}
+                    ৳ {totalRemainingPayable.toLocaleString('en-IN')}
                   </span>
-                  <span className="text-[11px] text-slate-600 block mt-0.5">
-                    Total Package: <strong>৳ {formData.total_price.toLocaleString('en-IN')}</strong> · Total Booking: <strong>৳ {bookingTotal.toLocaleString('en-IN')}</strong>
-                  </span>
+                  <div className="text-[11px] text-slate-600 flex flex-wrap gap-x-3 gap-y-0.5">
+                    <span>Total Package: <strong>৳ {formData.total_price.toLocaleString('en-IN')}</strong></span>
+                    <span>·</span>
+                    <span>Paid Token Today: <strong className="text-emerald-700">৳ {tokenPaid.toLocaleString('en-IN')}</strong></span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs text-slate-500 block">Installment Plan Summary</span>
-                  <span className="text-xs font-semibold text-slate-800 block">
-                    {formData.number_of_installments > 0
-                      ? `${formData.number_of_installments} EMIs of ৳ ${(formData.installment_amount || 0).toLocaleString('en-IN')} (${formData.installment_type || 'Monthly'})`
-                      : 'Select installments or pay lump sum'}
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    Starts on {formData.installment_start_date || 'N/A'}
-                  </span>
+
+                <div className="text-left md:text-right border-t md:border-t-0 pt-2 md:pt-0 border-slate-200/60 w-full md:w-auto">
+                  <span className="text-xs text-slate-500 block">Two-Phase Schedule Summary</span>
+                  <div className="text-xs font-semibold text-slate-800 space-y-0.5">
+                    <div>
+                      <span className="text-slate-500 font-normal">Phase 1 (Booking): </span>
+                      {bookingEmiCount > 1
+                        ? `${bookingEmiCount} EMIs of ৳ ${bookingEmiAmount.toLocaleString('en-IN')} (৳ ${bookingRemainingDue.toLocaleString('en-IN')} due)`
+                        : `৳ ${bookingRemainingDue.toLocaleString('en-IN')} on ${formData.booking_date || 'Booking Date'}`}
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-normal">Phase 2 (Rest Dues): </span>
+                      {formData.number_of_installments > 0
+                        ? `${formData.number_of_installments} EMIs of ৳ ${(formData.installment_amount || 0).toLocaleString('en-IN')} (${formData.installment_type || 'Monthly'})`
+                        : 'Lump sum / Not scheduled'}
+                    </div>
+                    {formData.installment_start_date && (
+                      <div className="text-[10px] text-emerald-700 font-medium">
+                        Phase 2 starts on {formData.installment_start_date} (after Phase 1 finishes)
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2809,15 +3001,19 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 <span className="font-semibold text-slate-900">{formData.package_type} ({formData.number_of_ownership} Share)</span>
                 <span className="text-slate-500">Total Price:</span>
                 <span className="font-bold text-[#006B3E]">৳ {formData.total_price.toLocaleString('en-IN')}</span>
-                <span className="text-slate-500">Booking Money:</span>
+                <span className="text-slate-500">Booking Money (Phase 1):</span>
                 <span className="font-semibold text-slate-900">
                   ৳ {formData.booking_money.toLocaleString('en-IN')}
-                  {formData.token_money > 0 ? ` (Token: ৳ ${formData.token_money.toLocaleString('en-IN')})` : ''}
+                  {formData.booking_installment_count > 1
+                    ? ` (${formData.booking_installment_count} EMIs @ ৳ ${(formData.booking_installment_amount || 0).toLocaleString('en-IN')})`
+                    : formData.token_money > 0 ? ` (Token: ৳ ${formData.token_money.toLocaleString('en-IN')})` : ''}
                 </span>
-                <span className="text-slate-500">Remaining Rest Dues:</span>
+                <span className="text-slate-500">Rest Dues (Phase 2):</span>
                 <span className="font-semibold text-slate-900">
                   ৳ {formData.dues_amount.toLocaleString('en-IN')}
-                  {formData.number_of_installments > 0 ? ` (${formData.number_of_installments} EMIs)` : ''}
+                  {formData.number_of_installments > 0
+                    ? ` (${formData.number_of_installments} EMIs ${formData.installment_start_date ? `from ${formData.installment_start_date}` : ''})`
+                    : ''}
                 </span>
               </div>
               <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">

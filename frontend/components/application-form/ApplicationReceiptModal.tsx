@@ -128,8 +128,10 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
   const netTotal = Number(own.total_price) || Math.max(0, grossTotal - discount);
   const tokenMoney = Number(pay.token_money) || 0;
   const bookingTotal = Number(pay.booking_money) || Number(pay.token_money) || 0;
-  const bookingPaid = bookingTotal;
-  const remainingDues = Number(pay.dues_amount) || Math.max(0, netTotal - bookingPaid);
+  const bookingRemaining = Math.max(0, bookingTotal - tokenMoney);
+  const bookingCount = Number(pay.booking_installment_count) || 1;
+  const bookingEmi = Number(pay.booking_installment_amount) || (bookingCount > 1 ? Math.round(bookingRemaining / bookingCount) : bookingRemaining);
+  const remainingDues = Number(pay.dues_amount) || Math.max(0, netTotal - bookingTotal);
   const refNum = data.referenceNumber || 'SKH-2026-00003';
 
   // Minimal, ultra-clean HTML string specifically designed to fit on 1 single A4 page
@@ -426,13 +428,19 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
             <tr>
               <td style="font-weight:700; color:#006B3E;">
                 ৳ ${bookingTotal.toLocaleString('en-IN')}
-                ${tokenMoney > 0 ? `<br><small style="color:#64748b; font-weight:normal;">(Token: ৳ ${tokenMoney.toLocaleString('en-IN')} · Due: ৳ ${Math.max(0, bookingTotal - tokenMoney).toLocaleString('en-IN')})</small>` : ''}
+                <br>
+                <small style="color:#64748b; font-weight:normal;">
+                  ${tokenMoney > 0 ? `Token: ৳ ${tokenMoney.toLocaleString('en-IN')} · ` : ''}
+                  ${bookingCount > 1 
+                    ? `${bookingCount} Booking EMIs @ ৳ ${bookingEmi.toLocaleString('en-IN')}` 
+                    : `Due: ৳ ${bookingRemaining.toLocaleString('en-IN')}`}
+                </small>
               </td>
               <td style="font-weight:700; color:#b91c1c;">৳ ${remainingDues.toLocaleString('en-IN')}</td>
               <td>
                 ${
                   pay.number_of_installments
-                    ? `${pay.number_of_installments} &times; ৳ ${(Number(pay.installment_amount) || 0).toLocaleString('en-IN')} (${pay.installment_type || 'Monthly'})`
+                    ? `${pay.number_of_installments} &times; ৳ ${(Number(pay.installment_amount) || 0).toLocaleString('en-IN')} (${pay.installment_type || 'Monthly'})${pay.installment_start_date ? `<br><small style="color:#64748b;">(Starts: ${pay.installment_start_date})</small>` : ''}`
                     : 'Lump Sum Payment'
                 }
               </td>
@@ -804,21 +812,27 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
                   <div className="p-1.5 rounded border border-slate-200 bg-slate-50">
-                    <span className="text-[8px] uppercase font-bold text-slate-500 block">Booking Money</span>
+                    <span className="text-[8px] uppercase font-bold text-slate-500 block">Booking Money (Phase 1)</span>
                     <span className="font-mono font-bold text-[#006B3E] text-[11px] block">
                       ৳ {bookingTotal.toLocaleString('en-IN')}
                     </span>
-                    {tokenMoney > 0 ? (
-                      <span className="text-[8px] text-slate-500 block">
-                        Token: ৳ {tokenMoney.toLocaleString('en-IN')} · Due: ৳ {Math.max(0, bookingTotal - tokenMoney).toLocaleString('en-IN')}
-                      </span>
-                    ) : null}
+                    <span className="text-[8px] text-slate-500 block">
+                      {tokenMoney > 0 ? `Token: ৳ ${tokenMoney.toLocaleString('en-IN')} · ` : ''}
+                      {bookingCount > 1
+                        ? `${bookingCount} EMIs @ ৳ ${bookingEmi.toLocaleString('en-IN')}`
+                        : `Due: ৳ ${bookingRemaining.toLocaleString('en-IN')}`}
+                    </span>
                   </div>
                   <div className="p-1.5 rounded border border-slate-200 bg-slate-50">
-                    <span className="text-[8px] uppercase font-bold text-slate-500 block">Remaining Balance</span>
+                    <span className="text-[8px] uppercase font-bold text-slate-500 block">Rest Dues (Phase 2)</span>
                     <span className="font-mono font-bold text-rose-700 text-[11px]">
                       ৳ {remainingDues.toLocaleString('en-IN')}
                     </span>
+                    {pay.installment_start_date ? (
+                      <span className="text-[8px] text-slate-500 block">
+                        Starts: {pay.installment_start_date}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="p-1.5 rounded border border-slate-200 bg-slate-50">
                     <span className="text-[8px] uppercase font-bold text-slate-500 block">Installment Plan</span>
@@ -826,7 +840,7 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
                       {pay.number_of_installments ? `${pay.number_of_installments} Months` : 'Lump Sum'}
                     </span>
                     {pay.installment_amount ? (
-                      <span className="text-[9px] text-slate-500">
+                      <span className="text-[9px] text-slate-500 block">
                         ৳ {(Number(pay.installment_amount) || 0).toLocaleString('en-IN')}/mo
                       </span>
                     ) : null}
