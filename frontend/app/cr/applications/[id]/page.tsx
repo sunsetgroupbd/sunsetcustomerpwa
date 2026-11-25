@@ -1108,28 +1108,43 @@ export default function CrApplicationDetailPage({
             designation: application.applicant_info?.designation,
           },
           ownershipDetail: {
-            package_type: application.ownership_detail?.package_type || application.ownership_detail?.package || 'Standard',
+            package: application.ownership_detail?.package_type || (application.ownership_detail as any)?.package || 'Standard',
+            package_type: application.ownership_detail?.package_type || (application.ownership_detail as any)?.package || 'Standard',
             number_of_ownership: application.ownership_detail?.number_of_ownership || 1,
+            price_per_ownership: application.ownership_detail?.price_per_ownership || 0,
+            discount: application.ownership_detail?.discount_amount || 0,
+            discount_amount: application.ownership_detail?.discount_amount || 0,
             total_price: application.ownership_detail?.total_price || 0,
+            amount_in_words: application.ownership_detail?.amount_in_words,
           },
           paymentDetail: {
+            token_money: application.payment_detail?.token_money || 0,
             booking_money: application.payment_detail?.booking_money || 0,
+            booking_date: application.payment_detail?.booking_date || (application.payment_detail as any)?.booking_money_date,
+            booking_installment_count: application.payment_detail?.booking_installment_count || 1,
+            booking_installment_amount: application.payment_detail?.booking_installment_amount || 0,
+            installment_type: application.payment_detail?.installment_type,
             number_of_installments: application.payment_detail?.number_of_installments || 0,
             installment_amount: application.payment_detail?.installment_amount || 0,
+            installment_start_date: application.payment_detail?.installment_start_date || (application.payment_detail as any)?.installment_starting_date,
+            dues_amount: application.payment_detail?.dues_amount || 0,
           },
           bankDetail: application.bank_detail
             ? {
                 bank_name: application.bank_detail.bank_name,
-                branch_name: application.bank_detail.branch || application.bank_detail.branch_name,
+                branch_name: application.bank_detail.branch || (application.bank_detail as any).branch_name,
                 account_name: application.bank_detail.account_name,
                 account_number: application.bank_detail.account_number,
               }
             : undefined,
           nominees: (application.nominees || []).map((n) => ({
             name: n.full_name || n.name || '',
+            full_name: n.full_name || n.name || '',
             relationship: n.relation || n.relationship || '',
-            cell_number: n.cell_number,
-            nid_or_passport: n.nid_or_passport,
+            relation: n.relation || n.relationship || '',
+            cell_number: n.cell_number || (n as any).mobile_number,
+            nid_or_passport: n.nid_or_passport || (n as any).nid_number,
+            share_percentage: (n as any).share_percentage || (n as any).percentage,
           })),
         }}
       />

@@ -260,7 +260,8 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       applicant_photo: ['photograph', 'photo', 'profile_photo'],
       photograph: ['applicant_photo', 'photo', 'profile_photo'],
       nominee_photo: ['nominee_photograph', 'nominee_photo_front'],
-      nominee_nid: ['nominee_nid_front', 'nominee_nid_back', 'nominee_passport'],
+      nominee_nid: ['nominee_nid_front', 'nominee_passport'],
+      nominee_nid_back: ['nominee_nid_back_side', 'nominee_back'],
       nid_front: ['nid', 'national_id', 'passport'],
       nid_back: ['nid_back_side', 'nid_back_page'],
       tin_certificate: ['tin', 'tin_cert', 'e_tin'],
@@ -1219,7 +1220,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] font-bold tracking-wider uppercase text-[#006B3E] bg-[#006B3E]/10 px-2 py-0.5 rounded-full shrink-0">
-                Division: {currentBusiness.code}
+                Project: {currentBusiness.code}
               </span>
 
               {/* Change Division App Action Pill Button */}
@@ -1230,7 +1231,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                   setIsChangeBizModalOpen(true);
                 }}
                 className="inline-flex items-center gap-1 text-[11px] font-bold text-[#006B3E] hover:text-[#005632] bg-emerald-50 hover:bg-emerald-100/90 active:scale-95 px-2.5 py-1 rounded-full border border-emerald-200/90 shadow-2xs transition-all cursor-pointer shrink-0"
-                title="Change project division"
+                title="Change project"
               >
                 <Icons.Refresh className="w-3 h-3 text-[#006B3E]" />
                 <span>Change</span>
@@ -1265,8 +1266,8 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
             setPendingBusiness(null);
           }
         }}
-        title="Switch Division"
-        description="Select a Sunset Group business division for this application."
+        title="Switch Project"
+        description="Select a Sunset Group project for this application."
         maxWidth="md"
       >
         <div className="space-y-3 pt-1">
@@ -1352,7 +1353,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                         Keep Info &amp; Switch (Recommended)
                       </div>
                       <div className="text-[11px] text-slate-600 mt-0.5">
-                        Retains your personal info, addresses &amp; updates division pricing.
+                        Retains your personal info, addresses &amp; updates project pricing.
                       </div>
                     </div>
                   </div>
@@ -1417,7 +1418,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
               />
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#006B3E] bg-[#006B3E]/10 px-2 py-0.5 rounded-full">
-                  Division: {currentBusiness.code}
+                  Project: {currentBusiness.code}
                 </span>
                 <h4 className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">{currentBusiness.name}</h4>
               </div>
@@ -1598,6 +1599,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 { type: 'nid_back', label: 'NID Back Side', required: false },
                 { type: 'nominee_photo', label: 'Nominee Photograph', required: true },
                 { type: 'nominee_nid', label: 'Nominee NID / Passport', required: true },
+                { type: 'nominee_nid_back', label: 'Nominee NID Back Side', required: false },
                 { type: 'tin_certificate', label: 'e-TIN Certificate', required: false },
               ].map((doc) => {
                 const uploaded = getUploadedDoc(doc.type);
@@ -2752,8 +2754,9 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                 { type: 'nid_front', label: 'NID Front / Passport Page', required: true, hint: 'Clear photo or scan' },
                 { type: 'nid_back', label: 'NID Back Side', required: false, hint: 'Back side of NID card' },
                 { type: 'nominee_photo', label: 'Nominee Photograph', required: true, hint: 'Nominee passport size photo' },
-                { type: 'nominee_nid', label: 'Nominee NID / Passport', required: true, hint: 'Nominee identity document' },
-                { type: 'tin_certificate', label: 'e-TIN Certificate (Optional)', required: false, hint: 'Official TIN certificate copy' },
+                { type: 'nominee_nid', label: 'Nominee NID Front / Passport', required: true, hint: 'Nominee identity document' },
+                { type: 'nominee_nid_back', label: 'Nominee NID Back Side', required: false, hint: 'Back side of nominee NID card' },
+                { type: 'tin_certificate', label: 'e-TIN Certificate', required: false, hint: 'Official TIN certificate copy' },
               ].map((doc) => {
                 const uploaded = uploadedDocs[doc.type];
                 const isCurrentUploading = uploadingDocType === doc.type;
@@ -2783,9 +2786,11 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                             Uploaded
                           </span>
                         ) : (
-                          <span className="text-[10px] font-medium text-slate-400">
-                            {doc.required ? 'Required' : 'Optional'}
-                          </span>
+                          doc.required ? (
+                            <span className="text-[10px] font-medium text-slate-400">Required</span>
+                          ) : (doc.type === 'nid_back' || doc.type === 'nominee_nid_back') ? null : (
+                            <span className="text-[10px] font-medium text-slate-400">Optional</span>
+                          )
                         )}
                       </div>
 
@@ -3035,7 +3040,8 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                     { type: 'nid_front', label: 'NID Front' },
                     { type: 'nid_back', label: 'NID Back' },
                     { type: 'nominee_photo', label: 'Nominee Photo' },
-                    { type: 'nominee_nid', label: 'Nominee NID' },
+                    { type: 'nominee_nid', label: 'Nominee NID Front' },
+                    { type: 'nominee_nid_back', label: 'Nominee NID Back' },
                     { type: 'tin_certificate', label: 'e-TIN' },
                   ].map((doc) => {
                     const uploaded = getUploadedDoc(doc.type);

@@ -15,6 +15,7 @@ class DocumentType(str, enum.Enum):
     APPLICANT_PHOTO = "applicant_photo"
     NOMINEE_PHOTO = "nominee_photo"
     NOMINEE_NID = "nominee_nid"
+    NOMINEE_NID_BACK = "nominee_nid_back"
     SIGNATURE = "signature"
     TIN_CERTIFICATE = "tin_certificate"
     UTILITY_BILL = "utility_bill"

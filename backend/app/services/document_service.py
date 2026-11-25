@@ -62,6 +62,8 @@ class DocumentService:
             "photo": "photograph",
             "profile_photo": "profile_photo",
             "nominee_nid": "nominee_nid",
+            "nominee_nid_front": "nominee_nid",
+            "nominee_nid_back": "nominee_nid_back",
             "nominee_photo": "nominee_photo",
             "nid_front": "nid_front",
             "nid_back": "nid_back",
@@ -116,8 +118,12 @@ class DocumentService:
             slot_matching = [DocumentType.APPLICANT_PHOTO, DocumentType.PHOTOGRAPH, DocumentType.PROFILE_PHOTO]
         elif doc_type_enum == DocumentType.NOMINEE_PHOTO:
             slot_matching = [DocumentType.NOMINEE_PHOTO]
-        elif doc_type_enum in (DocumentType.NOMINEE_NID, DocumentType.PASSPORT):
-            slot_matching = [DocumentType.NOMINEE_NID] if doc_type_enum == DocumentType.NOMINEE_NID else [DocumentType.PASSPORT]
+        elif doc_type_enum == DocumentType.NOMINEE_NID:
+            slot_matching = [DocumentType.NOMINEE_NID]
+        elif doc_type_enum == DocumentType.NOMINEE_NID_BACK:
+            slot_matching = [DocumentType.NOMINEE_NID_BACK]
+        elif doc_type_enum == DocumentType.PASSPORT:
+            slot_matching = [DocumentType.PASSPORT]
         elif doc_type_enum == DocumentType.NID_FRONT:
             slot_matching = [DocumentType.NID_FRONT]
         elif doc_type_enum == DocumentType.NID_BACK:

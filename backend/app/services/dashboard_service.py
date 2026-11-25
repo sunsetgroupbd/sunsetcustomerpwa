@@ -10,11 +10,16 @@ from typing import Any, Dict
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.application import Application, ApplicationStatus, PaymentStatus
+from app.models.application import Application, ApplicationStatus, PaymentStatus, OwnershipDetail
 from app.models.business import Business
 from app.models.document import Document, VerificationStatus
 from app.models.user import User
-from app.schemas.admin import DashboardStats
+from app.schemas.admin import (
+    DashboardStats,
+    ShareInventorySummary,
+    ProjectShareInventory,
+    PackageSoldStat,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +129,9 @@ class DashboardService:
             or 0
         )
 
+        # 8. Share inventory (sold / approved vs quota by project and package)
+        share_inventory = self.calculate_share_inventory()
+
         return DashboardStats(
             total_customers=total_customers,
             total_registered_users=total_registered_users,
@@ -137,6 +145,100 @@ class DashboardService:
             today_applications=today_applications,
             this_month_applications=this_month_applications,
             business_distribution=business_distribution,
+            share_inventory=share_inventory,
+        )
+
+    def calculate_share_inventory(self) -> ShareInventorySummary:
+        """
+        Calculate total sold/approved shares, pending pipeline shares,
+        and project & package wise share counts without artificial capacity limits.
+        """
+        STANDARD_PACKAGES = ["Bronze", "Silver", "Gold", "Platinum"]
+        businesses = self.db.query(Business).filter(Business.is_active == True).order_by(Business.id).all()
+
+        # 1. Query approved shares grouped by business_id and package
+        approved_rows = (
+            self.db.query(
+                Application.business_id,
+                OwnershipDetail.package,
+                func.sum(func.coalesce(OwnershipDetail.number_of_ownership, 1)),
+            )
+            .join(OwnershipDetail, Application.id == OwnershipDetail.application_id)
+            .filter(Application.application_status == ApplicationStatus.APPROVED)
+            .group_by(Application.business_id, OwnershipDetail.package)
+            .all()
+        )
+
+        # 2. Query pending shares grouped by business_id and package
+        pending_statuses = [
+            ApplicationStatus.SUBMITTED,
+            ApplicationStatus.UNDER_REVIEW,
+            ApplicationStatus.DOCUMENTS_REQUIRED,
+        ]
+        pending_rows = (
+            self.db.query(
+                Application.business_id,
+                OwnershipDetail.package,
+                func.sum(func.coalesce(OwnershipDetail.number_of_ownership, 1)),
+            )
+            .join(OwnershipDetail, Application.id == OwnershipDetail.application_id)
+            .filter(Application.application_status.in_(pending_statuses))
+            .group_by(Application.business_id, OwnershipDetail.package)
+            .all()
+        )
+
+        approved_map: dict[tuple[int, str], int] = {}
+        for bid, pkg, count in approved_rows:
+            if bid and pkg:
+                approved_map[(bid, pkg.strip().capitalize())] = int(count or 0)
+
+        pending_map: dict[tuple[int, str], int] = {}
+        for bid, pkg, count in pending_rows:
+            if bid and pkg:
+                pending_map[(bid, pkg.strip().capitalize())] = int(count or 0)
+
+        project_inventories: list[ProjectShareInventory] = []
+        total_sold = 0
+        total_pending = 0
+
+        for biz in businesses:
+            biz_sold = 0
+            biz_pending = 0
+            pkg_items: list[PackageSoldStat] = []
+
+            for pkg_name in STANDARD_PACKAGES:
+                sold_qty = approved_map.get((biz.id, pkg_name), 0)
+                pend_qty = pending_map.get((biz.id, pkg_name), 0)
+
+                pkg_items.append(
+                    PackageSoldStat(
+                        package_name=pkg_name,
+                        shares_sold=sold_qty,
+                        shares_pending=pend_qty,
+                    )
+                )
+
+                biz_sold += sold_qty
+                biz_pending += pend_qty
+
+            project_inventories.append(
+                ProjectShareInventory(
+                    business_id=biz.id,
+                    business_name=biz.name,
+                    business_code=biz.code or "",
+                    shares_sold=biz_sold,
+                    shares_pending=biz_pending,
+                    packages=pkg_items,
+                )
+            )
+
+            total_sold += biz_sold
+            total_pending += biz_pending
+
+        return ShareInventorySummary(
+            total_shares_sold=total_sold,
+            total_shares_pending=total_pending,
+            projects=project_inventories,
         )
 
     def get_cr_performance(self) -> list[dict[str, Any]]:

@@ -587,6 +587,8 @@ export default function CustomerDashboardPage() {
               token_money: Number(receiptApp.payment_detail?.token_money) || 0,
               booking_money: Number(receiptApp.payment_detail?.booking_money) || 0,
               booking_date: receiptApp.payment_detail?.booking_date || (receiptApp.payment_detail as any)?.booking_money_date,
+              booking_installment_count: Number(receiptApp.payment_detail?.booking_installment_count) || 1,
+              booking_installment_amount: Number(receiptApp.payment_detail?.booking_installment_amount) || 0,
               installment_type: receiptApp.payment_detail?.installment_type,
               number_of_installments: Number(receiptApp.payment_detail?.number_of_installments) || 0,
               installment_amount: Number(receiptApp.payment_detail?.installment_amount) || 0,

@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { Icons } from '../ui/Icons';
 import { Button } from '../ui/Button';
 import { getDivisionLogo } from './ApplicationWizard';
+import { numberToWords } from '@/lib/number-to-words';
 
 export interface ReceiptData {
   referenceNumber: string;
@@ -66,6 +67,9 @@ export interface ReceiptData {
     cell_number?: string | null;
     nid_or_passport?: string | null;
     date_of_birth?: string | null;
+    share_percentage?: number | string | null;
+    percentage?: number | string | null;
+    ratio?: string | null;
   }>;
   declarationAccepted?: boolean | null;
 }
@@ -103,7 +107,9 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
   const own = data.ownershipDetail || {};
   const pay = data.paymentDetail || {};
   const bank = data.bankDetail || {};
-  const nom1 = data.nominees?.[0] || {};
+  const validNominees = (data.nominees || []).filter(
+    (n) => (n.full_name || n.name || '').trim().length > 0
+  );
 
   const formattedDate = data.submissionDate
     ? new Date(data.submissionDate).toLocaleDateString('en-GB', {
@@ -117,22 +123,40 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
         year: 'numeric',
       });
 
-  const businessName = data.businessName || 'Sunset Bay Limited';
-  const businessCode = data.businessCode || 'SKH';
+  const PROJECT_NAMES: Record<string, string> = {
+    SKH: 'Sunset Kuakata Hotel & Resort',
+    DFI: 'Dhaka Fantasy Island',
+    SCH: 'Sun Care Hospital & Diagnostic Centre',
+    SPC: 'Sunset Privilege Club',
+  };
+
+  const businessCode = (data.businessCode || 'SKH').toUpperCase().trim();
+  const businessName = data.businessName || PROJECT_NAMES[businessCode] || 'Sunset Group';
   const divisionLogo = getDivisionLogo(businessCode);
 
-  const pricePerUnit = Number(own.price_per_ownership) || 0;
   const qty = Number(own.number_of_ownership) || 1;
-  const grossTotal = pricePerUnit * qty;
   const discount = Number(own.discount_amount || own.discount) || 0;
-  const netTotal = Number(own.total_price) || Math.max(0, grossTotal - discount);
+  let pricePerUnit = Number(own.price_per_ownership) || 0;
+  let netTotal = Number(own.total_price) || 0;
+
+  if (pricePerUnit > 0 && netTotal === 0) {
+    netTotal = Math.max(0, pricePerUnit * qty - discount);
+  } else if (netTotal > 0 && pricePerUnit === 0 && qty > 0) {
+    pricePerUnit = Math.round((netTotal + discount) / qty);
+  }
+  const grossTotal = pricePerUnit * qty;
+  if (netTotal === 0 && grossTotal > 0) {
+    netTotal = Math.max(0, grossTotal - discount);
+  }
+
   const tokenMoney = Number(pay.token_money) || 0;
   const bookingTotal = Number(pay.booking_money) || Number(pay.token_money) || 0;
   const bookingRemaining = Math.max(0, bookingTotal - tokenMoney);
   const bookingCount = Number(pay.booking_installment_count) || 1;
   const bookingEmi = Number(pay.booking_installment_amount) || (bookingCount > 1 ? Math.round(bookingRemaining / bookingCount) : bookingRemaining);
   const remainingDues = Number(pay.dues_amount) || Math.max(0, netTotal - bookingTotal);
-  const refNum = data.referenceNumber || 'SKH-2026-00003';
+  const refNum = data.referenceNumber || 'SKH-2026-00001';
+  const amountInWords = own.amount_in_words || (netTotal > 0 ? numberToWords(netTotal) : '');
 
   // Minimal, ultra-clean HTML string specifically designed to fit on 1 single A4 page
   const generateMinimalPrintHtml = () => `
@@ -164,7 +188,7 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
           width: 100%;
           max-width: 185mm;
           margin: 0 auto;
-          border: 1px solid #cbd5e1;
+          border: 1.5px solid #0f172a;
           padding: 12px 16px;
           page-break-after: avoid;
           page-break-inside: avoid;
@@ -174,14 +198,14 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
           display: flex;
           justify-content: space-between;
           align-items: center;
-          border-bottom: 2px solid #006B3E;
+          border-bottom: 2px solid #0f172a;
           padding-bottom: 8px;
           margin-bottom: 8px;
         }
         .header-strip h1 {
           font-size: 16px;
           font-weight: 800;
-          color: #006B3E;
+          color: #0f172a;
           margin: 0;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -189,25 +213,26 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
         .header-strip p {
           margin: 1px 0 0 0;
           font-size: 9px;
-          color: #64748b;
+          font-weight: 600;
+          color: #0f172a;
         }
         .div-title {
           text-align: right;
           font-size: 11px;
-          font-weight: 700;
-          color: #1e293b;
+          font-weight: 800;
+          color: #0f172a;
         }
         .div-sub {
           text-align: right;
           font-size: 9px;
-          font-weight: 600;
-          color: #006B3E;
+          font-weight: 700;
+          color: #0f172a;
           text-transform: uppercase;
         }
         .doc-title-bar {
           text-align: center;
           background: #f1f5f9;
-          border: 1px solid #e2e8f0;
+          border: 1.5px solid #0f172a;
           padding: 4px 8px;
           margin-bottom: 10px;
           border-radius: 3px;
@@ -224,28 +249,29 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
           display: flex;
           justify-content: space-between;
           background: #f8fafc;
-          border: 1px solid #e2e8f0;
+          border: 1.5px solid #0f172a;
           border-radius: 3px;
           padding: 6px 10px;
           margin-bottom: 10px;
           font-size: 10px;
         }
         .meta-item strong {
-          color: #475569;
+          color: #0f172a;
           text-transform: uppercase;
           font-size: 9px;
+          font-weight: 800;
           display: block;
         }
         .meta-item span {
-          font-weight: 700;
+          font-weight: 800;
           color: #0f172a;
         }
         .sec-title {
           font-size: 10px;
-          font-weight: 700;
+          font-weight: 800;
           text-transform: uppercase;
-          color: #006B3E;
-          border-bottom: 1px solid #e2e8f0;
+          color: #0f172a;
+          border-bottom: 1.5px solid #0f172a;
           padding-bottom: 2px;
           margin: 8px 0 4px 0;
         }
@@ -260,14 +286,15 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
           display: flex;
           justify-content: space-between;
           padding: 2px 0;
-          border-bottom: 1px dotted #f1f5f9;
+          border-bottom: 1px solid #94a3b8;
         }
         .kv-label {
-          color: #64748b;
+          color: #0f172a;
+          font-weight: 700;
         }
         .kv-val {
-          font-weight: 600;
-          color: #1e293b;
+          font-weight: 800;
+          color: #0f172a;
           text-align: right;
         }
         table.tbl {
@@ -278,14 +305,15 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
         }
         table.tbl th,
         table.tbl td {
-          border: 1px solid #cbd5e1;
+          border: 1px solid #0f172a;
           padding: 4px 6px;
           text-align: left;
+          color: #0f172a;
         }
         table.tbl th {
-          background: #f8fafc;
-          font-weight: 700;
-          color: #334155;
+          background: #e2e8f0;
+          font-weight: 800;
+          color: #0f172a;
           text-transform: uppercase;
           font-size: 9px;
         }
@@ -300,22 +328,44 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
           text-align: center;
         }
         .sig-line {
-          border-top: 1px dashed #64748b;
+          border-top: 1.5px dashed #0f172a;
           margin-bottom: 3px;
         }
         .sig-title {
           font-size: 9px;
-          font-weight: 700;
+          font-weight: 800;
           text-transform: uppercase;
-          color: #334155;
+          color: #0f172a;
         }
         .footer-text {
           text-align: center;
           font-size: 8px;
-          color: #94a3b8;
+          font-weight: 600;
+          color: #0f172a;
           margin-top: 14px;
-          border-top: 1px solid #f1f5f9;
+          border-top: 1px solid #0f172a;
           padding-top: 4px;
+        }
+        @media print {
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body, .receipt-card, .header-strip h1, .header-strip p, .div-title, .div-sub, .doc-title, .meta-item strong, .meta-item span, .sec-title, .kv-label, .kv-val, table.tbl th, table.tbl td, .sig-title, .footer-text, small {
+            color: #000000 !important;
+          }
+          .receipt-card, table.tbl th, table.tbl td, .doc-title-bar, .meta-grid {
+            border-color: #000000 !important;
+          }
+          table.tbl th {
+            background-color: #e2e8f0 !important;
+          }
+          .header-strip, .sec-title {
+            border-bottom-color: #000000 !important;
+          }
+          .sig-line {
+            border-top-color: #000000 !important;
+          }
         }
       </style>
     </head>
@@ -325,11 +375,11 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
         <div class="header-strip">
           <div>
             <h1>SUNSET GROUP</h1>
-            <p>Corporate Office: Gulshan, Dhaka / Cox's Bazar &bull; Web: www.sunsetgroupbd.com</p>
+            <p>Corporate Office: Level-11, Shaptak Square, Road-16 (Old 27), Dhanmondi, Dhaka-1209 &bull; Web: www.sunsetgroupbd.com</p>
           </div>
           <div>
             <div class="div-title">${businessName}</div>
-            <div class="div-sub">Division: ${businessCode} &bull; Client Copy</div>
+            <div class="div-sub">Project: ${businessCode} &bull; Client Copy</div>
           </div>
         </div>
 
@@ -349,7 +399,7 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
             <span>${formattedDate}</span>
           </div>
           <div class="meta-item">
-            <strong>Division</strong>
+            <strong>Project</strong>
             <span>${businessCode}</span>
           </div>
           <div class="meta-item">
@@ -363,21 +413,31 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
         <div class="kv-grid">
           <div class="kv-row">
             <span class="kv-label">Applicant Name:</span>
-            <span class="kv-val">${app.full_name_en || '—'}</span>
+            <span class="kv-val">${app.full_name_en || '—'}${app.full_name_bn ? ` (${app.full_name_bn})` : ''}</span>
           </div>
           <div class="kv-row">
             <span class="kv-label">Mobile Number:</span>
             <span class="kv-val">${app.mobile_number || '—'}</span>
           </div>
           <div class="kv-row">
-            <span class="kv-label">Father's Name:</span>
-            <span class="kv-val">${app.father_name || '—'}</span>
+            <span class="kv-label">Father / Spouse:</span>
+            <span class="kv-val">${app.father_name ? `Father: ${app.father_name}` : app.spouse_name ? `Spouse: ${app.spouse_name}` : '—'}</span>
           </div>
           <div class="kv-row">
             <span class="kv-label">NID / Passport:</span>
             <span class="kv-val">${app.nid_or_passport || '—'}</span>
           </div>
-          <div class="kv-row" style="grid-column: span 2;">
+          ${
+            app.personal_email
+              ? `
+          <div class="kv-row">
+            <span class="kv-label">Email:</span>
+            <span class="kv-val">${app.personal_email}</span>
+          </div>
+          `
+              : ''
+          }
+          <div class="kv-row" style="${app.personal_email ? '' : 'grid-column: span 2;'}">
             <span class="kv-label">Present Address:</span>
             <span class="kv-val">${app.present_address || '—'}</span>
           </div>
@@ -388,10 +448,10 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
         <table class="tbl">
           <thead>
             <tr>
-              <th>Division / Project</th>
-              <th>Package Type</th>
-              <th style="text-align:center;">Units</th>
-              <th style="text-align:right;">Rate (৳)</th>
+              <th>Project</th>
+              <th>Package Tier</th>
+              <th style="text-align:center;">Share Units</th>
+              <th style="text-align:right;">Rate / Unit (৳)</th>
               <th style="text-align:right;">Discount (৳)</th>
               <th style="text-align:right;">Total Amount (৳)</th>
             </tr>
@@ -400,16 +460,16 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
             <tr>
               <td>${businessName}</td>
               <td><strong>${own.package_type || own.package || 'Ownership Unit'}</strong></td>
-              <td style="text-align:center;">${qty}</td>
+              <td style="text-align:center; font-weight:700;">${qty} ${qty > 1 ? 'Units' : 'Unit'}</td>
               <td style="text-align:right;">৳ ${pricePerUnit.toLocaleString('en-IN')}</td>
               <td style="text-align:right;">${discount > 0 ? `৳ ${discount.toLocaleString('en-IN')}` : '৳ 0'}</td>
-              <td style="text-align:right; font-weight:700; background:#f8fafc;">৳ ${netTotal.toLocaleString('en-IN')}</td>
+              <td style="text-align:right; font-weight:800; background:#f8fafc;">৳ ${netTotal.toLocaleString('en-IN')}</td>
             </tr>
           </tbody>
         </table>
         ${
-          own.amount_in_words
-            ? `<div style="font-size:9.5px; margin-bottom:6px; color:#475569;"><strong>In Words:</strong> Taka ${own.amount_in_words} Only</div>`
+          amountInWords
+            ? `<div style="font-size:9.5px; margin-bottom:6px; color:#0f172a; font-weight:700;"><strong>In Words:</strong> Taka ${amountInWords} Only</div>`
             : ''
         }
 
@@ -418,8 +478,8 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
         <table class="tbl">
           <thead>
             <tr>
-              <th>Booking / Token Money Paid</th>
-              <th>Remaining Balance Dues</th>
+              <th>Booking Money (Phase 1)</th>
+              <th>Rest Dues (Phase 2)</th>
               <th>Installment Plan (Dues)</th>
               <th>Payment Reference</th>
             </tr>
@@ -429,36 +489,57 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
               <td style="font-weight:700; color:#006B3E;">
                 ৳ ${bookingTotal.toLocaleString('en-IN')}
                 <br>
-                <small style="color:#64748b; font-weight:normal;">
-                  ${tokenMoney > 0 ? `Token: ৳ ${tokenMoney.toLocaleString('en-IN')} · ` : ''}
-                  ${bookingCount > 1 
-                    ? `${bookingCount} Booking EMIs @ ৳ ${bookingEmi.toLocaleString('en-IN')}` 
-                    : `Due: ৳ ${bookingRemaining.toLocaleString('en-IN')}`}
+                <small style="color:#0f172a; font-weight:600;">
+                  ${tokenMoney > 0 ? `Token Paid: ৳ ${tokenMoney.toLocaleString('en-IN')} · ` : ''}
+                  ${bookingRemaining > 0 
+                    ? `Booking Due: ৳ ${bookingRemaining.toLocaleString('en-IN')}${bookingCount > 1 ? ` (${bookingCount} EMIs @ ৳ ${bookingEmi.toLocaleString('en-IN')})` : ''}` 
+                    : (bookingTotal > 0 ? 'Full Booking Cleared' : 'Pending')}
                 </small>
               </td>
               <td style="font-weight:700; color:#b91c1c;">৳ ${remainingDues.toLocaleString('en-IN')}</td>
               <td>
                 ${
                   pay.number_of_installments
-                    ? `${pay.number_of_installments} &times; ৳ ${(Number(pay.installment_amount) || 0).toLocaleString('en-IN')} (${pay.installment_type || 'Monthly'})${pay.installment_start_date ? `<br><small style="color:#64748b;">(Starts: ${pay.installment_start_date})</small>` : ''}`
+                    ? `${pay.number_of_installments} &times; ৳ ${(Number(pay.installment_amount) || 0).toLocaleString('en-IN')} (${pay.installment_type || 'Monthly'})${pay.installment_start_date ? `<br><small style="color:#0f172a; font-weight:600;">(Starts: ${pay.installment_start_date})</small>` : ''}`
                     : 'Lump Sum Payment'
                 }
               </td>
-              <td>${bank.bank_name ? `${bank.bank_name} (${bank.branch_name || 'Main'})` : 'Online / Direct Cheque'}</td>
+              <td>${bank.bank_name ? `${bank.bank_name} (${bank.branch_name || 'Main'})` : 'Direct / Pay Order / Online'}</td>
             </tr>
           </tbody>
         </table>
 
-        <!-- 4. Nominee (if present) -->
+        <!-- 4. Nominees (if present) -->
         ${
-          nom1.full_name || nom1.name
+          validNominees.length > 0
             ? `
-            <div class="sec-title">4. Nominee Particulars</div>
-            <div style="font-size:10px; margin-bottom:6px; display:flex; gap:16px;">
-              <span><strong>Nominee:</strong> ${nom1.full_name || nom1.name}</span>
-              <span><strong>Relation:</strong> ${nom1.relation || nom1.relationship || 'Nominee'}</span>
-              ${nom1.cell_number ? `<span><strong>Contact:</strong> ${nom1.cell_number}</span>` : ''}
-            </div>
+            <div class="sec-title">4. Nominee Particulars (${validNominees.length})</div>
+            <table class="tbl" style="margin-bottom:6px;">
+              <thead>
+                <tr>
+                  <th style="width:6%; text-align:center;">#</th>
+                  <th style="width:30%;">Nominee Name</th>
+                  <th style="width:20%;">Relation</th>
+                  <th style="width:24%;">Contact / Mobile</th>
+                  <th style="width:20%;">NID / Passport</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${validNominees
+                  .map(
+                    (n, idx) => `
+                  <tr>
+                    <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+                    <td><strong>${n.full_name || n.name}</strong>${n.share_percentage ? ` <span style="font-size:8.5px; color:#006B3E; font-weight:700;">(${n.share_percentage}% Share)</span>` : ''}</td>
+                    <td>${n.relation || n.relationship || 'Nominee'}</td>
+                    <td>${n.cell_number || '—'}</td>
+                    <td>${n.nid_or_passport || '—'}</td>
+                  </tr>
+                `
+                  )
+                  .join('')}
+              </tbody>
+            </table>
           `
             : ''
         }
@@ -681,7 +762,7 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
                       SUNSET GROUP
                     </h1>
                     <p className="text-[9px] text-slate-500 leading-tight">
-                      Gulshan, Dhaka / Cox&apos;s Bazar &bull; www.sunsetgroupbd.com
+                      Level-11, Shaptak Square, Road-16 (Old 27), Dhanmondi, Dhaka &bull; www.sunsetgroupbd.com
                     </p>
                   </div>
                 </div>
@@ -692,7 +773,7 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
                       {businessName}
                     </h2>
                     <span className="text-[9px] font-bold text-[#006B3E] uppercase block">
-                      Division: {businessCode} &bull; Client Copy
+                      Project: {businessCode} &bull; Client Copy
                     </span>
                   </div>
                   <img
@@ -711,23 +792,23 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
               </div>
 
               {/* Meta Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50/70 border border-slate-200 rounded p-2 mb-3 text-[10px]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50/70 border border-slate-400 rounded p-2 mb-3 text-[10px]">
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Receipt / Ref No</span>
+                  <span className="text-[9px] uppercase font-extrabold text-slate-800 block">Receipt / Ref No</span>
                   <span className="font-mono font-bold text-[#006B3E] text-[11px]">
                     {refNum}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Date</span>
-                  <span className="font-semibold text-slate-800">{formattedDate}</span>
+                  <span className="text-[9px] uppercase font-extrabold text-slate-800 block">Date</span>
+                  <span className="font-bold text-slate-900">{formattedDate}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Division</span>
-                  <span className="font-semibold text-slate-800">{businessCode}</span>
+                  <span className="text-[9px] uppercase font-extrabold text-slate-800 block">Project</span>
+                  <span className="font-bold text-slate-900">{businessCode}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Status</span>
+                  <span className="text-[9px] uppercase font-extrabold text-slate-800 block">Status</span>
                   <span className="font-bold text-[#006B3E]">
                     {(data.status || 'SUBMITTED').toUpperCase()}
                   </span>
@@ -736,176 +817,201 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
 
               {/* 1. Customer Details */}
               <div className="mb-3">
-                <div className="text-[10px] font-bold text-[#006B3E] uppercase border-b border-slate-200 pb-0.5 mb-1.5">
+                <div className="text-[10px] font-bold text-[#006B3E] uppercase border-b border-slate-300 pb-0.5 mb-1.5">
                   1. Customer Particulars
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-                  <div className="flex justify-between py-0.5 border-b border-slate-100">
-                    <span className="text-slate-500">Applicant Name:</span>
-                    <span className="font-bold text-slate-900 uppercase">{app.full_name_en || '—'}</span>
+                  <div className="flex justify-between py-0.5 border-b border-slate-200">
+                    <span className="text-slate-800 font-semibold">Applicant Name:</span>
+                    <span className="font-bold text-slate-900 uppercase">
+                      {app.full_name_en || '—'}{app.full_name_bn ? ` (${app.full_name_bn})` : ''}
+                    </span>
                   </div>
-                  <div className="flex justify-between py-0.5 border-b border-slate-100">
-                    <span className="text-slate-500">Mobile Number:</span>
+                  <div className="flex justify-between py-0.5 border-b border-slate-200">
+                    <span className="text-slate-800 font-semibold">Mobile Number:</span>
                     <span className="font-bold text-slate-900">{app.mobile_number || '—'}</span>
                   </div>
-                  <div className="flex justify-between py-0.5 border-b border-slate-100">
-                    <span className="text-slate-500">Father&apos;s Name:</span>
-                    <span className="font-semibold text-slate-800">{app.father_name || '—'}</span>
+                  <div className="flex justify-between py-0.5 border-b border-slate-200">
+                    <span className="text-slate-800 font-semibold">Father / Spouse:</span>
+                    <span className="font-bold text-slate-900">
+                      {app.father_name ? `Father: ${app.father_name}` : app.spouse_name ? `Spouse: ${app.spouse_name}` : '—'}
+                    </span>
                   </div>
-                  <div className="flex justify-between py-0.5 border-b border-slate-100">
-                    <span className="text-slate-500">NID / Passport:</span>
-                    <span className="font-mono font-semibold text-slate-800">{app.nid_or_passport || '—'}</span>
+                  <div className="flex justify-between py-0.5 border-b border-slate-200">
+                    <span className="text-slate-800 font-semibold">NID / Passport:</span>
+                    <span className="font-mono font-bold text-slate-900">{app.nid_or_passport || '—'}</span>
                   </div>
-                  <div className="flex justify-between py-0.5 border-b border-slate-100 sm:col-span-2">
-                    <span className="text-slate-500 shrink-0">Present Address:</span>
-                    <span className="font-medium text-slate-800 text-right">{app.present_address || '—'}</span>
+                  {app.personal_email && (
+                    <div className="flex justify-between py-0.5 border-b border-slate-200">
+                      <span className="text-slate-800 font-semibold">Email:</span>
+                      <span className="font-bold text-slate-900">{app.personal_email}</span>
+                    </div>
+                  )}
+                  <div className={`flex justify-between py-0.5 border-b border-slate-200 ${app.personal_email ? '' : 'sm:col-span-2'}`}>
+                    <span className="text-slate-800 font-semibold shrink-0">Present Address:</span>
+                    <span className="font-bold text-slate-900 text-right">{app.present_address || '—'}</span>
                   </div>
                 </div>
               </div>
 
               {/* 2. Investment Package */}
               <div className="mb-3">
-                <div className="text-[10px] font-bold text-[#006B3E] uppercase border-b border-slate-200 pb-0.5 mb-1.5">
+                <div className="text-[10px] font-bold text-[#006B3E] uppercase border-b border-slate-300 pb-0.5 mb-1.5">
                   2. Investment &amp; Package Particulars
                 </div>
-                <table className="w-full text-[10px] border-collapse border border-slate-200 mb-1">
-                  <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[9px]">
+                <table className="w-full text-[10px] border-collapse border border-slate-400 mb-1">
+                  <thead className="bg-slate-100 text-slate-900 font-extrabold uppercase text-[9px]">
                     <tr>
-                      <th className="p-1 border border-slate-200 text-left">Division / Project</th>
-                      <th className="p-1 border border-slate-200 text-left">Package Type</th>
-                      <th className="p-1 border border-slate-200 text-center">Units</th>
-                      <th className="p-1 border border-slate-200 text-right">Unit Rate (৳)</th>
-                      <th className="p-1 border border-slate-200 text-right">Discount (৳)</th>
-                      <th className="p-1 border border-slate-200 text-right">Total Price (৳)</th>
+                      <th className="p-1 border border-slate-400 text-left">Project</th>
+                      <th className="p-1 border border-slate-400 text-left">Package Tier</th>
+                      <th className="p-1 border border-slate-400 text-center">Share Units</th>
+                      <th className="p-1 border border-slate-400 text-right">Unit Rate (৳)</th>
+                      <th className="p-1 border border-slate-400 text-right">Discount (৳)</th>
+                      <th className="p-1 border border-slate-400 text-right">Total Price (৳)</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white">
                     <tr>
-                      <td className="p-1 border border-slate-200 font-semibold">{businessName}</td>
-                      <td className="p-1 border border-slate-200 font-bold text-[#006B3E]">
+                      <td className="p-1 border border-slate-400 font-bold text-slate-900">{businessName}</td>
+                      <td className="p-1 border border-slate-400 font-bold text-[#006B3E]">
                         {own.package_type || own.package || 'Ownership Unit'}
                       </td>
-                      <td className="p-1 border border-slate-200 text-center font-bold">{qty}</td>
-                      <td className="p-1 border border-slate-200 text-right font-mono">
+                      <td className="p-1 border border-slate-400 text-center font-bold text-slate-900">
+                        {qty} {qty > 1 ? 'Units' : 'Unit'}
+                      </td>
+                      <td className="p-1 border border-slate-400 text-right font-mono font-bold text-slate-900">
                         ৳ {pricePerUnit.toLocaleString('en-IN')}
                       </td>
-                      <td className="p-1 border border-slate-200 text-right font-mono text-amber-700">
+                      <td className="p-1 border border-slate-400 text-right font-mono font-bold text-amber-800">
                         {discount > 0 ? `৳ ${discount.toLocaleString('en-IN')}` : '৳ 0'}
                       </td>
-                      <td className="p-1 border border-slate-200 text-right font-mono font-bold text-slate-900 bg-slate-50">
+                      <td className="p-1 border border-slate-400 text-right font-mono font-extrabold text-slate-900 bg-slate-50">
                         ৳ {netTotal.toLocaleString('en-IN')}
                       </td>
                     </tr>
                   </tbody>
                 </table>
-                {own.amount_in_words && (
-                  <div className="text-[9px] text-slate-600">
-                    <strong>In Words:</strong> Taka {own.amount_in_words} Only
+                {amountInWords && (
+                  <div className="text-[9px] text-slate-900 font-semibold">
+                    <strong>In Words:</strong> Taka {amountInWords} Only
                   </div>
                 )}
               </div>
 
               {/* 3. Payment Details */}
               <div className="mb-3">
-                <div className="text-[10px] font-bold text-[#006B3E] uppercase border-b border-slate-200 pb-0.5 mb-1.5">
+                <div className="text-[10px] font-bold text-[#006B3E] uppercase border-b border-slate-300 pb-0.5 mb-1.5">
                   3. Payment &amp; Financial Particulars
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
-                  <div className="p-1.5 rounded border border-slate-200 bg-slate-50">
-                    <span className="text-[8px] uppercase font-bold text-slate-500 block">Booking Money (Phase 1)</span>
+                  <div className="p-1.5 rounded border border-slate-400 bg-slate-50">
+                    <span className="text-[8px] uppercase font-extrabold text-slate-800 block">Booking Money (Phase 1)</span>
                     <span className="font-mono font-bold text-[#006B3E] text-[11px] block">
                       ৳ {bookingTotal.toLocaleString('en-IN')}
                     </span>
-                    <span className="text-[8px] text-slate-500 block">
+                    <span className="text-[8px] text-slate-800 font-semibold block">
                       {tokenMoney > 0 ? `Token: ৳ ${tokenMoney.toLocaleString('en-IN')} · ` : ''}
-                      {bookingCount > 1
-                        ? `${bookingCount} EMIs @ ৳ ${bookingEmi.toLocaleString('en-IN')}`
-                        : `Due: ৳ ${bookingRemaining.toLocaleString('en-IN')}`}
+                      {bookingRemaining > 0
+                        ? `Due: ৳ ${bookingRemaining.toLocaleString('en-IN')}${bookingCount > 1 ? ` (${bookingCount} EMIs)` : ''}`
+                        : (bookingTotal > 0 ? 'Full Cleared' : 'Pending')}
                     </span>
                   </div>
-                  <div className="p-1.5 rounded border border-slate-200 bg-slate-50">
-                    <span className="text-[8px] uppercase font-bold text-slate-500 block">Rest Dues (Phase 2)</span>
+                  <div className="p-1.5 rounded border border-slate-400 bg-slate-50">
+                    <span className="text-[8px] uppercase font-extrabold text-slate-800 block">Rest Dues (Phase 2)</span>
                     <span className="font-mono font-bold text-rose-700 text-[11px]">
                       ৳ {remainingDues.toLocaleString('en-IN')}
                     </span>
                     {pay.installment_start_date ? (
-                      <span className="text-[8px] text-slate-500 block">
+                      <span className="text-[8px] text-slate-800 font-semibold block">
                         Starts: {pay.installment_start_date}
                       </span>
                     ) : null}
                   </div>
-                  <div className="p-1.5 rounded border border-slate-200 bg-slate-50">
-                    <span className="text-[8px] uppercase font-bold text-slate-500 block">Installment Plan</span>
-                    <span className="font-bold text-slate-800 text-[10px] block">
+                  <div className="p-1.5 rounded border border-slate-400 bg-slate-50">
+                    <span className="text-[8px] uppercase font-extrabold text-slate-800 block">Installment Plan</span>
+                    <span className="font-bold text-slate-900 text-[10px] block">
                       {pay.number_of_installments ? `${pay.number_of_installments} Months` : 'Lump Sum'}
                     </span>
                     {pay.installment_amount ? (
-                      <span className="text-[9px] text-slate-500 block">
+                      <span className="text-[9px] text-slate-800 font-semibold block">
                         ৳ {(Number(pay.installment_amount) || 0).toLocaleString('en-IN')}/mo
                       </span>
                     ) : null}
                   </div>
-                  <div className="p-1.5 rounded border border-slate-200 bg-slate-50">
-                    <span className="text-[8px] uppercase font-bold text-slate-500 block">Payment Mode</span>
-                    <span className="font-semibold text-slate-800 text-[10px] block truncate">
+                  <div className="p-1.5 rounded border border-slate-400 bg-slate-50">
+                    <span className="text-[8px] uppercase font-extrabold text-slate-800 block">Payment Mode</span>
+                    <span className="font-bold text-slate-900 text-[10px] block truncate">
                       {bank.bank_name ? bank.bank_name : 'Direct / Online'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* 4. Nominee (if present) */}
-              {(nom1.name || nom1.full_name) && (
+              {/* 4. Nominees (if present) */}
+              {validNominees.length > 0 && (
                 <div className="mb-3">
-                  <div className="text-[10px] font-bold text-[#006B3E] uppercase border-b border-slate-200 pb-0.5 mb-1.5">
-                    4. Nominee Particulars
+                  <div className="text-[10px] font-bold text-[#006B3E] uppercase border-b border-slate-300 pb-0.5 mb-1.5">
+                    4. Nominee Particulars ({validNominees.length})
                   </div>
-                  <div className="flex flex-wrap gap-4 text-[10px]">
-                    <div>
-                      <span className="text-slate-500 mr-1.5">Nominee:</span>
-                      <strong className="text-slate-900">{nom1.full_name || nom1.name}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 mr-1.5">Relation:</span>
-                      <span className="text-slate-800 font-semibold">{nom1.relation || nom1.relationship || 'Nominee'}</span>
-                    </div>
-                    {nom1.cell_number && (
-                      <div>
-                        <span className="text-slate-500 mr-1.5">Contact:</span>
-                        <span className="text-slate-800">{nom1.cell_number}</span>
-                      </div>
-                    )}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[10px] border-collapse border border-slate-400">
+                      <thead className="bg-slate-100 text-slate-900 font-extrabold uppercase text-[9px]">
+                        <tr>
+                          <th className="p-1 border border-slate-400 text-center w-8">#</th>
+                          <th className="p-1 border border-slate-400 text-left">Nominee Name</th>
+                          <th className="p-1 border border-slate-400 text-left">Relation</th>
+                          <th className="p-1 border border-slate-400 text-left">Contact / Mobile</th>
+                          <th className="p-1 border border-slate-400 text-left">NID / Passport</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white">
+                        {validNominees.map((n, idx) => (
+                          <tr key={idx}>
+                            <td className="p-1 border border-slate-400 text-center font-bold">{idx + 1}</td>
+                            <td className="p-1 border border-slate-400 font-bold text-slate-900">
+                              {n.full_name || n.name}
+                              {n.share_percentage ? (
+                                <span className="ml-1 text-[9px] text-[#006B3E] font-bold">({n.share_percentage}% Share)</span>
+                              ) : null}
+                            </td>
+                            <td className="p-1 border border-slate-400 text-slate-800">{n.relation || n.relationship || 'Nominee'}</td>
+                            <td className="p-1 border border-slate-400 font-mono text-slate-900">{n.cell_number || '—'}</td>
+                            <td className="p-1 border border-slate-400 font-mono text-slate-900">{n.nid_or_passport || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
 
               {/* Signatures */}
-              <div className="pt-5 mt-5 border-t border-slate-200 flex items-end justify-between">
+              <div className="pt-5 mt-5 border-t border-slate-300 flex items-end justify-between">
                 <div className="text-center w-36">
-                  <div className="border-b border-dashed border-slate-400 pb-0.5 mb-1">
-                    <span className="font-serif italic text-[11px] text-slate-700">
+                  <div className="border-b-2 border-dashed border-slate-700 pb-0.5 mb-1">
+                    <span className="font-serif italic text-[11px] text-slate-900 font-bold">
                       {app.full_name_en || 'Customer'}
                     </span>
                   </div>
-                  <span className="text-[9px] font-bold uppercase text-slate-600 block">
+                  <span className="text-[9px] font-extrabold uppercase text-slate-900 block">
                     Customer Signature
                   </span>
                 </div>
 
                 <div className="text-center w-44">
-                  <div className="border-b border-dashed border-slate-400 pb-0.5 mb-1">
+                  <div className="border-b-2 border-dashed border-slate-700 pb-0.5 mb-1">
                     <span className="text-[9px] font-mono text-[#006B3E] font-bold uppercase">
                       Sunset Group Authority
                     </span>
                   </div>
-                  <span className="text-[9px] font-bold uppercase text-slate-600 block">
+                  <span className="text-[9px] font-extrabold uppercase text-slate-900 block">
                     Authorized Signatory
                   </span>
                 </div>
               </div>
 
               {/* Footer Note */}
-              <div className="mt-4 pt-1.5 border-t border-slate-200 text-center text-[8.5px] text-slate-400">
+              <div className="mt-4 pt-1.5 border-t border-slate-300 text-center text-[9px] text-slate-700 font-medium">
                 Computer-generated acknowledgement receipt from Sunset Group. Valid subject to document verification &amp; cheque clearance.
               </div>
             </div>

@@ -23,6 +23,7 @@ export type DocumentType =
   | 'tin_certificate'
   | 'nominee_photo'
   | 'nominee_nid'
+  | 'nominee_nid_back'
   | 'payment_proof'
   | 'other';
 
@@ -224,6 +225,27 @@ export interface Application {
   updated_at: string;
 }
 
+export interface PackageSoldStat {
+  package_name: string;
+  shares_sold: number;
+  shares_pending: number;
+}
+
+export interface ProjectShareInventory {
+  business_id: string | number;
+  business_name: string;
+  business_code: string;
+  shares_sold: number;
+  shares_pending: number;
+  packages: PackageSoldStat[];
+}
+
+export interface ShareInventorySummary {
+  total_shares_sold: number;
+  total_shares_pending: number;
+  projects: ProjectShareInventory[];
+}
+
 export interface DashboardStats {
   total_applications: number;
   total_customers: number;
@@ -238,6 +260,7 @@ export interface DashboardStats {
     business_code: string;
     count: number;
   }[];
+  share_inventory?: ShareInventorySummary;
   recent_applications: {
     id: string;
     reference_number: string;

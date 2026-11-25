@@ -224,7 +224,7 @@ export default function CrDashboardPage() {
               }}
               className="px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#008751]/30"
             >
-              <option value="">All Business Divisions</option>
+              <option value="">All Projects</option>
               {businesses.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.code} &mdash; {b.name}

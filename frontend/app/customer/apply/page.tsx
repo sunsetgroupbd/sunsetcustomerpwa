@@ -119,7 +119,7 @@ function ApplyContent() {
     return (
       <DashboardShell
         title="Start Ownership Application"
-        subtitle="Step 1: Choose the Sunset Group business division you wish to apply for."
+        subtitle="Step 1: Choose the Sunset Group project you wish to apply for."
       >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {businesses.map((biz) => {

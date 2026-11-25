@@ -132,7 +132,7 @@ export default function SalesDashboardPage() {
     }
 
     if (!businessId) {
-      setModalError('Please select a business division.');
+      setModalError('Please select a project.');
       return;
     }
 
@@ -698,7 +698,7 @@ Investor Portal: ${window.location.origin}/login`;
             />
 
             <Select
-              label="Business Division"
+              label="Project"
               required
               value={businessId}
               onChange={(e) => {
@@ -709,8 +709,8 @@ Investor Portal: ${window.location.origin}/login`;
                 const currentPkg = pkgs.find((p) => p.name === packageType) || pkgs[0];
                 if (currentPkg) {
                   setPackageType(currentPkg.name);
-                  setNumberOfShares(currentPkg.units);
-                  setTotalAmount(currentPkg.price.toString());
+                  // Keep user's chosen numberOfShares (do NOT auto-increase/override)
+                  setTotalAmount((currentPkg.price * numberOfShares).toString());
                 }
               }}
               options={businesses.map((b) => ({ value: b.id, label: `${b.code} — ${b.name}` }))}
@@ -727,8 +727,8 @@ Investor Portal: ${window.location.origin}/login`;
                   const pkgs = getDivisionPackages(selectedBiz?.code);
                   const matched = pkgs.find((p) => p.name === newPkg);
                   if (matched) {
-                    setNumberOfShares(matched.units);
-                    setTotalAmount(matched.price.toString());
+                    // Keep user's chosen numberOfShares (do NOT auto-increase/override)
+                    setTotalAmount((matched.price * numberOfShares).toString());
                   }
                 }}
                 options={[
@@ -744,7 +744,16 @@ Investor Portal: ${window.location.origin}/login`;
                 type="number"
                 min={1}
                 value={numberOfShares}
-                onChange={(e) => setNumberOfShares(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) => {
+                  const count = Math.max(1, parseInt(e.target.value) || 1);
+                  setNumberOfShares(count);
+                  const selectedBiz = businesses.find((b) => b.id === businessId);
+                  const pkgs = getDivisionPackages(selectedBiz?.code);
+                  const matched = pkgs.find((p) => p.name === packageType);
+                  if (matched) {
+                    setTotalAmount((matched.price * count).toString());
+                  }
+                }}
               />
             </div>
 

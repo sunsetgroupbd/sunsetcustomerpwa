@@ -16,6 +16,27 @@ class BusinessDistributionItem(BaseModel):
     count: int
 
 
+class PackageSoldStat(BaseModel):
+    package_name: str
+    shares_sold: int = 0
+    shares_pending: int = 0
+
+
+class ProjectShareInventory(BaseModel):
+    business_id: str | int
+    business_name: str
+    business_code: str
+    shares_sold: int = 0
+    shares_pending: int = 0
+    packages: list[PackageSoldStat] = []
+
+
+class ShareInventorySummary(BaseModel):
+    total_shares_sold: int = 0
+    total_shares_pending: int = 0
+    projects: list[ProjectShareInventory] = []
+
+
 class DashboardStats(BaseModel):
     total_customers: int
     total_registered_users: int = 0
@@ -29,6 +50,7 @@ class DashboardStats(BaseModel):
     today_applications: int
     this_month_applications: int
     business_distribution: list[BusinessDistributionItem] = []
+    share_inventory: ShareInventorySummary | None = None
 
 
 class UserCreate(BaseModel):

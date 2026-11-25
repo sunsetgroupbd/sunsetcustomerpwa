@@ -17,6 +17,7 @@ import { Icons } from '@/components/ui/Icons';
 import { openSmsWithCredentials } from '@/lib/sms';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { SuperComboAllocationModal } from '@/components/admin/SuperComboAllocationModal';
+import { ShareInventoryTracker } from '@/components/admin/ShareInventoryTracker';
 
 function AdminDashboardContent() {
   const router = useRouter();
@@ -263,7 +264,7 @@ function AdminDashboardContent() {
                   <span>
                     Package: <strong>{packageName}</strong> ({shares} {shares > 1 ? 'Shares' : 'Share'})
                   </span>
-                  <span className="text-slate-500 font-medium">Division: {bizCode}</span>
+                  <span className="text-slate-500 font-medium">Project: {bizCode}</span>
                 </div>
 
                 {/* Action Buttons */}
@@ -643,7 +644,7 @@ function AdminDashboardContent() {
                   onChange={(e) => setBusinessFilter(e.target.value)}
                   className="px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#008751]/30 font-medium"
                 >
-                  <option value="">All Business Divisions</option>
+                  <option value="">All Projects</option>
                   {businesses.map((b) => (
                     <option key={b.id} value={b.code}>
                       {b.code} &mdash; {b.name}
@@ -789,7 +790,7 @@ function AdminDashboardContent() {
 
             {/* Business Division Distribution */}
             {stats?.business_distribution && stats.business_distribution.length > 0 && (
-              <Card title="Applications by Business Division">
+              <Card title="Applications by Project">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {stats.business_distribution.map((b) => {
                     const code = (b.business_code || '').toUpperCase().trim();
@@ -839,7 +840,7 @@ function AdminDashboardContent() {
             {/* Recent Applications Table */}
             <Card
               title="Recent Applications"
-              subtitle="Latest submissions across all business divisions."
+              subtitle="Latest submissions across all projects."
               action={
                 <Link href="/admin/dashboard?tab=applications">
                   <Button variant="secondary" size="sm" className="flex items-center gap-1.5 text-xs">
@@ -860,6 +861,9 @@ function AdminDashboardContent() {
                 renderApplicationQueue(applications)
               )}
             </Card>
+
+            {/* Share Inventory & Sold Allocation Tracker */}
+            <ShareInventoryTracker shareInventory={stats?.share_inventory} />
           </div>
         )}
       </div>

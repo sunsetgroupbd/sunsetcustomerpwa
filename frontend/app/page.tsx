@@ -258,7 +258,7 @@ export default function HomePage() {
         <section id="projects" className="scroll-mt-20">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900">Official Project Divisions</h2>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">Official Projects</h2>
               <p className="text-xs text-slate-500">Commercial projects managed under Sunset Group ownership</p>
             </div>
           </div>

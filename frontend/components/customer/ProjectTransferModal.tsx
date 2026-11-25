@@ -121,7 +121,7 @@ export const ProjectTransferModal: React.FC<ProjectTransferModalProps> = ({
         {/* Target Project Selection */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Select
-            label="Target Project / Business"
+            label="Target Project"
             value={targetDivision}
             onChange={(e) => setTargetDivision(e.target.value)}
             options={DIVISION_OPTIONS.map((d) => ({
