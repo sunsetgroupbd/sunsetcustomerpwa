@@ -795,7 +795,7 @@ Investor Portal: ${window.location.origin}/login`;
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-xs font-semibold text-slate-700">
-                  Portal Password <span className="text-rose-500">*</span>
+                  Customer Portal Password <span className="text-rose-500">*</span>
                 </label>
                 <button
                   type="button"
@@ -812,6 +812,9 @@ Investor Portal: ${window.location.origin}/login`;
                 value={tempPassword}
                 onChange={(e) => setTempPassword(e.target.value)}
               />
+              <p className="text-[11px] text-slate-500 mt-1">
+                Temporary password for the customer to log into their customer portal account.
+              </p>
             </div>
 
             <div className="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-2.5 pb-6 sm:pb-0">
