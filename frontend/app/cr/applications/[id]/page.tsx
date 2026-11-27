@@ -138,7 +138,7 @@ export default function CrApplicationDetailPage({
   };
 
   useEffect(() => {
-    if (!authLoading && (!user || (user.role !== 'cr' && user.role !== 'admin'))) {
+    if (!authLoading && (!user || (user.role !== 'cr' && user.role !== 'admin' && user.role !== 'subadmin'))) {
       router.push('/login');
       return;
     }
@@ -422,9 +422,26 @@ export default function CrApplicationDetailPage({
                   setNewStatus('approved');
                   setIsStatusModalOpen(true);
                 }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
               >
-                Approve Application
+                1-Click Master Approval (Admin)
+              </Button>
+            )}
+
+            {user?.role === 'subadmin' && application.status !== 'approved' && (
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={application.approval_progress?.approvals?.some((a: any) => String(a.approved_by_id) === String(user.id))}
+                onClick={() => {
+                  setNewStatus('approved');
+                  setIsStatusModalOpen(true);
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm disabled:opacity-50"
+              >
+                {application.approval_progress?.approvals?.some((a: any) => String(a.approved_by_id) === String(user.id))
+                  ? 'Already Approved by You'
+                  : 'Approve Application (Subadmin)'}
               </Button>
             )}
 
@@ -984,7 +1001,11 @@ export default function CrApplicationDetailPage({
             onChange={(e) => setNewStatus(e.target.value as ApplicationStatus)}
             options={[
               { value: 'under_review', label: 'Under Review' },
-              ...(user?.role === 'admin' ? [{ value: 'approved', label: 'Approved (Admin)' }] : []),
+              ...(user?.role === 'admin'
+                ? [{ value: 'approved', label: 'Approve Immediately (1-Click Super Admin Override)' }]
+                : user?.role === 'subadmin'
+                ? [{ value: 'approved', label: 'Sign-off & Approve (Subadmin Quorum)' }]
+                : []),
               { value: 'correction_required', label: 'Correction Required (Action Needed)' },
               { value: 'documents_required', label: 'Documents Required' },
               { value: 'rejected', label: 'Rejected' },

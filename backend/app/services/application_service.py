@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import (
     AuthorizationError,
+    ConflictError,
     InvalidStatusTransitionError,
     NotFoundError,
     ValidationError,
@@ -19,6 +20,7 @@ from app.core.exceptions import (
 from app.models.application import (
     ApplicantInfo,
     Application,
+    ApplicationApproval,
     ApplicationEditRequest,
     ApplicationRemark,
     ApplicationStatus,
@@ -32,7 +34,7 @@ from app.models.application import (
     PaymentStatus,
 )
 from app.models.business import Business
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.application import (
     ApplicationCreate,
     ApplicationOnBehalfCreate,
@@ -61,13 +63,13 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
 
 # Roles permitted to trigger each target transition
 TRANSITION_PERMISSIONS: dict[str, list[str]] = {
-    "submitted": ["customer", "cr", "admin"],
-    "cancelled": ["customer", "cr", "admin"],
-    "under_review": ["cr", "admin"],
-    "documents_required": ["cr", "admin"],
-    "correction_required": ["cr", "admin"],
-    "approved": ["admin"],
-    "rejected": ["admin", "cr"],
+    "submitted": ["customer", "cr", "admin", "subadmin"],
+    "cancelled": ["customer", "cr", "admin", "subadmin"],
+    "under_review": ["cr", "admin", "subadmin"],
+    "documents_required": ["cr", "admin", "subadmin"],
+    "correction_required": ["cr", "admin", "subadmin"],
+    "approved": ["admin", "subadmin"],
+    "rejected": ["admin", "cr", "subadmin"],
 }
 
 
@@ -387,6 +389,7 @@ class ApplicationService:
                 joinedload(Application.payment_detail),
                 joinedload(Application.business),
                 joinedload(Application.assigned_cr),
+                joinedload(Application.approvals).joinedload(ApplicationApproval.approved_by),
             )
         )
         if isinstance(application_id, int) or (isinstance(application_id, str) and application_id.isdigit()):
@@ -398,6 +401,55 @@ class ApplicationService:
             raise NotFoundError(f"Application {application_id} not found.")
 
         self._assert_access(app, user)
+
+        # Compute dynamic approval progress
+        approvals_list = app.approvals or []
+        superadmin_approved = any(a.role == "admin" for a in approvals_list)
+        subadmin_approver_ids = {a.approved_by_id for a in approvals_list if a.role == "subadmin"}
+
+        active_subadmins_count = (
+            self.db.query(func.count(User.id))
+            .filter(User.role == UserRole.subadmin, User.is_active == True)
+            .scalar()
+            or 0
+        )
+        required_subadmin_approvals = min(active_subadmins_count, 2)
+        current_subadmin_approvals = len(subadmin_approver_ids)
+
+        status_val = app.application_status.value if hasattr(app.application_status, "value") else str(app.application_status)
+        is_fully_approved = (status_val == "approved")
+
+        user_role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
+        has_user_approved = (user.id in {a.approved_by_id for a in approvals_list})
+
+        can_user_approve = False
+        if not is_fully_approved and status_val in ("submitted", "under_review", "documents_required", "correction_required"):
+            if user_role_str == "admin":
+                can_user_approve = True
+            elif user_role_str == "subadmin" and not has_user_approved:
+                can_user_approve = True
+
+        if is_fully_approved:
+            if superadmin_approved:
+                status_label = "Approved (Super Admin 1-Click Master Approval)"
+            else:
+                status_label = f"Approved ({current_subadmin_approvals} of {required_subadmin_approvals} Subadmin Quorum)"
+        elif required_subadmin_approvals > 0:
+            status_label = f"{current_subadmin_approvals} of {required_subadmin_approvals} Subadmin Approvals Received"
+        else:
+            status_label = "Awaiting Super Admin Approval"
+
+        app.approval_progress = {
+            "is_fully_approved": is_fully_approved,
+            "approved_by_superadmin": superadmin_approved,
+            "active_subadmins_count": active_subadmins_count,
+            "required_subadmin_approvals": required_subadmin_approvals,
+            "current_subadmin_approvals": current_subadmin_approvals,
+            "can_user_approve": can_user_approve,
+            "has_user_approved": has_user_approved,
+            "status_label": status_label,
+        }
+
         return app
 
     # -------------------------------------------------------------------------
@@ -848,19 +900,99 @@ class ApplicationService:
                 f"Invalid transition from '{current_status_val}' to '{target_status_val}'. Allowed: {allowed}"
             )
 
+        user_role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
+
         # Validate user role can make this transition
         permitted_roles = TRANSITION_PERMISSIONS.get(target_status_val, [])
-        if user.role not in permitted_roles:
+        if user_role_str not in permitted_roles:
             raise AuthorizationError(
-                f"Role '{user.role}' is not authorized to transition to '{target_status_val}'."
+                f"Role '{user_role_str}' is not authorized to transition to '{target_status_val}'."
             )
 
         old_status = app.application_status
-        new_status_enum = ApplicationStatus(target_status_val)
-        app.application_status = new_status_enum
+        is_fully_approved_now = False
+        approval_log_msg = data.reason
+
+        if target_status_val == "approved":
+            if user_role_str == "admin":
+                # Super Admin 1-Click Master Approval - always approves immediately!
+                is_fully_approved_now = True
+                superadmin_approval = ApplicationApproval(
+                    application_id=app.id,
+                    approved_by_id=user.id,
+                    role="admin",
+                    custom_role_name="System Administrator",
+                    notes=data.reason or "Super Admin 1-Click Master Approval",
+                )
+                self.db.add(superadmin_approval)
+                self.db.flush()
+            elif user_role_str == "subadmin":
+                # Check if this subadmin already approved
+                already_approved = (
+                    self.db.query(ApplicationApproval)
+                    .filter(
+                        ApplicationApproval.application_id == app.id,
+                        ApplicationApproval.approved_by_id == user.id,
+                    )
+                    .first()
+                )
+                if already_approved:
+                    raise ConflictError("You have already recorded your approval for this application.")
+
+                custom_role = user.custom_role_name or user.designation or "Subadmin"
+                subadmin_apprv = ApplicationApproval(
+                    application_id=app.id,
+                    approved_by_id=user.id,
+                    role="subadmin",
+                    custom_role_name=custom_role,
+                    notes=data.reason or "Approved by Subadmin",
+                )
+                self.db.add(subadmin_apprv)
+                self.db.flush()
+
+                # Calculate quorum requirement: max 2 subadmins if multiple exist
+                active_subadmins_count = (
+                    self.db.query(func.count(User.id))
+                    .filter(User.role == UserRole.subadmin, User.is_active == True)
+                    .scalar()
+                    or 0
+                )
+                required_quorum = min(active_subadmins_count, 2) if active_subadmins_count > 0 else 1
+
+                subadmin_approvals_count = (
+                    self.db.query(func.count(func.distinct(ApplicationApproval.approved_by_id)))
+                    .filter(
+                        ApplicationApproval.application_id == app.id,
+                        ApplicationApproval.role == "subadmin",
+                    )
+                    .scalar()
+                    or 0
+                )
+
+                if subadmin_approvals_count >= required_quorum:
+                    is_fully_approved_now = True
+                    approval_log_msg = f"Full Approval Quorum Reached ({subadmin_approvals_count}/{required_quorum} Subadmin Approvals)."
+                else:
+                    is_fully_approved_now = False
+                    approval_log_msg = f"Approval logged by {user.full_name} ({custom_role}). Quorum progress: {subadmin_approvals_count}/{required_quorum} received."
+        else:
+            # Other transitions (under_review, correction_required, etc.)
+            new_status_enum = ApplicationStatus(target_status_val)
+            app.application_status = new_status_enum
+
+        if target_status_val == "approved":
+            if is_fully_approved_now:
+                new_status_enum = ApplicationStatus.APPROVED
+                app.application_status = new_status_enum
+            else:
+                # Quorum not reached yet: application remains active in review
+                new_status_enum = ApplicationStatus.UNDER_REVIEW
+                app.application_status = new_status_enum
+
         app.updated_at = datetime.now(timezone.utc)
 
-        # Generate and assign Customer ID when application is APPROVED by Admin
+        # Generate and assign Customer ID only when application is FULLY APPROVED
+        customer = None
         if new_status_enum == ApplicationStatus.APPROVED:
             customer = self.db.query(User).filter(User.id == app.customer_id).first()
             if customer and not customer.customer_id_number:
@@ -895,21 +1027,21 @@ class ApplicationService:
             old_status,
             new_status_enum,
             user.id,
-            data.reason,
+            approval_log_msg,
         )
 
         self._audit.log(
             user_id=user.id,
-            action=f"application.status_{target_status_val}",
+            action=f"application.status_{new_status_enum.value}",
             entity_type="application",
             entity_id=str(app.id),
-            metadata={"from": current_status_val, "to": target_status_val, "reason": data.reason},
+            metadata={"from": current_status_val, "to": new_status_enum.value, "reason": approval_log_msg},
         )
 
         self.db.commit()
         self.db.refresh(app)
 
-        # In-app notifications for status transition
+        # In-app notifications
         try:
             if new_status_enum == ApplicationStatus.APPROVED:
                 cust_num_info = f" Customer ID: {customer.customer_id_number}." if (customer and getattr(customer, "customer_id_number", None)) else ""
@@ -927,7 +1059,7 @@ class ApplicationService:
                         db=self.db,
                         user_id=app.sales_agent_id,
                         title="Client Application Approved",
-                        message=f"Application #{app.application_number} has been approved by Admin.",
+                        message=f"Application #{app.application_number} has been approved.",
                         type="approval",
                         link_url="/sales/dashboard",
                         application_id=app.id,
@@ -936,7 +1068,18 @@ class ApplicationService:
                     db=self.db,
                     role="cr",
                     title="Application Approved",
-                    message=f"Application #{app.application_number} was approved by Admin.",
+                    message=f"Application #{app.application_number} was approved.",
+                    type="approval",
+                    link_url=f"/cr/applications/{app.id}",
+                    application_id=app.id,
+                )
+            elif target_status_val == "approved" and not is_fully_approved_now:
+                # Notify Super Admin and other Subadmins about partial approval progress
+                InAppNotificationService.notify(
+                    db=self.db,
+                    role="admin",
+                    title="Subadmin Approval Logged",
+                    message=f"Application #{app.application_number} received approval from {user.full_name} ({user.custom_role_name or 'Subadmin'}). Awaiting 2nd Subadmin approval to complete.",
                     type="approval",
                     link_url=f"/cr/applications/{app.id}",
                     application_id=app.id,

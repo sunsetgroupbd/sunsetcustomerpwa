@@ -187,6 +187,9 @@ def create_app() -> FastAPI:
                 if "avatar_url" not in cols:
                     conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500)"))
                     conn.commit()
+                if "custom_role_name" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN custom_role_name VARCHAR(100)"))
+                    conn.commit()
             if engine.dialect.name == "postgresql":
                 try:
                     conn.execute(text("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'subadmin'"))

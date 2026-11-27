@@ -423,6 +423,7 @@ export const api = {
       password: string;
       email?: string;
       role?: string;
+      custom_role_name?: string;
       employee_id?: string;
       designation?: string;
       username?: string;

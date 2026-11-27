@@ -30,7 +30,8 @@ export default function AdminUsersPage() {
   const [newMobile, setNewMobile] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('Sunset@123');
-  const [newRole, setNewRole] = useState<'customer' | 'cr' | 'sales' | 'admin'>('customer');
+  const [newRole, setNewRole] = useState<'customer' | 'cr' | 'sales' | 'admin' | 'subadmin'>('customer');
+  const [newCustomRoleName, setNewCustomRoleName] = useState('');
   const [newEmployeeId, setNewEmployeeId] = useState('');
   const [newDesignation, setNewDesignation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,6 +134,7 @@ export default function AdminUsersPage() {
     setNewEmail('');
     setNewPassword('Sunset@123');
     setNewRole('customer');
+    setNewCustomRoleName('');
     setNewEmployeeId('');
     setNewDesignation('');
     setModalError(null);
@@ -168,6 +170,7 @@ export default function AdminUsersPage() {
         email: newEmail.trim() || undefined,
         password: newPassword,
         role: newRole,
+        custom_role_name: newRole === 'subadmin' ? (newCustomRoleName.trim() || undefined) : undefined,
         employee_id: newEmployeeId.trim() || undefined,
         designation: newDesignation.trim() || undefined,
       });
@@ -346,22 +349,30 @@ export default function AdminUsersPage() {
                       <td className="py-3 px-4 font-mono text-slate-800">{u.phone_number || (u as any).mobile}</td>
                       <td className="py-3 px-4 text-slate-500">{u.email || '-'}</td>
                       <td className="py-3 px-4">
-                        <Badge
-                          variant={
-                            u.role === 'admin'
-                              ? 'purple'
-                              : u.role === 'subadmin'
-                              ? 'info'
-                              : u.role === 'cr'
-                              ? 'info'
-                              : u.role === 'sales'
-                              ? 'warning'
-                              : 'default'
-                          }
-                          className={u.role === 'subadmin' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 font-semibold' : ''}
-                        >
-                          {u.role.toUpperCase()}
-                        </Badge>
+                        <div className="flex flex-col gap-1 items-start">
+                          <Badge
+                            variant={
+                              u.role === 'admin'
+                                ? 'purple'
+                                : u.role === 'subadmin'
+                                ? 'info'
+                                : u.role === 'cr'
+                                ? 'info'
+                                : u.role === 'sales'
+                                ? 'warning'
+                                : 'default'
+                            }
+                            className={u.role === 'subadmin' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 font-semibold' : ''}
+                          >
+                            {u.role.toUpperCase()}
+                          </Badge>
+                          {u.role === 'subadmin' && u.custom_role_name && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-800 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.5 rounded">
+                              <Icons.Shield className="w-2.5 h-2.5" />
+                              {u.custom_role_name}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <span
@@ -498,6 +509,18 @@ export default function AdminUsersPage() {
               value={newFullName}
               onChange={(e) => setNewFullName(e.target.value)}
             />
+
+            {newRole === 'subadmin' && (
+              <div className="p-3 bg-indigo-50/60 border border-indigo-200/80 rounded-lg space-y-1.5">
+                <Input
+                  label="Custom Role / Subadmin Title"
+                  placeholder="e.g. Finance Director, Executive Director, Audit Head..."
+                  helperText="Custom functional title assigned by Super Admin for sign-offs and identification."
+                  value={newCustomRoleName}
+                  onChange={(e) => setNewCustomRoleName(e.target.value)}
+                />
+              </div>
+            )}
 
             {newRole === 'sales' && (
               <div className="grid grid-cols-2 gap-3 p-3 bg-amber-50/50 border border-amber-200/60 rounded-lg">

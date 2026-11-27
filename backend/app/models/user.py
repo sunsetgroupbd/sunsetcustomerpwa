@@ -41,6 +41,7 @@ class User(Base):
     employee_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     customer_id_number: Mapped[str | None] = mapped_column(String(50), nullable=True, unique=True, index=True)
     designation: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    custom_role_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     role: Mapped[UserRole] = mapped_column(

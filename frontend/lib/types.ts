@@ -41,6 +41,7 @@ export interface User {
   employee_id?: string | null;
   customer_id_number?: string | null;
   designation?: string | null;
+  custom_role_name?: string | null;
   username?: string | null;
   avatar_url?: string | null;
   profile_photo_url?: string | null;
@@ -184,6 +185,26 @@ export interface ApplicationRemark {
   created_at: string;
 }
 
+export interface ApplicationApprovalItem {
+  id: number;
+  application_id: number;
+  approved_by_id: number;
+  role: string;
+  custom_role_name?: string | null;
+  approver_name: string;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface ApprovalProgressInfo {
+  is_approved: boolean;
+  total_approvals: number;
+  subadmin_approvals_count: number;
+  required_subadmins: number;
+  active_subadmin_count: number;
+  approvals: ApplicationApprovalItem[];
+}
+
 export interface Application {
   id: string;
   reference_number: string;
@@ -221,6 +242,8 @@ export interface Application {
   payment_detail?: PaymentDetail | null;
   documents: ApplicationDocument[];
   remarks: ApplicationRemark[];
+  approvals?: ApplicationApprovalItem[];
+  approval_progress?: ApprovalProgressInfo;
   created_at: string;
   updated_at: string;
 }

@@ -288,12 +288,38 @@ class ApplicationListItem(BaseModel):
         return self
 
 
+class ApplicationApprovalItem(BaseModel):
+    id: int
+    application_id: int
+    approved_by_id: int
+    approver_name: str
+    role: str
+    custom_role_name: str | None = None
+    notes: str | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ApprovalProgressInfo(BaseModel):
+    is_fully_approved: bool = False
+    approved_by_superadmin: bool = False
+    active_subadmins_count: int = 0
+    required_subadmin_approvals: int = 0
+    current_subadmin_approvals: int = 0
+    can_user_approve: bool = False
+    has_user_approved: bool = False
+    status_label: str = ""
+
+
 class ApplicationDetail(ApplicationListItem):
     applicant_info: ApplicantInfoResponse | None = None
     nominees: list[NomineeResponse] = []
     bank_detail: BankDetailResponse | None = None
     ownership_detail: OwnershipDetailResponse | None = None
     payment_detail: PaymentDetailResponse | None = None
+    approvals: list[ApplicationApprovalItem] = []
+    approval_progress: ApprovalProgressInfo | None = None
 
 
 # ---------------------------------------------------------------------------

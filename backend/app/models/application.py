@@ -101,6 +101,9 @@ class Application(Base):
     nominees: Mapped[list["Nominee"]] = sa_relationship(
         "Nominee", back_populates="application", cascade="all, delete-orphan"
     )
+    approvals: Mapped[list["ApplicationApproval"]] = sa_relationship(
+        "ApplicationApproval", back_populates="application", cascade="all, delete-orphan"
+    )
 
     @property
     def customer_id_number(self) -> str | None:
@@ -493,4 +496,30 @@ class ApplicationEditRequest(Base):
     application: Mapped[Application] = sa_relationship("Application", backref="edit_requests")
     requested_by: Mapped["User"] = sa_relationship("User", foreign_keys=[requested_by_id])  # noqa: F821
     reviewed_by: Mapped["User | None"] = sa_relationship("User", foreign_keys=[reviewed_by_id])  # noqa: F821
+
+
+class ApplicationApproval(Base):
+    __tablename__ = "application_approvals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    application_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    approved_by_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(50), nullable=False)  # "admin" or "subadmin"
+    custom_role_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    application: Mapped[Application] = sa_relationship("Application", back_populates="approvals")
+    approved_by: Mapped["User"] = sa_relationship("User", foreign_keys=[approved_by_id])  # noqa: F821
+
+    @property
+    def approver_name(self) -> str:
+        return self.approved_by.full_name if self.approved_by else "System User"
+
 

@@ -74,6 +74,7 @@ class UserCreate(BaseModel):
     employee_id: str | None = None
     designation: str | None = None
     username: str | None = None
+    custom_role_name: str | None = None
 
 
 class UserUpdate(BaseModel):
@@ -84,6 +85,7 @@ class UserUpdate(BaseModel):
     employee_id: str | None = None
     designation: str | None = None
     username: str | None = None
+    custom_role_name: str | None = None
 
 
 class AuditLogResponse(BaseModel):
