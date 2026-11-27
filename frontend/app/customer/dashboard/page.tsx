@@ -324,11 +324,11 @@ export default function CustomerDashboardPage() {
               Loading your applications...
             </div>
           ) : submittedApps.length === 0 && draftApps.length === 0 ? (
-            <div className="text-center py-10">
-              <Icons.FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            <div className="text-center py-8">
+              <Icons.FileText className="w-10 h-10 text-slate-300 mx-auto mb-2.5" />
               <h4 className="text-sm font-semibold text-slate-900">No applications registered yet</h4>
-              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
-                Your ownership application is registered by your assigned Sunset Group Sales Executive and processed by our Customer Relations (CR) team. Once registered, your application details and real-time status will appear here.
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                Once registered by your Sales Executive, your application and live status will appear here.
               </p>
             </div>
           ) : (
