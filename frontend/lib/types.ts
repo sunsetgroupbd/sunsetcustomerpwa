@@ -228,7 +228,11 @@ export interface Application {
 export interface PackageSoldStat {
   package_name: string;
   shares_sold: number;
+  direct_shares_sold?: number;
+  combo_shares_sold?: number;
   shares_pending: number;
+  direct_shares_pending?: number;
+  combo_shares_pending?: number;
 }
 
 export interface ProjectShareInventory {
@@ -236,13 +240,20 @@ export interface ProjectShareInventory {
   business_name: string;
   business_code: string;
   shares_sold: number;
+  direct_shares_sold?: number;
+  combo_shares_sold?: number;
   shares_pending: number;
+  direct_shares_pending?: number;
+  combo_shares_pending?: number;
+  is_combo_engine?: boolean;
   packages: PackageSoldStat[];
 }
 
 export interface ShareInventorySummary {
   total_shares_sold: number;
   total_shares_pending: number;
+  total_direct_sold?: number;
+  total_combo_sold?: number;
   projects: ProjectShareInventory[];
 }
 

@@ -19,7 +19,11 @@ class BusinessDistributionItem(BaseModel):
 class PackageSoldStat(BaseModel):
     package_name: str
     shares_sold: int = 0
+    direct_shares_sold: int = 0
+    combo_shares_sold: int = 0
     shares_pending: int = 0
+    direct_shares_pending: int = 0
+    combo_shares_pending: int = 0
 
 
 class ProjectShareInventory(BaseModel):
@@ -27,13 +31,20 @@ class ProjectShareInventory(BaseModel):
     business_name: str
     business_code: str
     shares_sold: int = 0
+    direct_shares_sold: int = 0
+    combo_shares_sold: int = 0
     shares_pending: int = 0
+    direct_shares_pending: int = 0
+    combo_shares_pending: int = 0
+    is_combo_engine: bool = False
     packages: list[PackageSoldStat] = []
 
 
 class ShareInventorySummary(BaseModel):
     total_shares_sold: int = 0
     total_shares_pending: int = 0
+    total_direct_sold: int = 0
+    total_combo_sold: int = 0
     projects: list[ProjectShareInventory] = []
 
 

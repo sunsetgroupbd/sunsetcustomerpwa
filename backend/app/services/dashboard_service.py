@@ -197,29 +197,72 @@ class DashboardService:
             if bid and pkg:
                 pending_map[(bid, pkg.strip().capitalize())] = int(count or 0)
 
+        # Identify Super Combo business (SPC - 4-in-1 asset bundle)
+        spc_biz = next((b for b in businesses if (b.code or "").upper().strip() == "SPC"), None)
+        spc_approved_by_pkg: dict[str, int] = {}
+        spc_pending_by_pkg: dict[str, int] = {}
+        if spc_biz:
+            for pkg_name in STANDARD_PACKAGES:
+                spc_approved_by_pkg[pkg_name] = approved_map.get((spc_biz.id, pkg_name), 0)
+                spc_pending_by_pkg[pkg_name] = pending_map.get((spc_biz.id, pkg_name), 0)
+
+        spc_total_sold = sum(spc_approved_by_pkg.values())
+        spc_total_pending = sum(spc_pending_by_pkg.values())
+
         project_inventories: list[ProjectShareInventory] = []
-        total_sold = 0
-        total_pending = 0
+        total_direct_sold = 0
+        total_direct_pending = 0
 
         for biz in businesses:
+            code = (biz.code or "").upper().strip()
+            is_combo = (code == "SPC")
             biz_sold = 0
             biz_pending = 0
+            biz_direct_sold = 0
+            biz_combo_sold = 0
+            biz_direct_pending = 0
+            biz_combo_pending = 0
             pkg_items: list[PackageSoldStat] = []
 
             for pkg_name in STANDARD_PACKAGES:
-                sold_qty = approved_map.get((biz.id, pkg_name), 0)
-                pend_qty = pending_map.get((biz.id, pkg_name), 0)
+                direct_sold = approved_map.get((biz.id, pkg_name), 0)
+                direct_pend = pending_map.get((biz.id, pkg_name), 0)
+
+                if is_combo:
+                    # SPC itself represents the 4-in-1 combo packages sold directly
+                    combo_sold = 0
+                    combo_pend = 0
+                    pkg_sold = direct_sold
+                    pkg_pend = direct_pend
+                else:
+                    # Core physical projects receive their direct sales + 1:1 allocated shares from Super Combo
+                    combo_sold = spc_approved_by_pkg.get(pkg_name, 0)
+                    combo_pend = spc_pending_by_pkg.get(pkg_name, 0)
+                    pkg_sold = direct_sold + combo_sold
+                    pkg_pend = direct_pend + combo_pend
 
                 pkg_items.append(
                     PackageSoldStat(
                         package_name=pkg_name,
-                        shares_sold=sold_qty,
-                        shares_pending=pend_qty,
+                        shares_sold=pkg_sold,
+                        direct_shares_sold=direct_sold,
+                        combo_shares_sold=combo_sold,
+                        shares_pending=pkg_pend,
+                        direct_shares_pending=direct_pend,
+                        combo_shares_pending=combo_pend,
                     )
                 )
 
-                biz_sold += sold_qty
-                biz_pending += pend_qty
+                biz_sold += pkg_sold
+                biz_pending += pkg_pend
+                biz_direct_sold += direct_sold
+                biz_combo_sold += combo_sold
+                biz_direct_pending += direct_pend
+                biz_combo_pending += combo_pend
+
+            if not is_combo:
+                total_direct_sold += biz_direct_sold
+                total_direct_pending += biz_direct_pending
 
             project_inventories.append(
                 ProjectShareInventory(
@@ -227,17 +270,26 @@ class DashboardService:
                     business_name=biz.name,
                     business_code=biz.code or "",
                     shares_sold=biz_sold,
+                    direct_shares_sold=biz_direct_sold,
+                    combo_shares_sold=biz_combo_sold,
                     shares_pending=biz_pending,
+                    direct_shares_pending=biz_direct_pending,
+                    combo_shares_pending=biz_combo_pending,
+                    is_combo_engine=is_combo,
                     packages=pkg_items,
                 )
             )
 
-            total_sold += biz_sold
-            total_pending += biz_pending
+        # Total sold across all 3 physical projects
+        physical_projects = [p for p in project_inventories if not p.is_combo_engine]
+        overall_shares_sold = sum(p.shares_sold for p in physical_projects) if physical_projects else total_direct_sold
+        overall_shares_pending = sum(p.shares_pending for p in physical_projects) if physical_projects else total_direct_pending
 
         return ShareInventorySummary(
-            total_shares_sold=total_sold,
-            total_shares_pending=total_pending,
+            total_shares_sold=overall_shares_sold,
+            total_shares_pending=overall_shares_pending,
+            total_direct_sold=total_direct_sold,
+            total_combo_sold=spc_total_sold,
             projects=project_inventories,
         )
 
