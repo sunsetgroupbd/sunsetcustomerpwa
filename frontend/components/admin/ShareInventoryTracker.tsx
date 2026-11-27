@@ -553,9 +553,9 @@ export const ShareInventoryTracker: React.FC<ShareInventoryTrackerProps> = ({
         </div>
       </div>
 
-      {/* Project Division Cards Grid */}
-      <div className="p-4 sm:p-5 bg-slate-50/50">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+      {/* Project Division Cards Grid - 3 by 3 row-wise */}
+      <div className="p-4 sm:p-6 bg-slate-50/50">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {sortedProjects.map((proj) => {
             const code = proj.business_code.toUpperCase().trim();
             const logo = projectLogos[code] !== undefined ? projectLogos[code] : '/sunsetlogo.png';
@@ -568,7 +568,7 @@ export const ShareInventoryTracker: React.FC<ShareInventoryTrackerProps> = ({
             return (
               <div
                 key={proj.business_id}
-                className={`border rounded-xl p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between ${
+                className={`border rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between ${
                   isCombo
                     ? 'bg-amber-50/40 border-amber-300 ring-1 ring-amber-200'
                     : isComboOnly
@@ -580,32 +580,32 @@ export const ShareInventoryTracker: React.FC<ShareInventoryTrackerProps> = ({
               >
                 <div>
                   {/* Project Header */}
-                  <div className="flex items-start justify-between gap-2.5 pb-2.5 border-b border-slate-100">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3 min-w-0">
                       {logo ? (
-                        <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
                           <img src={logo} alt={proj.business_name} className="w-full h-full object-contain" />
                         </div>
                       ) : (
-                        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-300 flex items-center justify-center shrink-0 text-[#006B3E] font-black text-[9px] font-mono shadow-2xs">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-center shrink-0 text-[#006B3E] font-black text-xs font-mono shadow-2xs">
                           {code}
                         </div>
                       )}
                       <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-slate-900 leading-tight truncate" title={proj.business_name}>
+                        <h4 className="text-sm font-bold text-slate-900 leading-tight truncate" title={proj.business_name}>
                           {proj.business_name}
                         </h4>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span className="text-[10px] font-mono font-bold text-[#008751] uppercase">
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10.5px] font-mono font-bold text-[#008751] uppercase">
                             {proj.business_code}
                           </span>
                           {isCombo && (
-                            <span className="text-[8.5px] font-extrabold text-amber-800 bg-amber-100 border border-amber-300 px-1 rounded">
+                            <span className="text-[9px] font-extrabold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-md">
                               4-in-1 Engine
                             </span>
                           )}
                           {isComboOnly && (
-                            <span className="text-[8.5px] font-bold text-teal-800 bg-teal-100 border border-teal-300 px-1 rounded">
+                            <span className="text-[9px] font-bold text-teal-800 bg-teal-100 border border-teal-300 px-1.5 py-0.2 rounded-md">
                               Combo Exclusive
                             </span>
                           )}
@@ -615,24 +615,24 @@ export const ShareInventoryTracker: React.FC<ShareInventoryTrackerProps> = ({
                   </div>
 
                   {/* Confirmed Sold metric */}
-                  <div className="my-3">
+                  <div className="my-3.5">
                     <div className="flex items-baseline justify-between">
                       <div>
                         <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
                           {isCombo ? 'Packages Sold' : 'Confirmed Sold'}
                         </span>
-                        <div className="flex items-baseline gap-1 mt-0.5">
-                          <span className="text-2xl font-black font-mono text-slate-900">
+                        <div className="flex items-baseline gap-1.5 mt-0.5">
+                          <span className="text-3xl font-black font-mono text-slate-900">
                             {proj.shares_sold}
                           </span>
                           <span className="text-xs font-medium text-slate-500">
-                            {proj.shares_sold === 1 ? (isCombo ? 'Pkg' : 'Share') : (isCombo ? 'Pkgs' : 'Shares')}
+                            {proj.shares_sold === 1 ? (isCombo ? 'Package' : 'Share') : (isCombo ? 'Packages' : 'Shares')}
                           </span>
                         </div>
                       </div>
 
                       {proj.shares_pending > 0 && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold font-mono bg-blue-50 text-blue-700 border border-blue-200">
                           +{proj.shares_pending} req
                         </span>
                       )}
@@ -640,24 +640,24 @@ export const ShareInventoryTracker: React.FC<ShareInventoryTrackerProps> = ({
 
                     {/* Breakdown tag for physical projects (Direct vs Combo) */}
                     {isCombo ? (
-                      <p className="text-[9px] text-amber-800 font-medium mt-1 leading-tight">
+                      <p className="text-[10px] text-amber-800 font-medium mt-1.5 leading-tight">
                         Each package distributes equal shares to SKH, Mangrove, DFI, &amp; SCH.
                       </p>
                     ) : isComboOnly ? (
-                      <div className="flex items-center gap-1.5 mt-2 text-[10px]">
-                        <span className="px-1.5 py-0.5 rounded bg-teal-100/80 text-teal-900 border border-teal-300 font-mono font-bold">
+                      <div className="flex items-center gap-2 mt-2.5 text-[11px]">
+                        <span className="px-2 py-0.5 rounded-md bg-teal-100/80 text-teal-900 border border-teal-300 font-mono font-bold text-[10.5px]">
                           From Combo: <strong>+{comboCount}</strong>
                         </span>
-                        <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-400 border border-slate-200 font-mono">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-50 text-slate-400 border border-slate-200 font-mono text-[10.5px]">
                           Direct: 0
                         </span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1 mt-2 text-[10px]">
-                        <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[9.5px]">
+                      <div className="flex items-center gap-2 mt-2.5 text-[11px]">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[10.5px]">
                           Direct: <strong>{directCount}</strong>
                         </span>
-                        <span className={`px-1.5 py-0.5 rounded font-mono text-[9.5px] ${
+                        <span className={`px-2 py-0.5 rounded-md font-mono text-[10.5px] ${
                           comboCount > 0
                             ? 'bg-amber-100/80 text-amber-900 border border-amber-300 font-bold'
                             : 'bg-slate-50 text-slate-400 border border-slate-200'
@@ -668,12 +668,12 @@ export const ShareInventoryTracker: React.FC<ShareInventoryTrackerProps> = ({
                     )}
                   </div>
 
-                  {/* Package breakdown within this project */}
-                  <div className="pt-2 border-t border-slate-100">
-                    <span className="text-[9.5px] uppercase font-bold text-slate-400 block mb-1.5 tracking-wider">
+                  {/* Package breakdown within this project - 4 columns */}
+                  <div className="pt-3 border-t border-slate-100">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2 tracking-wider">
                       Package Sold Breakdown
                     </span>
-                    <div className="grid grid-cols-2 gap-1.5 text-center">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                       {proj.packages.map((pkg) => {
                         const theme = packageColors[pkg.package_name] || {
                           bg: 'bg-slate-50',
@@ -686,36 +686,36 @@ export const ShareInventoryTracker: React.FC<ShareInventoryTrackerProps> = ({
                         return (
                           <div
                             key={pkg.package_name}
-                            className={`p-1.5 rounded-lg border ${theme.border} ${theme.bg}`}
+                            className={`p-2 rounded-xl border ${theme.border} ${theme.bg}`}
                           >
-                            <span className={`text-[8.5px] font-bold uppercase block ${theme.text}`}>
+                            <span className={`text-[9.5px] font-bold uppercase block ${theme.text}`}>
                               {pkg.package_name}
                             </span>
-                            <div className="font-mono font-bold text-xs text-slate-900 mt-0.5">
+                            <div className="font-mono font-bold text-sm text-slate-900 mt-0.5">
                               {pkg.shares_sold}{' '}
-                              <span className="text-[8.5px] font-normal text-slate-500 font-sans">
+                              <span className="text-[9px] font-normal text-slate-500 font-sans">
                                 {isCombo ? 'pkg' : 'sold'}
                               </span>
                             </div>
 
                             {/* Direct vs Combo detail if physical project */}
                             {!isCombo && !isComboOnly && (
-                              <div className="text-[8px] text-slate-500 font-mono mt-0.5 leading-tight">
+                              <div className="text-[9px] text-slate-500 font-mono mt-0.5 leading-tight">
                                 <span>{pkgDirect}d</span>
                                 {pkgCombo > 0 && (
-                                  <span className="text-amber-700 font-bold ml-0.5">+{pkgCombo}c</span>
+                                  <span className="text-amber-700 font-bold ml-1">+{pkgCombo}c</span>
                                 )}
                               </div>
                             )}
 
                             {isComboOnly && (
-                              <div className="text-[8px] text-teal-700 font-mono mt-0.5 font-semibold">
+                              <div className="text-[9px] text-teal-700 font-mono mt-0.5 font-semibold">
                                 via combo
                               </div>
                             )}
 
                             {pkg.shares_pending > 0 && (
-                              <span className="text-[8.5px] font-mono text-blue-600 block mt-0.5 font-semibold">
+                              <span className="text-[9px] font-mono text-blue-600 block mt-0.5 font-semibold">
                                 +{pkg.shares_pending} req
                               </span>
                             )}
