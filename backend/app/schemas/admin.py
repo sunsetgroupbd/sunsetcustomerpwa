@@ -37,6 +37,7 @@ class ProjectShareInventory(BaseModel):
     direct_shares_pending: int = 0
     combo_shares_pending: int = 0
     is_combo_engine: bool = False
+    is_combo_only: bool = False
     packages: list[PackageSoldStat] = []
 
 

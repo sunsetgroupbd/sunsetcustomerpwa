@@ -22,6 +22,8 @@ export const getDivisionLogo = (code?: string): string => {
   if (c === 'SCH') return '/suncarelogo.png';
   if (c === 'DFI') return '/dfilogo.png';
   if (c === 'SPC') return '/sunsetcombologo.png';
+  if (c === 'MANGROVE') return '/mangrovelogo.png';
+  if (c === 'DECK') return '';
   if (c === 'SKH') return '/sunsetlogo.png';
   return '/sunsetlogo.png';
 };
@@ -457,6 +459,7 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
         .catch(() => {
           setBizList([
             { id: '1', code: 'SKH', name: 'Sunset Kuakata Hotel & Resort', slug: 'sunset-kuakata', description: 'Luxury seaside hospitality suites & beachfront ownership at Kuakata Beach.', logo_url: null, is_active: true },
+            { id: '5', code: 'DECK', name: "The Deck – Cox's Bazar", slug: 'the-deck-coxs-bazar', description: "5-Star Standard Luxury Hotel and Resort at Inani Beach, Cox's Bazar with Saf-Kabala deed ownership.", logo_url: null, is_active: true },
             { id: '2', code: 'DFI', name: 'Dhaka Fantasy Island', slug: 'dhaka-fantasy-island', description: 'Premier amusement theme park & family entertainment resort in Dhaka.', logo_url: null, is_active: true },
             { id: '3', code: 'SCH', name: 'Sun Care Hospital & Diagnostic Centre', slug: 'sun-care-hospital', description: 'State-of-the-art multi-specialty healthcare, pathology, and diagnostic services.', logo_url: null, is_active: true },
             { id: '4', code: 'SPC', name: 'Super Combo', slug: 'super-combo', description: 'Integrated multi-division commercial privileges and shared ownership bundle.', logo_url: null, is_active: true },
@@ -1209,12 +1212,18 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
       {/* Top Banner - App-like PWA Header with Direct Logo (no cardview border) */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-2xs">
         <div className="flex items-center gap-3 sm:gap-4">
-          {/* Direct Brand Logo - No border, no card container */}
-          <img
-            src={getDivisionLogo(currentBusiness.code)}
-            alt={currentBusiness.name}
-            className="h-11 sm:h-13 w-auto max-w-[85px] sm:max-w-[110px] object-contain shrink-0 select-none"
-          />
+          {/* Direct Brand Logo or Code Badge */}
+          {getDivisionLogo(currentBusiness.code) ? (
+            <img
+              src={getDivisionLogo(currentBusiness.code)}
+              alt={currentBusiness.name}
+              className="h-11 sm:h-13 w-auto max-w-[85px] sm:max-w-[110px] object-contain shrink-0 select-none"
+            />
+          ) : (
+            <div className="h-10 w-12 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-center shrink-0 font-bold font-mono text-xs text-[#006B3E] shadow-2xs">
+              {currentBusiness.code}
+            </div>
+          )}
 
           {/* Division Details & Change Action */}
           <div className="flex-1 min-w-0">
@@ -1290,12 +1299,18 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
                           : 'border-slate-200/80 hover:border-[#006B3E]/60 hover:bg-slate-50 cursor-pointer shadow-2xs'
                       }`}
                     >
-                      {/* Direct Logo - No border, no cardview */}
-                      <img
-                        src={logoSrc}
-                        alt={biz.name}
-                        className="h-10 w-10 object-contain shrink-0 select-none"
-                      />
+                      {/* Direct Logo or Code Badge */}
+                      {logoSrc ? (
+                        <img
+                          src={logoSrc}
+                          alt={biz.name}
+                          className="h-10 w-10 object-contain shrink-0 select-none"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-lg bg-emerald-50 border border-emerald-300 flex items-center justify-center shrink-0 font-bold font-mono text-[10px] text-[#006B3E] shadow-2xs">
+                          {biz.code}
+                        </div>
+                      )}
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -1319,12 +1334,18 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
             /* Confirmation step when another business is clicked - sleek app style with minimal text */
             <div className="space-y-3">
               <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
-                {/* Direct Logo - No border */}
-                <img
-                  src={getDivisionLogo(pendingBusiness.code)}
-                  alt={pendingBusiness.name}
-                  className="h-11 w-11 object-contain shrink-0"
-                />
+                {/* Direct Logo or Code Badge */}
+                {getDivisionLogo(pendingBusiness.code) ? (
+                  <img
+                    src={getDivisionLogo(pendingBusiness.code)}
+                    alt={pendingBusiness.name}
+                    className="h-11 w-11 object-contain shrink-0"
+                  />
+                ) : (
+                  <div className="h-11 w-11 rounded-lg bg-emerald-50 border border-emerald-300 flex items-center justify-center shrink-0 font-bold font-mono text-xs text-[#006B3E] shadow-2xs">
+                    {pendingBusiness.code}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <span className="text-[10px] font-bold uppercase text-[#006B3E] bg-[#006B3E]/10 px-1.5 py-0.5 rounded">
                     Switch to {pendingBusiness.code}
@@ -1411,11 +1432,17 @@ export const ApplicationWizard: React.FC<WizardProps> = ({
           {/* Active Division Summary */}
           <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img
-                src={getDivisionLogo(currentBusiness.code)}
-                alt={currentBusiness.name}
-                className="h-10 w-auto max-w-[70px] object-contain shrink-0"
-              />
+              {getDivisionLogo(currentBusiness.code) ? (
+                <img
+                  src={getDivisionLogo(currentBusiness.code)}
+                  alt={currentBusiness.name}
+                  className="h-10 w-auto max-w-[70px] object-contain shrink-0"
+                />
+              ) : (
+                <div className="h-10 w-12 rounded-lg bg-emerald-50 border border-emerald-300 flex items-center justify-center shrink-0 font-bold font-mono text-xs text-[#006B3E] shadow-2xs">
+                  {currentBusiness.code}
+                </div>
+              )}
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#006B3E] bg-[#006B3E]/10 px-2 py-0.5 rounded-full">
                   Project: {currentBusiness.code}

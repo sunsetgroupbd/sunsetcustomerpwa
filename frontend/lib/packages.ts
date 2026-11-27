@@ -49,6 +49,45 @@ export const DIVISION_PACKAGES: Record<string, DivisionPackageSpec[]> = {
       perks: '112 Days Stay · 60% Resort Discount',
     },
   ],
+  // The Deck – Cox's Bazar
+  DECK: [
+    {
+      name: 'Bronze',
+      price: 580000,
+      bookingMoney: 150000,
+      units: 1,
+      sharesText: '1x Unit',
+      space: 'Luxury Suite Share (120 Rooms / G+11)',
+      perks: '7 Days Stay · Saf-Kabala Deed · Halal Profit',
+    },
+    {
+      name: 'Silver',
+      price: 1700000,
+      bookingMoney: 450000,
+      units: 3,
+      sharesText: '3x Units',
+      space: 'Luxury Suite Share (120 Rooms / G+11)',
+      perks: '21 Days Stay · Saf-Kabala Deed · Halal Profit',
+    },
+    {
+      name: 'Gold',
+      price: 2700000,
+      bookingMoney: 750000,
+      units: 5,
+      sharesText: '5x Units',
+      space: 'Luxury Suite Share (120 Rooms / G+11)',
+      perks: '35 Days Stay · Saf-Kabala Deed · Halal Profit',
+    },
+    {
+      name: 'Platinum',
+      price: 5300000,
+      bookingMoney: 1050000,
+      units: 10,
+      sharesText: '10x Units',
+      space: 'Luxury Suite Share (120 Rooms / G+11)',
+      perks: '70 Days Stay · Saf-Kabala Deed · Halal Profit',
+    },
+  ],
   // Dhaka Fantasy Island
   DFI: [
     {

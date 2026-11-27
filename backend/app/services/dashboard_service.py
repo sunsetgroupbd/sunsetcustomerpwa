@@ -234,12 +234,18 @@ class DashboardService:
                     combo_pend = 0
                     pkg_sold = direct_sold
                     pkg_pend = direct_pend
-                else:
-                    # Core physical projects receive their direct sales + 1:1 allocated shares from Super Combo
+                elif code in ("SKH", "DFI", "SCH"):
+                    # Core physical projects in the 4-in-1 combo receive their direct sales + 1:1 allocated shares from Super Combo
                     combo_sold = spc_approved_by_pkg.get(pkg_name, 0)
                     combo_pend = spc_pending_by_pkg.get(pkg_name, 0)
                     pkg_sold = direct_sold + combo_sold
                     pkg_pend = direct_pend + combo_pend
+                else:
+                    # Independent direct projects (e.g. DECK) have 0 combo allocations
+                    combo_sold = 0
+                    combo_pend = 0
+                    pkg_sold = direct_sold
+                    pkg_pend = direct_pend
 
                 pkg_items.append(
                     PackageSoldStat(
@@ -276,11 +282,47 @@ class DashboardService:
                     direct_shares_pending=biz_direct_pending,
                     combo_shares_pending=biz_combo_pending,
                     is_combo_engine=is_combo,
+                    is_combo_only=False,
                     packages=pkg_items,
                 )
             )
 
-        # Total sold across all 3 physical projects
+        # Add Mangrove Eco Hotel & Resort Ltd. (Sold exclusively via Super Combo)
+        mangrove_pkg_items = [
+            PackageSoldStat(
+                package_name=pkg_name,
+                shares_sold=spc_approved_by_pkg.get(pkg_name, 0),
+                direct_shares_sold=0,
+                combo_shares_sold=spc_approved_by_pkg.get(pkg_name, 0),
+                shares_pending=spc_pending_by_pkg.get(pkg_name, 0),
+                direct_shares_pending=0,
+                combo_shares_pending=spc_pending_by_pkg.get(pkg_name, 0),
+            )
+            for pkg_name in STANDARD_PACKAGES
+        ]
+        mangrove_inventory = ProjectShareInventory(
+            business_id="MANGROVE",
+            business_name="Mangrove Eco Hotel & Resort Ltd.",
+            business_code="MANGROVE",
+            shares_sold=spc_total_sold,
+            direct_shares_sold=0,
+            combo_shares_sold=spc_total_sold,
+            shares_pending=spc_total_pending,
+            direct_shares_pending=0,
+            combo_shares_pending=spc_total_pending,
+            is_combo_engine=False,
+            is_combo_only=True,
+            packages=mangrove_pkg_items,
+        )
+
+        # Append Mangrove at the end of the project inventories (shown last)
+        project_inventories.append(mangrove_inventory)
+
+        # Ensure canonical display sequence: core projects, DECK before SPC, and Mangrove last
+        canonical_order = {"SKH": 1, "DFI": 2, "SCH": 3, "DECK": 4, "SPC": 5, "MANGROVE": 6}
+        project_inventories.sort(key=lambda p: canonical_order.get(p.business_code.upper().strip(), 99))
+
+        # Total sold across all physical projects (SKH, MANGROVE, DFI, SCH)
         physical_projects = [p for p in project_inventories if not p.is_combo_engine]
         overall_shares_sold = sum(p.shares_sold for p in physical_projects) if physical_projects else total_direct_sold
         overall_shares_pending = sum(p.shares_pending for p in physical_projects) if physical_projects else total_direct_pending

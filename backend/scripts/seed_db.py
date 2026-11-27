@@ -55,6 +55,11 @@ BUSINESSES = [
         "description": "State-of-the-art multi-specialty healthcare, pathology, and diagnostic services.",
     },
     {
+        "name": "The Deck – Cox's Bazar",
+        "code": "DECK",
+        "description": "5-Star Standard Luxury Hotel and Resort at Inani Beach, Cox's Bazar with Saf-Kabala deed ownership.",
+    },
+    {
         "name": "Super Combo",
         "code": "SPC",
         "description": "Integrated multi-division commercial privileges and shared ownership bundle.",
@@ -209,6 +214,13 @@ PROJECT_PACKAGES = {
         {"package_name": "Silver", "price": Decimal("1020000.00"), "booking_money": Decimal("300000.00"), "units": 3},
         {"package_name": "Gold", "price": Decimal("1650000.00"), "booking_money": Decimal("500000.00"), "units": 5},
         {"package_name": "Platinum", "price": Decimal("3200000.00"), "booking_money": Decimal("800000.00"), "units": 10},
+    ],
+    # The Deck – Cox's Bazar
+    "DECK": [
+        {"package_name": "Bronze", "price": Decimal("580000.00"), "booking_money": Decimal("150000.00"), "units": 1},
+        {"package_name": "Silver", "price": Decimal("1700000.00"), "booking_money": Decimal("450000.00"), "units": 3},
+        {"package_name": "Gold", "price": Decimal("2700000.00"), "booking_money": Decimal("750000.00"), "units": 5},
+        {"package_name": "Platinum", "price": Decimal("5300000.00"), "booking_money": Decimal("1050000.00"), "units": 10},
     ],
     # Super Combo (4-in-1 Investment)
     "SPC": [

@@ -246,6 +246,7 @@ export interface ProjectShareInventory {
   direct_shares_pending?: number;
   combo_shares_pending?: number;
   is_combo_engine?: boolean;
+  is_combo_only?: boolean;
   packages: PackageSoldStat[];
 }
 

@@ -17,7 +17,7 @@ import { Icons } from '@/components/ui/Icons';
 export default function HomePage() {
   const router = useRouter();
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'SKH' | 'DFI' | 'SCH' | 'SPC'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'SKH' | 'DECK' | 'DFI' | 'SCH' | 'SPC'>('all');
   const [trackRef, setTrackRef] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,6 +42,15 @@ export default function HomePage() {
             name: 'Sunset Kuakata Hotel & Resort',
             slug: 'sunset-kuakata',
             description: 'Luxury seaside hospitality suites & beachfront ownership at Kuakata Beach.',
+            logo_url: null,
+            is_active: true,
+          },
+          {
+            id: '5',
+            code: 'DECK',
+            name: "The Deck – Cox's Bazar",
+            slug: 'the-deck-coxs-bazar',
+            description: "5-Star Standard Luxury Hotel and Resort at Inani Beach, Cox's Bazar with Saf-Kabala deed ownership.",
             logo_url: null,
             is_active: true,
           },
@@ -286,6 +295,16 @@ export default function HomePage() {
             Sunset Kuakata (SKH)
           </button>
           <button
+            onClick={() => setSelectedFilter('DECK')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+              selectedFilter === 'DECK'
+                ? 'bg-[#008751] text-white shadow-sm'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            The Deck (DECK)
+          </button>
+          <button
             onClick={() => setSelectedFilter('DFI')}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
               selectedFilter === 'DFI'
@@ -350,19 +369,25 @@ export default function HomePage() {
                       {biz.code}
                     </span>
                     <div className="w-10 h-10 rounded-lg bg-white border border-slate-200/80 p-1 flex items-center justify-center shadow-2xs">
-                      <img
-                        src={
-                          biz.code === 'SCH'
-                            ? '/suncarelogo.png'
-                            : biz.code === 'DFI'
-                            ? '/dfilogo.png'
-                            : biz.code === 'SPC'
-                            ? '/sunsetcombologo.png'
-                            : '/sunsetlogo.png'
-                        }
-                        alt={biz.name}
-                        className="max-h-full max-w-full object-contain"
-                      />
+                      {biz.code === 'DECK' ? (
+                        <div className="w-full h-full rounded bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#006B3E] font-black text-xs font-mono">
+                          DECK
+                        </div>
+                      ) : (
+                        <img
+                          src={
+                            biz.code === 'SCH'
+                              ? '/suncarelogo.png'
+                              : biz.code === 'DFI'
+                              ? '/dfilogo.png'
+                              : biz.code === 'SPC'
+                              ? '/sunsetcombologo.png'
+                              : '/sunsetlogo.png'
+                          }
+                          alt={biz.name}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      )}
                     </div>
                   </div>
 

@@ -125,6 +125,7 @@ export const ApplicationReceiptModal: React.FC<ApplicationReceiptModalProps> = (
 
   const PROJECT_NAMES: Record<string, string> = {
     SKH: 'Sunset Kuakata Hotel & Resort',
+    DECK: "The Deck – Cox's Bazar",
     DFI: 'Dhaka Fantasy Island',
     SCH: 'Sun Care Hospital & Diagnostic Centre',
     SPC: 'Sunset Privilege Club',

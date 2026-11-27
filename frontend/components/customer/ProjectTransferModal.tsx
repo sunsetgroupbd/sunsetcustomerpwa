@@ -19,6 +19,7 @@ interface ProjectTransferModalProps {
 
 const DIVISION_OPTIONS = [
   { value: 'SKH', label: 'Sunset Kuakata Hotel & Resort (SKH)' },
+  { value: 'DECK', label: "The Deck – Cox's Bazar (DECK)" },
   { value: 'DFI', label: 'Dynamic Futures International (DFI)' },
   { value: 'SCH', label: 'Sunset Cancer Hospital & Diagnostic (SCH)' },
   { value: 'SPC', label: 'Super Combo 4-in-1 Investment (SPC)' },

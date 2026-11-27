@@ -807,6 +807,10 @@ function AdminDashboardContent() {
                         ? '/dfilogo.png'
                         : code === 'SPC'
                         ? '/sunsetcombologo.png'
+                        : code === 'MANGROVE'
+                        ? '/mangrovelogo.png'
+                        : code === 'DECK'
+                        ? ''
                         : '/sunsetlogo.png';
 
                     return (
@@ -816,11 +820,15 @@ function AdminDashboardContent() {
                       >
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="w-12 h-12 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
-                            <img
-                              src={logoSrc}
-                              alt={b.business_name}
-                              className="w-full h-full object-contain"
-                            />
+                            {logoSrc ? (
+                              <img
+                                src={logoSrc}
+                                alt={b.business_name}
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              <span className="font-mono font-bold text-xs text-[#008751]">{code}</span>
+                            )}
                           </div>
                           <span className="text-[10px] font-bold uppercase tracking-wider text-[#008751] bg-[#008751]/10 px-2 py-0.5 rounded-full">
                             {b.business_code}

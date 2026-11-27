@@ -46,6 +46,7 @@ export const SuperComboAllocationModal: React.FC<SuperComboAllocationModalProps>
       category: 'Hospitality & Luxury Resort',
       formula: '70% of 45%',
       percentage: 31.5,
+      logo: '/sunsetlogo.png',
       color: '#008751',
       bgLight: 'bg-emerald-50',
       borderLight: 'border-emerald-200',
@@ -61,6 +62,7 @@ export const SuperComboAllocationModal: React.FC<SuperComboAllocationModalProps>
       category: 'Eco Resort & Hospitality',
       formula: '30% of 45%',
       percentage: 13.5,
+      logo: '/mangrovelogo.png',
       color: '#059669',
       bgLight: 'bg-teal-50',
       borderLight: 'border-teal-200',
@@ -76,6 +78,7 @@ export const SuperComboAllocationModal: React.FC<SuperComboAllocationModalProps>
       category: 'Commercial & Export Development',
       formula: 'Direct 27.5%',
       percentage: 27.5,
+      logo: '/dfilogo.png',
       color: '#2563eb',
       bgLight: 'bg-blue-50',
       borderLight: 'border-blue-200',
@@ -91,6 +94,7 @@ export const SuperComboAllocationModal: React.FC<SuperComboAllocationModalProps>
       category: 'Healthcare & Specialized Oncology',
       formula: 'Direct 27.5%',
       percentage: 27.5,
+      logo: '/suncarelogo.png',
       color: '#d97706',
       bgLight: 'bg-amber-50',
       borderLight: 'border-amber-200',
@@ -205,11 +209,10 @@ export const SuperComboAllocationModal: React.FC<SuperComboAllocationModalProps>
                 {allocations.map((a) => (
                   <tr key={a.key} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4">
-                      <div className="flex items-start gap-2.5">
-                        <span
-                          className="w-3 h-3 rounded-full mt-0.5 shrink-0"
-                          style={{ backgroundColor: a.color }}
-                        />
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 p-1 shrink-0 overflow-hidden shadow-2xs flex items-center justify-center">
+                          <img src={a.logo} alt={a.shortName} className="w-full h-full object-contain" />
+                        </div>
                         <div>
                           <div className="font-bold text-slate-900 leading-snug">{a.name}</div>
                           <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5">
@@ -263,7 +266,9 @@ export const SuperComboAllocationModal: React.FC<SuperComboAllocationModalProps>
               {/* Card Header */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
+                  <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 p-0.5 shrink-0 overflow-hidden shadow-2xs flex items-center justify-center">
+                    <img src={a.logo} alt={a.shortName} className="w-full h-full object-contain" />
+                  </div>
                   <div>
                     <h4 className="font-bold text-slate-900 text-xs leading-tight">{a.shortName}</h4>
                     <p className="text-[10px] text-slate-500">{a.category}</p>
