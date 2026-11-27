@@ -23,7 +23,7 @@ export const getDivisionLogo = (code?: string): string => {
   if (c === 'DFI') return '/dfilogo.png';
   if (c === 'SPC') return '/sunsetcombologo.png';
   if (c === 'MANGROVE') return '/mangrovelogo.png';
-  if (c === 'DECK') return '';
+  if (c === 'DECK') return '/thedecklogo.png';
   if (c === 'SKH') return '/sunsetlogo.png';
   return '/sunsetlogo.png';
 };

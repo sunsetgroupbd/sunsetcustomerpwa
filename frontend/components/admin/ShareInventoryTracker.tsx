@@ -31,7 +31,7 @@ export const ShareInventoryTracker: React.FC<ShareInventoryTrackerProps> = ({
     DFI: '/dfilogo.png',
     SCH: '/suncarelogo.png',
     SPC: '/sunsetcombologo.png',
-    DECK: '',
+    DECK: '/thedecklogo.png',
   };
 
   const packageColors: Record<string, { bg: string; text: string; border: string }> = {

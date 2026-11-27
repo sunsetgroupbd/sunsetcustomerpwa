@@ -810,7 +810,7 @@ function AdminDashboardContent() {
                         : code === 'MANGROVE'
                         ? '/mangrovelogo.png'
                         : code === 'DECK'
-                        ? ''
+                        ? '/thedecklogo.png'
                         : '/sunsetlogo.png';
 
                     return (

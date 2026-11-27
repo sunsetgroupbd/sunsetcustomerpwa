@@ -369,25 +369,21 @@ export default function HomePage() {
                       {biz.code}
                     </span>
                     <div className="w-10 h-10 rounded-lg bg-white border border-slate-200/80 p-1 flex items-center justify-center shadow-2xs">
-                      {biz.code === 'DECK' ? (
-                        <div className="w-full h-full rounded bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#006B3E] font-black text-xs font-mono">
-                          DECK
-                        </div>
-                      ) : (
-                        <img
-                          src={
-                            biz.code === 'SCH'
-                              ? '/suncarelogo.png'
-                              : biz.code === 'DFI'
-                              ? '/dfilogo.png'
-                              : biz.code === 'SPC'
-                              ? '/sunsetcombologo.png'
-                              : '/sunsetlogo.png'
-                          }
-                          alt={biz.name}
-                          className="max-h-full max-w-full object-contain"
-                        />
-                      )}
+                      <img
+                        src={
+                          biz.code === 'SCH'
+                            ? '/suncarelogo.png'
+                            : biz.code === 'DFI'
+                            ? '/dfilogo.png'
+                            : biz.code === 'SPC'
+                            ? '/sunsetcombologo.png'
+                            : biz.code === 'DECK'
+                            ? '/thedecklogo.png'
+                            : '/sunsetlogo.png'
+                        }
+                        alt={biz.name}
+                        className="max-h-full max-w-full object-contain"
+                      />
                     </div>
                   </div>
 
