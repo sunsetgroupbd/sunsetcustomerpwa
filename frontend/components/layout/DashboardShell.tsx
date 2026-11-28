@@ -33,6 +33,7 @@ function NavTabs() {
     { label: 'Applications', href: '/admin/dashboard?tab=applications', icon: Icons.FileText },
     { label: 'Edit Requests', href: '/admin/dashboard?tab=edit-requests', icon: Icons.Shield },
     { label: 'Users & Permissions', href: '/admin/users', icon: Icons.Users },
+    { label: 'Lead Integrations', href: '/admin/dashboard?tab=lead-integrations', icon: Icons.Lock },
     { label: 'Export Center', href: '/admin/exports', icon: Icons.Download },
   ];
 

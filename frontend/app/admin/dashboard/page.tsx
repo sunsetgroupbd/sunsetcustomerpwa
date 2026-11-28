@@ -25,6 +25,7 @@ function AdminDashboardContent() {
   const currentTab = searchParams ? searchParams.get('tab') : null;
   const isApplicationsTab = currentTab === 'applications';
   const isEditRequestsTab = currentTab === 'edit-requests';
+  const isLeadIntegrationsTab = currentTab === 'lead-integrations';
 
   const { user, isLoading: authLoading } = useAuth();
 
@@ -447,14 +448,18 @@ function AdminDashboardContent() {
   return (
     <DashboardShell
       title={
-        isEditRequestsTab
+        isLeadIntegrationsTab
+          ? "External Lead Inbound Integration"
+          : isEditRequestsTab
           ? "Application Edit Requests"
           : isApplicationsTab
           ? "Applications Master Directory"
           : "Executive Admin Dashboard"
       }
       subtitle={
-        isEditRequestsTab
+        isLeadIntegrationsTab
+          ? "Webhook endpoint configuration and API secret key for syncing onboarded leads from external CRM / Web Apps."
+          : isEditRequestsTab
           ? "Review and approve requests from CR Officers and Customers to unlock submitted applications for editing."
           : isApplicationsTab
           ? "Search, inspect, and manage customer applications across all Sunset Group divisions."
@@ -489,8 +494,85 @@ function AdminDashboardContent() {
       <div className="space-y-6">
         {statusMsg && <Alert type={statusMsg.type}>{statusMsg.text}</Alert>}
 
-        {/* ---------------- EDIT REQUESTS TAB VIEW ---------------- */}
-        {isEditRequestsTab ? (
+        {/* ---------------- LEAD INTEGRATIONS TAB VIEW ---------------- */}
+        {isLeadIntegrationsTab ? (
+          <div className="space-y-6">
+            <Card
+              title="Webhook API Integration (External Lead Onboarding)"
+              subtitle="Use this webhook URL and secret key in your external web app or sales CRM to automatically sync onboarded leads into Sunset Customer Platform."
+            >
+              <div className="space-y-6 max-w-3xl text-xs">
+                {/* Endpoint details */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Target Webhook URL (POST Endpoint)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={typeof window !== 'undefined' ? `${window.location.origin.replace(':3000', ':8000')}/api/v1/leads/webhook` : 'http://localhost:8000/api/v1/leads/webhook'}
+                      className="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono text-xs text-slate-900 select-all"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const url = typeof window !== 'undefined' ? `${window.location.origin.replace(':3000', ':8000')}/api/v1/leads/webhook` : 'http://localhost:8000/api/v1/leads/webhook';
+                        navigator.clipboard.writeText(url);
+                        setStatusMsg({ type: 'success', text: 'Webhook URL copied to clipboard!' });
+                      }}
+                    >
+                      Copy URL
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    When deploying on live domain, replace host with your live API domain (e.g. <code className="bg-slate-100 px-1 py-0.5 rounded font-mono">https://api.yourdomain.com/api/v1/leads/webhook</code>).
+                  </p>
+                </div>
+
+                {/* Secret Key */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    API Secret Key / Bearer Token
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      value="sunset_lead_secret_key_2026"
+                      className="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg font-mono text-xs text-emerald-800 font-bold select-all"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText('sunset_lead_secret_key_2026');
+                        setStatusMsg({ type: 'success', text: 'API Secret Key copied to clipboard!' });
+                      }}
+                    >
+                      Copy Key
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Send in headers as either <code className="bg-slate-100 px-1 py-0.5 rounded font-mono">X-API-Key: sunset_lead_secret_key_2026</code> or <code className="bg-slate-100 px-1 py-0.5 rounded font-mono">Authorization: Bearer sunset_lead_secret_key_2026</code>.
+                  </p>
+                </div>
+
+                {/* Status indicator */}
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="font-bold text-emerald-950">Webhook Receiver Service is Active &amp; Ready</span>
+                  </div>
+                  <Link href="/cr/leads">
+                    <Button variant="primary" size="sm" className="bg-[#008751] hover:bg-[#006B3E] text-white">
+                      View Onboarded Leads Queue
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          </div>
+        ) : isEditRequestsTab ? (
           <div className="space-y-6">
             <Card className="p-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

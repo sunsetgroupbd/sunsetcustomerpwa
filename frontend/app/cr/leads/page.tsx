@@ -147,24 +147,6 @@ export default function CrLeadsPage() {
       <div className="space-y-6">
         {statusMsg && <Alert type={statusMsg.type}>{statusMsg.text}</Alert>}
 
-        {/* Integration Instructions Alert */}
-        <div className="p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-xl text-xs text-emerald-950 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 font-bold text-emerald-900">
-              <Icons.Shield className="w-4 h-4 text-[#008751]" />
-              <span>Webhook API Endpoint Live</span>
-            </div>
-            <p className="text-emerald-800">
-              Post inbound leads to: <code className="bg-white/80 border border-emerald-300 px-1.5 py-0.5 rounded font-mono font-semibold text-emerald-900">/api/v1/leads/webhook</code> with header <code className="bg-white/80 border border-emerald-300 px-1.5 py-0.5 rounded font-mono font-semibold text-emerald-900">X-API-Key: sunset_lead_secret_key_2026</code>.
-            </p>
-          </div>
-          <div className="shrink-0 text-right">
-            <span className="text-[11px] text-emerald-700 bg-emerald-100/70 border border-emerald-200 px-2 py-1 rounded-full font-semibold">
-              CR Self-Service Onboarding Active
-            </span>
-          </div>
-        </div>
-
         {/* Filter and Search Bar */}
         <Card className="p-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
