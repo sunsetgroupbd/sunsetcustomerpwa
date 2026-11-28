@@ -547,5 +547,23 @@ export const api = {
         method: 'POST',
       }),
   },
+
+  // Incoming Leads (External Integrations)
+  leads: {
+    list: (params?: { status?: string; search?: string; page?: number; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.status) q.set('status', params.status);
+      if (params?.search) q.set('search', params.search);
+      if (params?.page) q.set('page', params.page.toString());
+      if (params?.limit) q.set('limit', params.limit.toString());
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return request<{ items: import('./types').IncomingLeadItem[]; total: number }>(`/leads${query}`);
+    },
+    activate: (data: import('./types').ActivateLeadPayload) =>
+      request<import('./types').ActivateLeadResponse>('/leads/activate', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
 };
 

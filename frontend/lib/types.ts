@@ -406,4 +406,77 @@ export interface NotificationListResponse {
   unread_count: number;
 }
 
+export interface IncomingLeadItem {
+  id: number;
+  external_lead_id?: string | null;
+  event_type?: string | null;
+  name: string;
+  phone: string;
+  email?: string | null;
+  status_raw?: string | null;
+  source?: string | null;
+  lead_date?: string | null;
+  last_called_at?: string | null;
+  total_calls_count: number;
+  notes?: string | null;
+  owner_info?: {
+    id?: any;
+    name?: string;
+    email?: string;
+    phone?: string;
+    employee_id?: string;
+    designation?: string;
+  } | null;
+  onboarded_by_info?: {
+    id?: any;
+    name?: string;
+    email?: string;
+    phone?: string;
+    employee_id?: string;
+  } | null;
+  external_onboarded_at?: string | null;
+  call_history?: Array<{
+    to_status?: string;
+    called_at?: string;
+    caller_name?: string;
+    notes?: string;
+  }> | null;
+  activation_status: 'pending' | 'activated' | 'rejected' | string;
+  activated_by_id?: number | null;
+  activated_by_name?: string | null;
+  activated_at?: string | null;
+  customer_user_id?: number | null;
+  customer_id_number?: string | null;
+  application_id?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IncomingLeadListResponse {
+  items: IncomingLeadItem[];
+  total: number;
+}
+
+export interface ActivateLeadPayload {
+  lead_id: number;
+  business_id?: number | null;
+  temp_password?: string;
+  send_sms?: boolean;
+  custom_notes?: string;
+}
+
+export interface ActivateLeadResponse {
+  success: boolean;
+  message: string;
+  lead_id: number;
+  customer_id: number;
+  customer_name: string;
+  phone_number: string;
+  temp_password: string;
+  application_id: number;
+  reference_number: string;
+  sms_sent: boolean;
+}
+
+
 

@@ -38,6 +38,7 @@ function NavTabs() {
 
   const crNav = [
     { label: 'Assigned Applications', href: '/cr/dashboard', icon: Icons.FileText },
+    { label: 'Onboarded Leads', href: '/cr/leads', icon: Icons.Users },
   ];
 
   const salesNav = [

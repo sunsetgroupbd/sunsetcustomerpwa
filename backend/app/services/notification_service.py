@@ -65,6 +65,31 @@ class NotificationService:
             logger.error("Failed to send OTP SMS to %s: %s", mobile, exc)
             return False
 
+    async def send_custom_sms(self, mobile: str, message: str) -> bool:
+        """
+        Send a general message/SMS to a customer (e.g. login credentials or approval alert).
+        """
+        settings = get_settings()
+        if not settings.sms_api_key or settings.sms_api_key in ("your_sms_api_key", "changeme", "placeholder"):
+            logger.info("[DEV MODE] Custom SMS to %s: %s", mobile, message)
+            return True
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    "https://api.smsprovider.example.com/send",
+                    json={
+                        "api_key": settings.sms_api_key,
+                        "sender_id": settings.sms_sender_id,
+                        "to": mobile,
+                        "message": message,
+                    },
+                )
+                return response.status_code == 200
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Failed to send custom SMS to %s: %s", mobile, exc)
+            return False
+
     # ---------------------------------------------------------------- E-mail --
 
     async def send_email_otp(self, email: str, otp: str, purpose: str) -> bool:
